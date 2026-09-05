@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="LibVLCSharp.Avalonia" Version="3.10.1" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../OsuMusicPlayer.Audio/OsuMusicPlayer.Audio.csproj" />
+    <ProjectReference Include="../OsuMusicPlayer.Core/OsuMusicPlayer.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))) or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">
+    <None Include="../../third_party/native/win-x64/bass.dll"
+          Link="bass.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../third_party/native/win-x64/bass_fx.dll"
+          Link="bass_fx.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

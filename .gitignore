@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.dotnet/
+.nuget/
+TestResults/
+FodyWeavers.xsd
+*.user
+*.suo
+.DS_Store
+third_party/packages/

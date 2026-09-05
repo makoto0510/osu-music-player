@@ -1,0 +1,234 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:audio="using:OsuMusicPlayer.Audio"
+        xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
+        xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+        x:Class="OsuMusicPlayer.App.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="osu! music player"
+        Width="1200" Height="760" MinWidth="900" MinHeight="560"
+        Background="#11131A">
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Border Grid.Row="0" Padding="20,16" Background="#191C25" BorderBrush="#292D3A" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,180,Auto,Auto,Auto,Auto" ColumnSpacing="12">
+        <TextBox Grid.Column="0" Watermark="Search title, artist, mapper, tags…" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+        <ComboBox Grid.Column="1" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+          <ToggleButton Content="DT" IsChecked="{Binding IsDtActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DT}" />
+          <ToggleButton Content="NC" IsChecked="{Binding IsNcActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.NC}" />
+          <ToggleButton Content="HT" IsChecked="{Binding IsHtActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.HT}" />
+          <ToggleButton Content="DC" IsChecked="{Binding IsDcActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DC}" />
+        </StackPanel>
+        <ToggleButton Grid.Column="3" Content="Video" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" ToolTip.Tip="{Binding VideoUnavailableText}" />
+        <ToggleButton Grid.Column="4" Content="{Binding QueueText}" IsChecked="{Binding IsQueuePanelVisible, Mode=TwoWay}" />
+        <ToggleButton Grid.Column="5" Content="Sources" IsChecked="{Binding IsSourcesPanelVisible, Mode=TwoWay}" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" IsVisible="{Binding IsSourcesPanelVisible}" Padding="20,12" Background="#15181F" BorderBrush="#292D3A" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+          <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="Library sources" FontWeight="SemiBold" />
+            <TextBlock Text="osu! folders are only ever read. Add a folder manually when automatic detection fails." FontSize="11" Foreground="#737A8D" TextWrapping="Wrap" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Content="Add osu!stable folder…" Command="{Binding AddStableFolderCommand}" IsVisible="{Binding CanAddStableFolder}" />
+            <Button Content="Add osu!lazer folder…" Command="{Binding AddLazerFolderCommand}" />
+            <Button Content="Reload" Command="{Binding ReloadLibraryCommand}" />
+          </StackPanel>
+        </Grid>
+        <TextBlock IsVisible="{Binding !HasInstallations}" Text="No osu! installation was detected on this computer." Foreground="#FFB6C8" />
+        <ItemsControl ItemsSource="{Binding Installations}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:InstallationItemViewModel">
+              <Grid ColumnDefinitions="90,*,90,Auto" ColumnSpacing="12" Margin="0,2">
+                <Border Grid.Column="0" Background="#292D3A" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
+                  <TextBlock Text="{Binding KindText}" FontSize="11" />
+                </Border>
+                <TextBlock Grid.Column="1" Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
+                <TextBlock Grid.Column="2" Text="{Binding OriginText}" FontSize="11" Foreground="#737A8D" VerticalAlignment="Center" />
+                <Button Grid.Column="3" Content="Remove" Command="{Binding RemoveCommand}" IsVisible="{Binding IsManual}" FontSize="11" Padding="8,2" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding LibraryStatusText}" FontSize="11" Foreground="#AEB4C4" IsVisible="{Binding HasInstallations}" />
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="2" IsVisible="{Binding IsQueuePanelVisible}" Padding="20,12" Background="#15181F" BorderBrush="#292D3A" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+          <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="Play queue" FontWeight="SemiBold" />
+            <TextBlock Text="Queued tracks play next, before shuffle or list order." FontSize="11" Foreground="#737A8D" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Content="Add selected" Command="{Binding EnqueueSelectedCommand}" />
+            <Button Content="Clear" Command="{Binding ClearQueueCommand}" />
+          </StackPanel>
+        </Grid>
+        <TextBlock IsVisible="{Binding !HasQueue}" Text="The queue is empty." FontSize="11" Foreground="#737A8D" />
+        <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Queue}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TrackItemViewModel">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,2">
+                  <TextBlock Grid.Column="0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding Title}" FontWeight="SemiBold" /><Run Text=" — " Foreground="#737A8D" /><Run Text="{Binding Artist}" Foreground="#AEB4C4" />
+                  </TextBlock>
+                  <Button Grid.Column="1" Content="Remove" FontSize="11" Padding="8,2"
+                          Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).RemoveFromQueueCommand}"
+                          CommandParameter="{Binding}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,360">
+      <Grid Grid.Column="0">
+        <ListBox ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}" Background="Transparent" Margin="12">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:TrackItemViewModel">
+              <Grid ColumnDefinitions="84,*,130,90" Height="72" Margin="4" ColumnSpacing="14">
+                <Border Grid.Column="0" CornerRadius="6" Background="#292D3A" ClipToBounds="True">
+                  <Grid>
+                    <TextBlock Text="♪" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#7B8192" />
+                    <Image Source="{Binding BackgroundImage^}" Stretch="UniformToFill" />
+                  </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                  <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Artist}" Foreground="#AEB4C4" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Creator, StringFormat='mapped by {0}'}" FontSize="11" Foreground="#737A8D" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding BpmText}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#AEB4C4" />
+                <TextBlock Grid.Column="3" Text="{Binding LengthText}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#AEB4C4" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <ProgressBar IsVisible="{Binding IsLoading}" IsIndeterminate="True" VerticalAlignment="Top" Height="3" />
+        <TextBlock IsVisible="{Binding !HasTracks}" Text="{Binding EmptyStateText}" Foreground="#737A8D" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="520" TextAlignment="Center" />
+      </Grid>
+
+      <Border Grid.Column="1" Background="#15181F" BorderBrush="#292D3A" BorderThickness="1,0,0,0">
+        <Grid RowDefinitions="Auto,*">
+          <!-- Kept attached at all times (height 0 when hidden) so libVLC always has a window handle. -->
+          <Border Grid.Row="0" Height="{Binding VideoPanelHeight}" Background="Black" ClipToBounds="True">
+            <vlc:VideoView x:Name="VideoView" />
+          </Border>
+          <Grid Grid.Row="1">
+          <TextBlock IsVisible="{Binding !HasDetailTrack}" Text="Select a track to see its difficulties" Foreground="#737A8D" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="24" />
+          <ContentControl Content="{Binding DetailTrack}" IsVisible="{Binding HasDetailTrack}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:TrackItemViewModel">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <StackPanel>
+                    <Border Height="200" Background="#292D3A" ClipToBounds="True">
+                      <Grid>
+                        <TextBlock Text="♪" FontSize="48" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#7B8192" />
+                        <Image Source="{Binding LargeBackgroundImage^}" Stretch="UniformToFill" />
+                      </Grid>
+                    </Border>
+                    <StackPanel Margin="18,14,18,18" Spacing="10">
+                      <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Artist}" Foreground="#AEB4C4" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Creator, StringFormat='mapped by {0}'}" FontSize="12" Foreground="#737A8D" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <WrapPanel Orientation="Horizontal">
+                        <Border Background="#292D3A" CornerRadius="4" Padding="7,2" Margin="0,0,6,6"><TextBlock Text="{Binding SourceText}" FontSize="11" /></Border>
+                        <Border Background="#292D3A" CornerRadius="4" Padding="7,2" Margin="0,0,6,6"><TextBlock Text="{Binding StarText}" FontSize="11" /></Border>
+                        <Border Background="#292D3A" CornerRadius="4" Padding="7,2" Margin="0,0,6,6"><TextBlock Text="{Binding DifficultyCountText}" FontSize="11" /></Border>
+                        <Border Background="#292D3A" CornerRadius="4" Padding="7,2" Margin="0,0,6,6"><TextBlock Text="{Binding BpmText}" FontSize="11" /></Border>
+                        <Border Background="#292D3A" CornerRadius="4" Padding="7,2" Margin="0,0,6,6"><TextBlock Text="{Binding LengthText}" FontSize="11" /></Border>
+                      </WrapPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button Content="Play" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaySelectedCommand}" />
+                        <Button Content="{Binding PreviewTimeText, StringFormat='Preview from {0}'}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PreviewSelectedCommand}" />
+                        <Button Content="Queue" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EnqueueSelectedCommand}" />
+                      </StackPanel>
+                      <TextBlock Text="Difficulties" FontWeight="SemiBold" Margin="0,6,0,0" />
+                      <ItemsControl ItemsSource="{Binding Difficulties}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:DifficultyItemViewModel">
+                            <Grid ColumnDefinitions="6,Auto,*,Auto" ColumnSpacing="10" Margin="0,3">
+                              <Border Grid.Column="0" Width="6" CornerRadius="3" Background="{Binding StarColor}" />
+                              <Border Grid.Column="1" Background="#292D3A" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding RulesetText}" FontSize="10" Foreground="#AEB4C4" />
+                              </Border>
+                              <StackPanel Grid.Column="2" Spacing="1">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding StatsText}" FontSize="11" Foreground="#737A8D" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="3" Text="{Binding StarText}" VerticalAlignment="Center" Foreground="{Binding StarColor}" FontWeight="SemiBold" />
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="4" Padding="18,14" Background="#191C25" BorderBrush="#292D3A" BorderThickness="0,1,0,0">
+      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="300,*,220" RowSpacing="10" ColumnSpacing="18">
+        <Grid Grid.RowSpan="2" Grid.Column="0" ColumnDefinitions="58,*" ColumnSpacing="12">
+          <Border Width="58" Height="58" CornerRadius="7" Background="#292D3A" ClipToBounds="True">
+            <Grid>
+              <TextBlock Text="♪" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#7B8192" />
+              <Image Source="{Binding CurrentTrack.BackgroundImage^}" Stretch="UniformToFill" />
+            </Grid>
+          </Border>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="{Binding CurrentTrack.Title, FallbackValue='Nothing playing'}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding CurrentTrack.Artist}" Foreground="#AEB4C4" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Border IsVisible="{Binding HasVideo}" Background="#2E4A6B" CornerRadius="3" Padding="5,1"><TextBlock Text="VIDEO" FontSize="9" Foreground="#9CC8FF" /></Border>
+              <Border IsVisible="{Binding HasStoryboard}" Background="#4A3A6B" CornerRadius="3" Padding="5,1"><TextBlock Text="STORYBOARD" FontSize="9" Foreground="#D0B8FF" /></Border>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+          <Button Content="Previous" Command="{Binding PreviousCommand}" />
+          <Button Content="{Binding PlayPauseText}" Command="{Binding TogglePlayCommand}" MinWidth="86" />
+          <Button Content="Next" Command="{Binding NextCommand}" />
+          <Button Content="Play selected" Command="{Binding PlaySelectedCommand}" />
+          <Button Content="Add to queue" Command="{Binding EnqueueSelectedCommand}" />
+        </StackPanel>
+        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="52,*,52" ColumnSpacing="8">
+          <TextBlock Grid.Column="0" Text="{Binding CurrentTimeText}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+          <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Progress, Mode=TwoWay}" />
+          <TextBlock Grid.Column="2" Text="{Binding TotalTimeText}" VerticalAlignment="Center" />
+        </Grid>
+
+        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+          <ToggleButton Content="Shuffle" IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" />
+          <Button Content="{Binding RepeatText}" Command="{Binding CycleRepeatCommand}" MinWidth="104" />
+        </StackPanel>
+        <Grid Grid.Row="1" Grid.Column="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">
+          <TextBlock Grid.Column="0" Text="Volume" Foreground="#AEB4C4" VerticalAlignment="Center" />
+          <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" />
+        </Grid>
+        <Border Grid.Row="2" Grid.ColumnSpan="3" IsVisible="{Binding HasError}" Background="#3B1D27" CornerRadius="5" Padding="10,6">
+          <TextBlock Text="{Binding ErrorMessage}" Foreground="#FFB6C8" TextWrapping="Wrap" />
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

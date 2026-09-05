@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="ManagedBass" Version="4.0.2" />
+    <PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+  </ItemGroup>
+</Project>
