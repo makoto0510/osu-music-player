@@ -4,6 +4,7 @@ using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.App.ViewModels;
 using OsuMusicPlayer.Audio;
 using OsuMusicPlayer.Core;
+using OsuMusicPlayer.Core.Hitsounds;
 using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.Core.Models;
 
@@ -489,6 +490,105 @@ public sealed class MainWindowViewModelTests
         viewModel.Tracks.Should().HaveCount(2);
     }
 
+    [Fact]
+    public async Task Hitsounds_LoadTimelineOfSelectedDifficultyAndFollowDifficultyChanges()
+    {
+        using var directory = new TestDirectory();
+        var easy = directory.CreateFile("easy.osu", beatmapText(1));
+        var hard = directory.CreateFile("hard.osu", beatmapText(3));
+        using var viewModel = createViewModel(out _, out var environment);
+        var set = createSet("Song", "Artist", "Mapper", "", 100, 100) with
+        {
+            Beatmaps =
+            [
+                new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Easy", Tags = "", StarRating = 1.5, BeatmapFilePath = easy },
+                new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Hard", Tags = "", StarRating = 5, BeatmapFilePath = hard },
+            ],
+        };
+        viewModel.ReplaceTracksForTesting([set]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        viewModel.IsHitsoundEnabled = true;
+        environment.Hitsounds.IsEnabled.Should().BeTrue();
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        await viewModel.LastVisualsLoad;
+
+        viewModel.CurrentTrack!.SelectedDifficulty!.Name.Should().Be("Hard", "the highest rated difficulty is the default");
+        viewModel.VisualsStatusText.Should().Be("3 hit sounds");
+        environment.Hitsounds.Loads.Should().Equal(3);
+        viewModel.VisualsStatusText.Should().Contain("3 hit sounds");
+
+        viewModel.CurrentTrack.SelectedDifficulty = viewModel.CurrentTrack.Difficulties.Single(static difficulty => difficulty.Name == "Easy");
+        await viewModel.LastVisualsLoad;
+
+        environment.Hitsounds.Loads.Should().Equal(3, 1);
+        viewModel.IsHitsoundEnabled = false;
+        environment.Hitsounds.IsEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Storyboard_LoadsWhenTheMediaHasOneAndIsClearedForTheNextTrack()
+    {
+        using var directory = new TestDirectory();
+        using var viewModel = createViewModel(out _, out var environment);
+        var withStoryboard = createSet("A Song", "Artist", "Mapper", "", 100, 100) with { Files = new FolderFileResolver(directory.Path) };
+        viewModel.ReplaceTracksForTesting([withStoryboard, createSet("B Other", "Artist", "Mapper", "", 100, 100) with { Files = new FolderFileResolver(directory.Path) }]);
+        environment.Media.Next = new BeatmapMedia(null, TimeSpan.Zero, null) { BeatmapHasStoryboardElements = true };
+        environment.Storyboard.Next = static () => new StoryboardSession([], new Dictionary<string, SkiaSharp.SKImage?>(), widescreen: true);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        await viewModel.LastVisualsLoad;
+
+        viewModel.StoryboardSession.Should().NotBeNull();
+        viewModel.IsStoryboardVisible.Should().BeTrue();
+        viewModel.StoryboardPanelHeight.Should().Be(202);
+        viewModel.VisualsStatusText.Should().Contain("storyboard");
+
+        viewModel.IsStoryboardEnabled = false;
+        viewModel.IsStoryboardVisible.Should().BeFalse();
+        viewModel.StoryboardPanelHeight.Should().Be(0);
+
+        environment.Media.Next = BeatmapMedia.None;
+        await viewModel.NextCommand.ExecuteAsync(null);
+        await viewModel.LastVisualsLoad;
+
+        viewModel.StoryboardSession.Should().BeNull("the next track has no storyboard");
+        environment.Storyboard.Loads.Should().Be(1);
+    }
+
+    private static string beatmapText(int circles)
+    {
+        var lines = new List<string>
+        {
+            "osu file format v14",
+            "[General]",
+            "AudioFilename: audio.mp3",
+            "SampleSet: Normal",
+            "Mode: 0",
+            "[Metadata]",
+            "Title:Song",
+            "Artist:Artist",
+            "[Difficulty]",
+            "HPDrainRate:5",
+            "CircleSize:4",
+            "OverallDifficulty:7",
+            "ApproachRate:9",
+            "SliderMultiplier:1",
+            "SliderTickRate:1",
+            "[Events]",
+            "[TimingPoints]",
+            "0,500,4,1,0,100,1,0",
+            "[HitObjects]",
+        };
+        for (var i = 0; i < circles; i++)
+        {
+            lines.Add($"100,100,{1000 + i * 500},1,0,0:0:0:0:");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
     private static string createLazerInstallation(TestDirectory directory, string name)
     {
         directory.CreateFile(Path.Combine(name, "client.realm"));
@@ -502,7 +602,7 @@ public sealed class MainWindowViewModelTests
         audio = new FakeAudioEngine();
         environment = new TestEnvironment();
         var manager = new BeatmapManager([environment.Loader], new DuplicateDetector());
-        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video);
+        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard);
     }
 
     private static UnifiedBeatmapSet createSet(string title, string artist, string creator, string tags, double bpm, int seconds) => new()
@@ -548,6 +648,41 @@ public sealed class MainWindowViewModelTests
         public FakeFolderPicker Picker { get; } = new();
         public FakeMediaResolver Media { get; } = new();
         public FakeVideoPlayer Video { get; } = new();
+        public FakeHitsoundPlayer Hitsounds { get; } = new();
+        public FakeStoryboardLoader Storyboard { get; } = new();
+    }
+
+    private sealed class FakeHitsoundPlayer : IHitsoundPlayer
+    {
+        public bool IsEnabled { get; set; }
+        public float Volume { get; set; } = 1;
+        public int OffsetMs { get; set; }
+        public int MissingSampleCount => 0;
+        public List<int> Loads { get; } = [];
+        public int Clears { get; private set; }
+
+        public Task LoadAsync(IReadOnlyList<HitsoundEvent> events, HitsoundSampleResolver resolver, CancellationToken cancellationToken = default)
+        {
+            Loads.Add(events.Count);
+            return Task.CompletedTask;
+        }
+
+        public void Clear() => Clears++;
+        public void Dispose() { }
+    }
+
+    private sealed class FakeStoryboardLoader : IStoryboardLoader
+    {
+        public Func<StoryboardSession?> Next { get; set; } = static () => null;
+        public int Loads { get; private set; }
+        public string? LastBeatmapPath { get; private set; }
+
+        public Task<StoryboardSession?> LoadAsync(string? storyboardFilePath, string? beatmapFilePath, IBeatmapFileResolver files, CancellationToken cancellationToken = default)
+        {
+            Loads++;
+            LastBeatmapPath = beatmapFilePath;
+            return Task.FromResult(Next());
+        }
     }
 
     private sealed class FakeVideoPlayer : IVideoPlayer

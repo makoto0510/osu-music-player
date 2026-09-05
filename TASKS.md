@@ -1,14 +1,14 @@
 # osu! music player 開発タスクリスト
 
-最終更新: 2026-09-06(フェーズ 2 着手後)
+最終更新: 2026-09-06(フェーズ 2 完了)
 
 ## 現在の開発段階
 
-**段階: デスクトップ MVP 完成 + 実環境検証済み。フェーズ 2(ビジュアル機能)を進行中。**
+**段階: デスクトップ MVP + フェーズ 2(ビジュアル機能)完了。次はフェーズ 0 の残りとフェーズ 1(基本機能)。**
 
 - 対象: Windows / macOS / Linux(実行確認は Windows のみ)
 - 技術: .NET 8 / Avalonia 11.3 / ManagedBass / OsuParsers / Realm 20.1
-- テスト: 70 件合格(Core 30 / Audio 11 / App 29)、警告ゼロ(TreatWarningsAsErrors)
+- テスト: 90 件合格(Core 41 / Audio 15 / App 34)、警告ゼロ(TreatWarningsAsErrors)
 - 実データ検証: この PC の stable(約 3000 フォルダ)と lazer(約 3950 セット)で読み込み・再生を確認済み
 
 ### 実装済み
@@ -24,12 +24,14 @@
 | 一覧 | 検索(複数語 AND、タイトル / アーティスト / マッパー / タグ)、ソート(タイトル / アーティスト / BPM / 長さ) |
 | 詳細 | 難易度一覧(星評価と色、CS/AR/OD/HP、ルールセット)、プレビュー地点からの再生、出典バッジ |
 | 動画 | .osu の Video イベント解析、libVLC(LibVLCSharp)によるミュート背景動画、音声クロックへの同期と mod に応じた速度 |
+| ヒットサウンド | .osu 解析からのイベント列生成(サークル / スライダー各エッジとティック / スピナー)、譜面 → スキン → lazer 既定サンプルの解決、BASS サンプルを音声クロックに同期(デバイス遅延を先読み補正) |
+| ストーリーボード | ReOsuStoryboardPlayer.Core で .osb + .osu を解析、Skia で描画(加算合成・回転・反転・アニメーション)、選択難易度に追従 |
 | 配布 | Windows x64 用 bass.dll / bass_fx.dll の自動コピー |
 
 ### 既知の制限・技術的負債
 
 - [ ] macOS / Linux 用 BASS ネイティブライブラリが未配置(起動はするが再生不可)
-- [ ] Git リポジトリではない(履歴が無い)。**2026-09-06 に並行セッション同士でファイルを上書きし合う事故が起きた。最優先で `git init` すること**
+- [x] Git リポジトリ化(Codex が初期コミット済み)
 - [ ] 結合試験ハーネスがセッション一時フォルダにしかない(リポジトリ未収録)
 - [ ] lazer で 1 セット内に複数音声がある場合、最後に走査した難易度の音声しか拾わない
 - [ ] osu!.db の TotalTime が 0 の WIP 譜面は長さが 0:00 と表示される(音声から実測していない)
@@ -64,8 +66,10 @@
 - [x] **譜面プレビュー**(2026-09-06): 右側の詳細ペインに大きい背景、バッジ(ソース / 最高星 / 難易度数 / BPM / 長さ)、難易度一覧(ルールセット、星の色分け、CS/AR/OD/HP、mania はキー数)、「Preview from m:ss」でプレビュー地点から再生
 - [x] **動画・ストーリーボードの検出**(2026-09-06): .osu の [Events] を再生時に読み、Video / .osb を解決して下部バーに VIDEO / STORYBOARD バッジを表示(`BeatmapMediaResolver`)
 - [ ] **背景動画再生**: 描画方式の決定が必要。候補は LibVLCSharp.Avalonia 3.10 + VideoLAN.LibVLC.Windows 3.0.23(NuGet 約 90MB、コーデック網羅、コールバック描画で合成も可)か FFMediaToolkit 4.8(FFmpeg ネイティブを別途配置、フレームを WriteableBitmap に描画)
-- [ ] **ストーリーボード再生**: MikiraSora/ReOsuStoryboardPlayer の組み込み方針調査(ライブラリ化 or 外部プロセス)。動画の上に合成するため描画方式は動画と合わせて決める
-- [ ] **ヒットサウンド再生**: 譜面のヒットオブジェクト(OsuParsers の BeatmapDecoder)を再生位置に同期し、BASS のサンプル再生で鳴らす。KeyASIO.Net は低遅延出力の参考にする
+- [x] **ストーリーボード再生**: ReOsuStoryboardPlayer.Core(NuGet, MIT)+ Avalonia Skia 描画で実装
+- [ ] ストーリーボードの残課題: Fail レイヤーとトリガー(ヒットサウンド連動)未対応、詳細ペイン内の小さな表示のみ(全画面表示モードが未実装)、巨大ストーリーボードの読み込み時間
+- [x] **ヒットサウンド再生**: 自前実装(OsuParsers + BASS サンプル)。KeyASIO.Net はアプリケーションでありライブラリではないため不採用
+- [ ] ヒットサウンドの残課題: 手動オフセットと音量の設定 UI(`IHitsoundPlayer.OffsetMs` / `Volume` は実装済み)、NC 時のピッチ変更、lazer スキン(Realm 内)のサンプル解決、実機での同期精度の聴感確認
 
 ## フェーズ 3: 外部連携(documents.md「特殊機能」後半)
 

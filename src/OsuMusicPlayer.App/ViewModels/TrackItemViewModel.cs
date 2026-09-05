@@ -16,6 +16,7 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
     private Task<Bitmap?>? backgroundImage;
     private Task<Bitmap?>? largeBackgroundImage;
     private IReadOnlyList<DifficultyItemViewModel>? difficulties;
+    private DifficultyItemViewModel? selectedDifficulty;
     private bool disposed;
 
     public TrackItemViewModel(UnifiedBeatmapSet model, IBackgroundImageLoader imageLoader)
@@ -76,6 +77,23 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
         .ThenBy(static item => item.StarRating)
         .ThenBy(static item => item.Name, StringComparer.CurrentCultureIgnoreCase)
         .ToArray();
+
+    /// <summary>
+    /// The difficulty whose hit sounds and storyboard are used. Defaults to the highest
+    /// rated one, the way most players remember a set. A null assignment (a list box
+    /// losing its selection) keeps the current choice.
+    /// </summary>
+    public DifficultyItemViewModel? SelectedDifficulty
+    {
+        get => selectedDifficulty ??= Difficulties.OrderByDescending(static item => item.StarRating).FirstOrDefault();
+        set
+        {
+            if (value is not null)
+            {
+                SetProperty(ref selectedDifficulty, value);
+            }
+        }
+    }
 
     public Task<Bitmap?> BackgroundImage =>
         backgroundImage ??= imageLoader.LoadAsync(Model.BackgroundFilePath, imageCancellation.Token, thumbnail_height);

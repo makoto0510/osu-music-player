@@ -8,9 +8,12 @@ public sealed record BeatmapMedia(string? VideoFilePath, TimeSpan VideoOffset, s
 {
     public static BeatmapMedia None { get; } = new(null, TimeSpan.Zero, null);
 
+    /// <summary>True when at least one .osu file of the set declares storyboard elements itself.</summary>
+    public bool BeatmapHasStoryboardElements { get; init; }
+
     public bool HasVideo => VideoFilePath is not null;
 
-    public bool HasStoryboard => StoryboardFilePath is not null;
+    public bool HasStoryboard => StoryboardFilePath is not null || BeatmapHasStoryboardElements;
 }
 
 /// <summary>
@@ -36,6 +39,7 @@ public sealed class BeatmapMediaResolver : IBeatmapMediaResolver
 
         string? videoPath = null;
         var videoOffset = TimeSpan.Zero;
+        var beatmapStoryboard = false;
         foreach (var beatmap in set.Beatmaps)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -47,10 +51,15 @@ public sealed class BeatmapMediaResolver : IBeatmapMediaResolver
             try
             {
                 var assets = OsuBeatmapFileParser.ReadEventAssets(beatmap.BeatmapFilePath);
-                videoPath = files.Resolve(assets.VideoFileName);
-                if (videoPath is not null)
+                beatmapStoryboard |= assets.HasStoryboardElements;
+                if (videoPath is null && files.Resolve(assets.VideoFileName) is { } resolvedVideo)
                 {
+                    videoPath = resolvedVideo;
                     videoOffset = assets.VideoOffset;
+                }
+
+                if (videoPath is not null && beatmapStoryboard)
+                {
                     break;
                 }
             }
@@ -70,6 +79,6 @@ public sealed class BeatmapMediaResolver : IBeatmapMediaResolver
         {
         }
 
-        return new BeatmapMedia(videoPath, videoOffset, storyboardPath);
+        return new BeatmapMedia(videoPath, videoOffset, storyboardPath) { BeatmapHasStoryboardElements = beatmapStoryboard };
     }
 }

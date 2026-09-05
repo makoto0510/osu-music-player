@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.Audio;
 using OsuMusicPlayer.Core;
+using OsuMusicPlayer.Core.Hitsounds;
 using OsuMusicPlayer.Core.Models;
 
 namespace OsuMusicPlayer.App.ViewModels;
@@ -19,6 +20,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IFolderPicker folderPicker;
     private readonly IBeatmapMediaResolver mediaResolver;
     private readonly IVideoPlayer videoPlayer;
+    private readonly IHitsoundPlayer hitsoundPlayer;
+    private readonly IHitsoundSampleSourceFactory sampleSourceFactory;
+    private readonly IStoryboardLoader storyboardLoader;
+    private TrackItemViewModel? observedTrack;
     private DateTime lastVideoResync = DateTime.MinValue;
     private readonly List<TrackItemViewModel> allTracks = [];
     private readonly List<OsuInstallation> manualInstallations = [];
@@ -80,6 +85,22 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private RepeatMode repeatMode = RepeatMode.Off;
 
     [ObservableProperty]
+    private bool isHitsoundEnabled;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
+    [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
+    private bool isStoryboardEnabled = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
+    [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
+    private StoryboardSession? storyboardSession;
+
+    [ObservableProperty]
+    private string visualsStatusText = string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlayPauseText))]
     private bool isPlaying;
 
@@ -111,7 +132,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         ISettingsStore settingsStore,
         IFolderPicker folderPicker,
         IBeatmapMediaResolver mediaResolver,
-        IVideoPlayer videoPlayer)
+        IVideoPlayer videoPlayer,
+        IHitsoundPlayer hitsoundPlayer,
+        IHitsoundSampleSourceFactory sampleSourceFactory,
+        IStoryboardLoader storyboardLoader)
     {
         this.beatmapManager = beatmapManager ?? throw new ArgumentNullException(nameof(beatmapManager));
         this.audioEngine = audioEngine ?? throw new ArgumentNullException(nameof(audioEngine));
@@ -122,6 +146,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
         this.mediaResolver = mediaResolver ?? throw new ArgumentNullException(nameof(mediaResolver));
         this.videoPlayer = videoPlayer ?? throw new ArgumentNullException(nameof(videoPlayer));
+        this.hitsoundPlayer = hitsoundPlayer ?? throw new ArgumentNullException(nameof(hitsoundPlayer));
+        this.sampleSourceFactory = sampleSourceFactory ?? throw new ArgumentNullException(nameof(sampleSourceFactory));
+        this.storyboardLoader = storyboardLoader ?? throw new ArgumentNullException(nameof(storyboardLoader));
         volume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
@@ -139,6 +166,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsVideoAvailable => videoPlayer.IsAvailable;
     public string VideoUnavailableText => videoPlayer.UnavailableReason ?? string.Empty;
     public bool IsVideoVisible => IsVideoEnabled && HasVideo && videoPlayer.IsAvailable;
+    public bool IsStoryboardVisible => IsStoryboardEnabled && StoryboardSession is not null;
+
+    /// <summary>Like the video surface, the storyboard box collapses to zero height instead of hiding.</summary>
+    public double StoryboardPanelHeight => IsStoryboardVisible ? 202 : 0;
+
+    /// <summary>The most recent hit sound / storyboard load, awaited by tests.</summary>
+    internal Task LastVisualsLoad { get; private set; } = Task.CompletedTask;
 
     /// <summary>
     /// The video surface must stay attached to the window even while hidden, otherwise
@@ -242,6 +276,23 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         catch (Exception exception)
         {
             reportPlaybackError(exception);
+        }
+    }
+
+    partial void OnIsHitsoundEnabledChanged(bool value)
+    {
+        hitsoundPlayer.IsEnabled = value;
+        if (value && CurrentTrack is { } track)
+        {
+            LastVisualsLoad = loadHitsoundsAsync(track, Volatile.Read(ref loadVersion));
+        }
+    }
+
+    partial void OnIsStoryboardEnabledChanged(bool value)
+    {
+        if (value && CurrentTrack is { } track && StoryboardSession is null && CurrentMedia.HasStoryboard)
+        {
+            LastVisualsLoad = loadStoryboardAsync(track, Volatile.Read(ref loadVersion));
         }
     }
 
@@ -407,7 +458,30 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedTrackChanged(TrackItemViewModel? value) => notifyDetailTrackChanged();
 
-    partial void OnCurrentTrackChanged(TrackItemViewModel? value) => notifyDetailTrackChanged();
+    partial void OnCurrentTrackChanged(TrackItemViewModel? value)
+    {
+        if (observedTrack is not null)
+        {
+            observedTrack.PropertyChanged -= onCurrentTrackPropertyChanged;
+        }
+
+        observedTrack = value;
+        if (observedTrack is not null)
+        {
+            observedTrack.PropertyChanged += onCurrentTrackPropertyChanged;
+        }
+
+        notifyDetailTrackChanged();
+    }
+
+    private void onCurrentTrackPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        // Switching the difficulty swaps the hit sounds and the .osu storyboard events.
+        if (args.PropertyName == nameof(TrackItemViewModel.SelectedDifficulty) && sender is TrackItemViewModel track && track == CurrentTrack)
+        {
+            LastVisualsLoad = loadVisualsAsync(track, Volatile.Read(ref loadVersion));
+        }
+    }
 
     private void notifyDetailTrackChanged()
     {
@@ -466,6 +540,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         audioEngine.PositionChanged -= onPositionChanged;
         audioEngine.PlaybackEnded -= onPlaybackEnded;
         videoPlayer.Stop();
+        hitsoundPlayer.Clear();
+        clearStoryboard();
+        if (observedTrack is not null)
+        {
+            observedTrack.PropertyChanged -= onCurrentTrackPropertyChanged;
+            observedTrack = null;
+        }
         foreach (var track in allTracks)
         {
             track.Dispose();
@@ -868,6 +949,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             IsLoading = true;
             ErrorMessage = null;
             videoPlayer.Stop();
+            hitsoundPlayer.Clear();
+            clearStoryboard();
+            VisualsStatusText = string.Empty;
             await audioEngine.LoadAsync(audioPath).ConfigureAwait(false);
             if (version != Volatile.Read(ref loadVersion) || disposed)
             {
@@ -927,7 +1011,106 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             CurrentMedia = media;
             startVideoIfAvailable();
         }).ConfigureAwait(false);
+        LastVisualsLoad = loadVisualsAsync(track, version);
     }
+
+    private async Task loadVisualsAsync(TrackItemViewModel track, long version)
+    {
+        var hitsounds = IsHitsoundEnabled ? loadHitsoundsAsync(track, version) : Task.CompletedTask;
+        var storyboard = IsStoryboardEnabled && CurrentMedia.HasStoryboard ? loadStoryboardAsync(track, version) : Task.CompletedTask;
+        await Task.WhenAll(hitsounds, storyboard).ConfigureAwait(false);
+    }
+
+    private async Task loadHitsoundsAsync(TrackItemViewModel track, long version)
+    {
+        var beatmapPath = track.SelectedDifficulty?.Model.BeatmapFilePath;
+        if (beatmapPath is null || !IsHitsoundEnabled || disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            var token = lifetimeCancellation.Token;
+            OsuInstallation[] installations = [];
+            await dispatcher.InvokeAsync(() => installations = Installations.Select(static item => item.Installation).ToArray()).ConfigureAwait(false);
+            var events = await Task.Run(() => HitsoundTimelineBuilder.Build(beatmapPath), token).ConfigureAwait(false);
+            if (version != Volatile.Read(ref loadVersion) || disposed)
+            {
+                return;
+            }
+
+            var resolver = sampleSourceFactory.Create(track.Model, installations);
+            await hitsoundPlayer.LoadAsync(events, resolver, token).ConfigureAwait(false);
+            if (version != Volatile.Read(ref loadVersion) || disposed)
+            {
+                return;
+            }
+
+            var missing = hitsoundPlayer.MissingSampleCount;
+            var status = missing > 0 ? $"{events.Count:N0} hit sounds ({missing} samples missing)" : $"{events.Count:N0} hit sounds";
+            await dispatcher.InvokeAsync(() => VisualsStatusText = appendStatus(VisualsStatusText, status)).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // The beatmap parser throws many exception types on damaged files; hit sounds are optional.
+            await dispatcher.InvokeAsync(() => VisualsStatusText = appendStatus(VisualsStatusText, $"ヒットサウンドを読み込めませんでした: {exception.Message}")).ConfigureAwait(false);
+        }
+    }
+
+    private async Task loadStoryboardAsync(TrackItemViewModel track, long version)
+    {
+        if (track.Model.Files is not { } files || disposed)
+        {
+            return;
+        }
+
+        var media = CurrentMedia;
+        var beatmapPath = track.SelectedDifficulty?.Model.BeatmapFilePath;
+        StoryboardSession? session = null;
+        try
+        {
+            session = await storyboardLoader.LoadAsync(media.StoryboardFilePath, beatmapPath, files, lifetimeCancellation.Token).ConfigureAwait(false);
+            if (version != Volatile.Read(ref loadVersion) || disposed)
+            {
+                session?.Dispose();
+                return;
+            }
+
+            await dispatcher.InvokeAsync(() =>
+            {
+                var previous = StoryboardSession;
+                StoryboardSession = session;
+                previous?.Dispose();
+                if (session is not null)
+                {
+                    VisualsStatusText = appendStatus(VisualsStatusText, $"storyboard: {session.ObjectCount:N0} sprites");
+                }
+            }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            session?.Dispose();
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            session?.Dispose();
+            await dispatcher.InvokeAsync(() => VisualsStatusText = appendStatus(VisualsStatusText, $"ストーリーボードを読み込めませんでした: {exception.Message}")).ConfigureAwait(false);
+        }
+    }
+
+    private void clearStoryboard()
+    {
+        var previous = StoryboardSession;
+        StoryboardSession = null;
+        previous?.Dispose();
+    }
+
+    private static string appendStatus(string current, string addition) =>
+        string.IsNullOrEmpty(current) ? addition : current + "  ·  " + addition;
 
     private void onPositionChanged(object? sender, PlaybackPositionChangedEventArgs args) =>
         _ = dispatcher.InvokeAsync(() => updatePosition(args.CurrentTime, args.TotalTime));

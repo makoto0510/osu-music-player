@@ -3,6 +3,7 @@
         xmlns:audio="using:OsuMusicPlayer.Audio"
         xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
         xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+        xmlns:controls="using:OsuMusicPlayer.App.Controls"
         x:Class="OsuMusicPlayer.App.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="osu! music player"
@@ -10,7 +11,7 @@
         Background="#11131A">
   <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
     <Border Grid.Row="0" Padding="20,16" Background="#191C25" BorderBrush="#292D3A" BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="*,180,Auto,Auto,Auto,Auto" ColumnSpacing="12">
+      <Grid ColumnDefinitions="*,180,Auto,Auto" ColumnSpacing="12">
         <TextBox Grid.Column="0" Watermark="Search title, artist, mapper, tags…" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
         <ComboBox Grid.Column="1" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" />
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
@@ -19,9 +20,13 @@
           <ToggleButton Content="HT" IsChecked="{Binding IsHtActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.HT}" />
           <ToggleButton Content="DC" IsChecked="{Binding IsDcActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DC}" />
         </StackPanel>
-        <ToggleButton Grid.Column="3" Content="Video" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" ToolTip.Tip="{Binding VideoUnavailableText}" />
-        <ToggleButton Grid.Column="4" Content="{Binding QueueText}" IsChecked="{Binding IsQueuePanelVisible, Mode=TwoWay}" />
-        <ToggleButton Grid.Column="5" Content="Sources" IsChecked="{Binding IsSourcesPanelVisible, Mode=TwoWay}" />
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+          <ToggleButton Content="Video" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" ToolTip.Tip="{Binding VideoUnavailableText}" />
+          <ToggleButton Content="Hitsounds" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" ToolTip.Tip="Play the selected difficulty's hit sounds along with the music" />
+          <ToggleButton Content="Storyboard" IsChecked="{Binding IsStoryboardEnabled, Mode=TwoWay}" ToolTip.Tip="Render the beatmap storyboard" />
+          <ToggleButton Content="{Binding QueueText}" IsChecked="{Binding IsQueuePanelVisible, Mode=TwoWay}" />
+          <ToggleButton Content="Sources" IsChecked="{Binding IsSourcesPanelVisible, Mode=TwoWay}" />
+        </StackPanel>
       </Grid>
     </Border>
 
@@ -120,12 +125,15 @@
       </Grid>
 
       <Border Grid.Column="1" Background="#15181F" BorderBrush="#292D3A" BorderThickness="1,0,0,0">
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="Auto,Auto,*">
           <!-- Kept attached at all times (height 0 when hidden) so libVLC always has a window handle. -->
           <Border Grid.Row="0" Height="{Binding VideoPanelHeight}" Background="Black" ClipToBounds="True">
             <vlc:VideoView x:Name="VideoView" />
           </Border>
-          <Grid Grid.Row="1">
+          <Border Grid.Row="1" Height="{Binding StoryboardPanelHeight}" Background="Black" ClipToBounds="True">
+            <controls:StoryboardView x:Name="StoryboardView" Session="{Binding StoryboardSession}" />
+          </Border>
+          <Grid Grid.Row="2">
           <TextBlock IsVisible="{Binding !HasDetailTrack}" Text="Select a track to see its difficulties" Foreground="#737A8D" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="24" />
           <ContentControl Content="{Binding DetailTrack}" IsVisible="{Binding HasDetailTrack}">
             <ContentControl.ContentTemplate>
@@ -156,9 +164,11 @@
                         <Button Content="{Binding PreviewTimeText, StringFormat='Preview from {0}'}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PreviewSelectedCommand}" />
                         <Button Content="Queue" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EnqueueSelectedCommand}" />
                       </StackPanel>
+                      <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).VisualsStatusText}" FontSize="11" Foreground="#737A8D" TextWrapping="Wrap" />
                       <TextBlock Text="Difficulties" FontWeight="SemiBold" Margin="0,6,0,0" />
-                      <ItemsControl ItemsSource="{Binding Difficulties}">
-                        <ItemsControl.ItemTemplate>
+                      <TextBlock Text="The selected difficulty provides the hit sounds and storyboard." FontSize="11" Foreground="#737A8D" />
+                      <ListBox ItemsSource="{Binding Difficulties}" SelectedItem="{Binding SelectedDifficulty, Mode=TwoWay}" Background="Transparent" Padding="0">
+                        <ListBox.ItemTemplate>
                           <DataTemplate x:DataType="vm:DifficultyItemViewModel">
                             <Grid ColumnDefinitions="6,Auto,*,Auto" ColumnSpacing="10" Margin="0,3">
                               <Border Grid.Column="0" Width="6" CornerRadius="3" Background="{Binding StarColor}" />
@@ -172,8 +182,8 @@
                               <TextBlock Grid.Column="3" Text="{Binding StarText}" VerticalAlignment="Center" Foreground="{Binding StarColor}" FontWeight="SemiBold" />
                             </Grid>
                           </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
+                        </ListBox.ItemTemplate>
+                      </ListBox>
                     </StackPanel>
                   </StackPanel>
                 </ScrollViewer>
@@ -201,6 +211,7 @@
               <Border IsVisible="{Binding HasVideo}" Background="#2E4A6B" CornerRadius="3" Padding="5,1"><TextBlock Text="VIDEO" FontSize="9" Foreground="#9CC8FF" /></Border>
               <Border IsVisible="{Binding HasStoryboard}" Background="#4A3A6B" CornerRadius="3" Padding="5,1"><TextBlock Text="STORYBOARD" FontSize="9" Foreground="#D0B8FF" /></Border>
             </StackPanel>
+            <TextBlock Text="{Binding VisualsStatusText}" FontSize="10" Foreground="#737A8D" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding VisualsStatusText}" />
           </StackPanel>
         </Grid>
 

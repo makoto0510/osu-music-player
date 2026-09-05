@@ -22,7 +22,7 @@
 
 - osu!(stable/lazer)のローカルファイルから情報、音声ファイルを取得し、再生する。
 - stableとlazerで曲が重複するなど考慮しながら読み込める
-- https://github.com/Milkitic/KeyASIO.Netを利用してヒットサウンドを再生可能
+- https://github.com/Milkitic/KeyASIO.Netを利用してヒットサウンドを再生可能（参考に書いたソフトウェアはこのライブラリを使っています）
 - https://github.com/MikiraSora/ReOsuStoryboardPlayerを利用してストーリーボードを再生可能
 - バックグラウンド動画を再生可能
 - 譜面プレビュー機能

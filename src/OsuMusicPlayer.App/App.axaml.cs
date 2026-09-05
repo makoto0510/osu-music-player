@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using OsuMusicPlayer.Audio;
 using OsuMusicPlayer.Core;
+using OsuMusicPlayer.Core.Hitsounds;
 using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.App.ViewModels;
@@ -43,6 +44,9 @@ public sealed partial class App : Application
         services.AddSingleton<IBackgroundImageLoader, BackgroundImageLoader>();
         services.AddSingleton<IAudioEngine>(static _ => AudioEngineFactory.Create());
         services.AddSingleton<IVideoPlayer>(static _ => VideoPlayerFactory.Create());
+        services.AddSingleton<IHitsoundPlayer>(static provider => new BassHitsoundPlayer(provider.GetRequiredService<IAudioEngine>()));
+        services.AddSingleton<IHitsoundSampleSourceFactory, HitsoundSampleSourceFactory>();
+        services.AddSingleton<IStoryboardLoader>(static _ => new StoryboardLoader());
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
         return services;

@@ -6,6 +6,9 @@ namespace OsuMusicPlayer.Core.Loaders;
 public sealed record BeatmapEventAssets(string? BackgroundFileName, string? VideoFileName, TimeSpan VideoOffset)
 {
     public static BeatmapEventAssets Empty { get; } = new(null, null, TimeSpan.Zero);
+
+    /// <summary>True when the .osu file itself declares storyboard sprites or animations.</summary>
+    public bool HasStoryboardElements { get; init; }
 }
 
 /// <summary>
@@ -28,6 +31,7 @@ public static partial class OsuBeatmapFileParser
         string? background = null;
         string? video = null;
         var videoOffset = TimeSpan.Zero;
+        var hasStoryboard = false;
         var inEvents = false;
         while (reader.ReadLine() is { } line)
         {
@@ -45,6 +49,16 @@ public static partial class OsuBeatmapFileParser
 
             if (!inEvents || trimmed.Length == 0 || trimmed.StartsWith("//", StringComparison.Ordinal))
             {
+                continue;
+            }
+
+            if (!hasStoryboard &&
+                (trimmed.StartsWith("Sprite,", StringComparison.OrdinalIgnoreCase) ||
+                 trimmed.StartsWith("Animation,", StringComparison.OrdinalIgnoreCase) ||
+                 trimmed.StartsWith("4,", StringComparison.Ordinal) ||
+                 trimmed.StartsWith("6,", StringComparison.Ordinal)))
+            {
+                hasStoryboard = true;
                 continue;
             }
 
@@ -79,13 +93,13 @@ public static partial class OsuBeatmapFileParser
                 }
             }
 
-            if (background is not null && video is not null)
+            if (background is not null && video is not null && hasStoryboard)
             {
                 break;
             }
         }
 
-        return new BeatmapEventAssets(background, video, videoOffset);
+        return new BeatmapEventAssets(background, video, videoOffset) { HasStoryboardElements = hasStoryboard };
     }
 
     [GeneratedRegex("^(?<kind>0|1|Background|Video)\\s*,\\s*(?<time>-?[0-9.]+)\\s*,\\s*(?:\"(?<quoted>(?:\"\"|[^\"])*)\"|(?<plain>[^,]+))", RegexOptions.CultureInvariant)]
