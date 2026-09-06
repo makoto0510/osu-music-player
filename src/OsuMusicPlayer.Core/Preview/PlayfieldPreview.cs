@@ -55,6 +55,12 @@ public sealed record PlayfieldPreviewData(
     int ColumnCount,
     IReadOnlyList<PreviewComboColour> ComboColours)
 {
+    /// <summary>
+    /// True when <see cref="ComboColours"/> came from the beatmap's [Colours] section rather than
+    /// the built-in defaults, so a skin's own colours only replace them when the user asks.
+    /// </summary>
+    public bool HasBeatmapComboColours { get; init; }
+
     public TimeSpan FirstObjectTime => Objects.Count == 0 ? TimeSpan.Zero : Objects[0].StartTime;
 
     public TimeSpan LastObjectTime => Objects.Count == 0 ? TimeSpan.Zero : Objects.Max(static hitObject => hitObject.EndTime);
@@ -104,8 +110,9 @@ public static class PlayfieldPreviewBuilder
         var circleSize = beatmap.DifficultySection.CircleSize;
         var approachRate = beatmap.DifficultySection.ApproachRate;
         var columns = ruleset == OsuRuleset.Mania ? Math.Clamp((int)Math.Round(circleSize), 1, 18) : 0;
-        var colours = beatmap.ColoursSection.ComboColours is { Count: > 0 } custom
-            ? custom.Select(static colour => new PreviewComboColour(colour.R, colour.G, colour.B)).ToArray()
+        var hasBeatmapColours = beatmap.ColoursSection.ComboColours is { Count: > 0 };
+        var colours = hasBeatmapColours
+            ? beatmap.ColoursSection.ComboColours.Select(static colour => new PreviewComboColour(colour.R, colour.G, colour.B)).ToArray()
             : default_colours;
 
         var objects = new List<PreviewObject>(beatmap.HitObjects.Count);
@@ -119,7 +126,7 @@ public static class PlayfieldPreviewBuilder
                 if (hitObject.IsNewCombo || comboColour < 0 || isSpinner)
                 {
                     comboNumber = 0;
-                    comboColour = comboColour < 0 ? 0 : (comboColour + 1 + Math.Max(0, hitObject.ComboOffset)) % colours.Length;
+                    comboColour = comboColour < 0 ? 0 : comboColour + 1 + Math.Max(0, hitObject.ComboOffset); // renderers wrap this around their palette
                 }
 
                 if (!isSpinner)
@@ -138,7 +145,10 @@ public static class PlayfieldPreviewBuilder
             Preempt: TimeSpan.FromMilliseconds(difficultyRange(approachRate, 1800, 1200, 450)),
             FadeIn: TimeSpan.FromMilliseconds(difficultyRange(approachRate, 1200, 800, 300)),
             columns,
-            colours);
+            colours)
+        {
+            HasBeatmapComboColours = hasBeatmapColours,
+        };
     }
 
     /// <summary>osu!'s piecewise mapping of a 0..10 difficulty value onto min / mid / max.</summary>

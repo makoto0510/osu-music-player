@@ -5,6 +5,7 @@ using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.App.Themes;
 using OsuMusicPlayer.Audio;
 using OsuMusicPlayer.Core;
+using OsuMusicPlayer.Core.Skins;
 using OsuMusicPlayer.Core.Hitsounds;
 using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.Core.Models;
@@ -182,7 +183,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         IOnlineMetadataService? onlineMetadataService = null,
         IFileSaver? fileSaver = null,
         IAudioDurationProbe? durationProbe = null,
-        IThemeApplier? themeApplier = null)
+        IThemeApplier? themeApplier = null,
+        PreviewSkinCatalog? skinCatalog = null)
     {
         this.beatmapManager = beatmapManager ?? throw new ArgumentNullException(nameof(beatmapManager));
         this.audioEngine = audioEngine ?? throw new ArgumentNullException(nameof(audioEngine));
@@ -202,6 +204,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.fileSaver = fileSaver;
         this.durationProbe = durationProbe;
         this.themeApplier = themeApplier;
+        this.skinCatalog = skinCatalog ?? new PreviewSkinCatalog(PreviewSkinCatalog.GetDefaultRootPath());
         volume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
@@ -882,6 +885,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(HasInstallations));
         OnPropertyChanged(nameof(EmptyStateText));
+        if (initialized)
+        {
+            refreshPreviewSkins(); // osu!stable's Skins folder becomes available with its installation
+        }
     }
 
     private void replaceTracks(IReadOnlyCollection<TrackItemViewModel> items)

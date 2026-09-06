@@ -44,6 +44,12 @@ public sealed class AppearanceSettings
 
     /// <summary>Hex accent override such as "#FF66AA"; empty keeps the preset's accent.</summary>
     public string AccentColor { get; init; } = string.Empty;
+
+    /// <summary>Name of the difficulty-preview skin folder; empty or "Default" is the built-in look.</summary>
+    public string PreviewSkin { get; init; } = string.Empty;
+
+    /// <summary>When true the skin's combo colours replace the beatmap's, like osu!'s "ignore beatmap skins".</summary>
+    public bool PreferSkinComboColours { get; init; }
 }
 
 public sealed class AppSettings

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
@@ -7,6 +8,7 @@ using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using OsuMusicPlayer.Core.Models;
 using OsuMusicPlayer.Core.Preview;
+using OsuMusicPlayer.Core.Skins;
 using SkiaSharp;
 
 namespace OsuMusicPlayer.App.Controls;
@@ -14,24 +16,45 @@ namespace OsuMusicPlayer.App.Controls;
 /// <summary>
 /// Draws a <see cref="PlayfieldPreviewData"/> as an auto-play, one frame per animation tick,
 /// at the time returned by <see cref="Clock"/>. osu!, taiko, catch and mania each get a
-/// simplified rendition of their playfield.
+/// simplified rendition of their playfield. Elements come from the <see cref="Skin"/> when it
+/// provides them and are drawn as vectors otherwise.
 /// </summary>
 public sealed class PlayfieldPreviewView : Control
 {
     public static readonly StyledProperty<PlayfieldPreviewData?> DataProperty =
         AvaloniaProperty.Register<PlayfieldPreviewView, PlayfieldPreviewData?>(nameof(Data));
 
+    public static readonly StyledProperty<PreviewSkin?> SkinProperty =
+        AvaloniaProperty.Register<PlayfieldPreviewView, PreviewSkin?>(nameof(Skin));
+
+    /// <summary>When true the skin's combo colours win over the beatmap's (osu!'s "ignore beatmap skins").</summary>
+    public static readonly StyledProperty<bool> PreferSkinColoursProperty =
+        AvaloniaProperty.Register<PlayfieldPreviewView, bool>(nameof(PreferSkinColours));
+
+    private SkinSprites sprites = SkinSprites.Default;
     private bool frameRequested;
 
     static PlayfieldPreviewView()
     {
-        AffectsRender<PlayfieldPreviewView>(DataProperty);
+        AffectsRender<PlayfieldPreviewView>(DataProperty, SkinProperty, PreferSkinColoursProperty);
     }
 
     public PlayfieldPreviewData? Data
     {
         get => GetValue(DataProperty);
         set => SetValue(DataProperty, value);
+    }
+
+    public PreviewSkin? Skin
+    {
+        get => GetValue(SkinProperty);
+        set => SetValue(SkinProperty, value);
+    }
+
+    public bool PreferSkinColours
+    {
+        get => GetValue(PreferSkinColoursProperty);
+        set => SetValue(PreferSkinColoursProperty, value);
     }
 
     /// <summary>Returns the current audio time; set by the window from the audio engine.</summary>
@@ -50,6 +73,11 @@ public sealed class PlayfieldPreviewView : Control
         {
             requestFrame();
         }
+        else if (change.Property == SkinProperty)
+        {
+            var skin = change.GetNewValue<PreviewSkin?>() ?? PreviewSkin.Default;
+            sprites = skin.IsDefault ? SkinSprites.Default : new SkinSprites(skin);
+        }
     }
 
     public override void Render(DrawingContext context)
@@ -60,7 +88,7 @@ public sealed class PlayfieldPreviewView : Control
             return;
         }
 
-        context.Custom(new PreviewDrawOperation(new Rect(Bounds.Size), data, clock()));
+        context.Custom(new PreviewDrawOperation(new Rect(Bounds.Size), data, clock(), sprites, PreferSkinColours));
     }
 
     private void requestFrame()
@@ -84,17 +112,31 @@ public sealed class PlayfieldPreviewView : Control
         });
     }
 
-    private sealed class PreviewDrawOperation(Rect bounds, PlayfieldPreviewData data, TimeSpan time) : ICustomDrawOperation
+    private sealed class PreviewDrawOperation(Rect bounds, PlayfieldPreviewData data, TimeSpan time, SkinSprites sprites, bool preferSkinColours) : ICustomDrawOperation
     {
         private const float playfield_width = 512f;
         private const float playfield_height = 384f;
+
+        /// <summary>osu! draws a 128 px (1x) hit circle at radius / 64, so this maps skin pixels to playfield pixels.</summary>
+        private const float sprite_base_radius = 64f;
+        private const float cursor_scale = 0.6f;
         private static readonly TimeSpan fade_out = TimeSpan.FromMilliseconds(240);
         private static readonly TimeSpan lookahead = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan slider_ball_frame = TimeSpan.FromMilliseconds(30);
+        private static readonly string[] fruit_names = ["pear", "grapes", "apple", "orange"];
+        private static readonly SKColor taiko_don = new(235, 69, 43);
+        private static readonly SKColor taiko_kat = new(67, 142, 173);
+        private static readonly SKColor taiko_roll = new(255, 200, 40);
+
+        private readonly PreviewSkin skin = sprites.Skin;
+        private SKPaint? spritePaint;
 
         public Rect Bounds => bounds;
 
         public void Dispose()
         {
+            spritePaint?.Dispose();
+            spritePaint = null;
         }
 
         public bool HitTest(Point p) => false;
@@ -132,6 +174,59 @@ public sealed class PlayfieldPreviewView : Control
             canvas.Restore();
         }
 
+        // ---------------------------------------------------------------- sprites
+
+        /// <summary>
+        /// Draws a skin element centred on (x, y). <paramref name="scale"/> converts 1x skin pixels
+        /// to canvas units; the tint multiplies the image (white leaves it untouched).
+        /// </summary>
+        private void drawSprite(SKCanvas canvas, SkinSprites.Sprite sprite, float x, float y, float scale, SKColor tint, float alpha, float rotationDegrees = 0, float anchorX = 0.5f, float anchorY = 0.5f)
+        {
+            if (alpha <= 0)
+            {
+                return;
+            }
+
+            var paint = spritePaint ??= new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+            paint.Color = SKColors.White.WithAlpha((byte)(Math.Clamp(alpha, 0, 1) * 255));
+            using var filter = tint == SKColors.White ? null : SKColorFilter.CreateBlendMode(tint, SKBlendMode.Modulate);
+            paint.ColorFilter = filter;
+
+            var width = sprite.Width * scale;
+            var height = sprite.Height * scale;
+            canvas.Save();
+            canvas.Translate(x, y);
+            if (rotationDegrees != 0)
+            {
+                canvas.RotateDegrees(rotationDegrees);
+            }
+
+            canvas.DrawImage(sprite.Image, new SKRect(-width * anchorX, -height * anchorY, width * (1 - anchorX), height * (1 - anchorY)), paint);
+            canvas.Restore();
+            paint.ColorFilter = null;
+        }
+
+        /// <summary>Stretches a skin element over an exact rectangle (hold bodies, drumrolls).</summary>
+        private void drawSpriteStretched(SKCanvas canvas, SkinSprites.Sprite sprite, SKRect destination, SKColor tint, float alpha)
+        {
+            if (alpha <= 0 || destination.Width <= 0 || destination.Height <= 0)
+            {
+                return;
+            }
+
+            var paint = spritePaint ??= new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
+            paint.Color = SKColors.White.WithAlpha((byte)(Math.Clamp(alpha, 0, 1) * 255));
+            using var filter = tint == SKColors.White ? null : SKColorFilter.CreateBlendMode(tint, SKBlendMode.Modulate);
+            paint.ColorFilter = filter;
+            canvas.DrawImage(sprite.Image, destination, paint);
+            paint.ColorFilter = null;
+        }
+
+        /// <summary>The scale that makes the sprite's larger side equal to <paramref name="size"/> canvas units.</summary>
+        private static float fit(SkinSprites.Sprite sprite, float size) => size / Math.Max(1f, Math.Max(sprite.Width, sprite.Height));
+
+        private static float fitWidth(SkinSprites.Sprite sprite, float width) => width / Math.Max(1f, sprite.Width);
+
         // ---------------------------------------------------------------- osu!standard
 
         private void renderStandard(SKCanvas canvas)
@@ -165,6 +260,7 @@ public sealed class PlayfieldPreviewView : Control
                         break;
                     case PreviewObjectKind.Slider:
                         drawSliderBody(canvas, hitObject, colour, alpha, radius, stroke);
+                        drawReverseArrow(canvas, hitObject, alpha, radius);
                         if (time >= hitObject.StartTime && time <= hitObject.EndTime)
                         {
                             drawSliderBall(canvas, hitObject, colour, radius, fill, stroke);
@@ -212,26 +308,74 @@ public sealed class PlayfieldPreviewView : Control
 
             var byteAlpha = (byte)(alpha * 255);
             var pop = approach > 0 ? 1f : 1f + 0.35f * (1f - alpha); // hit circles grow while fading out
-            fill.Color = colour.WithAlpha(byteAlpha);
-            canvas.DrawCircle(position.X, position.Y, radius * pop, fill);
-            stroke.StrokeWidth = radius * 0.12f;
-            stroke.Color = SKColors.White.WithAlpha(byteAlpha);
-            canvas.DrawCircle(position.X, position.Y, radius * pop * 0.94f, stroke);
-            if (number > 0 && approach > 0)
+            var spriteScale = radius / sprite_base_radius * pop;
+            if (sprites.Get("hitcircle") is { } hitCircle)
+            {
+                drawSprite(canvas, hitCircle, position.X, position.Y, spriteScale, colour, alpha);
+                if (sprites.Get("hitcircleoverlay") is { } overlay)
+                {
+                    drawSprite(canvas, overlay, position.X, position.Y, spriteScale, SKColors.White, alpha);
+                }
+            }
+            else
+            {
+                fill.Color = colour.WithAlpha(byteAlpha);
+                canvas.DrawCircle(position.X, position.Y, radius * pop, fill);
+                stroke.StrokeWidth = radius * 0.12f;
+                stroke.Color = SKColors.White.WithAlpha(byteAlpha);
+                canvas.DrawCircle(position.X, position.Y, radius * pop * 0.94f, stroke);
+            }
+
+            if (number > 0 && approach > 0 && !drawComboNumber(canvas, number, position, radius, alpha))
             {
                 text.Color = SKColors.White.WithAlpha(byteAlpha);
-                canvas.DrawText(number.ToString(System.Globalization.CultureInfo.InvariantCulture), position.X, position.Y + text.TextSize * 0.36f, text);
+                canvas.DrawText(number.ToString(CultureInfo.InvariantCulture), position.X, position.Y + text.TextSize * 0.36f, text);
             }
 
             if (approach > 1f)
             {
-                stroke.StrokeWidth = radius * 0.08f;
-                stroke.Color = colour.WithAlpha(byteAlpha);
-                canvas.DrawCircle(position.X, position.Y, radius * approach, stroke);
+                if (sprites.Get("approachcircle") is { } approachCircle)
+                {
+                    drawSprite(canvas, approachCircle, position.X, position.Y, radius / sprite_base_radius * approach, colour, alpha);
+                }
+                else
+                {
+                    stroke.StrokeWidth = radius * 0.08f;
+                    stroke.Color = colour.WithAlpha(byteAlpha);
+                    canvas.DrawCircle(position.X, position.Y, radius * approach, stroke);
+                }
             }
         }
 
-        private static void drawSliderBody(SKCanvas canvas, PreviewObject slider, SKColor colour, float alpha, float radius, SKPaint stroke)
+        /// <summary>Draws the number with the skin's digit sprites; false when the skin has no digits.</summary>
+        private bool drawComboNumber(SKCanvas canvas, int number, Vector2 position, float radius, float alpha)
+        {
+            var digits = number.ToString(CultureInfo.InvariantCulture);
+            var glyphs = new SkinSprites.Sprite[digits.Length];
+            for (var i = 0; i < digits.Length; i++)
+            {
+                if (sprites.Get($"{skin.HitCirclePrefix}-{digits[i]}") is not { } glyph)
+                {
+                    return false;
+                }
+
+                glyphs[i] = glyph;
+            }
+
+            // osu! draws the digits at 0.8 of the circle's scale, overlapping by HitCircleOverlap 1x pixels.
+            var scale = radius / sprite_base_radius * 0.8f;
+            var totalWidth = glyphs.Sum(static glyph => glyph.Width) - skin.HitCircleOverlap * (glyphs.Length - 1);
+            var x = position.X - totalWidth * scale / 2f;
+            foreach (var glyph in glyphs)
+            {
+                drawSprite(canvas, glyph, x, position.Y, scale, SKColors.White, alpha, anchorX: 0f);
+                x += (glyph.Width - skin.HitCircleOverlap) * scale;
+            }
+
+            return true;
+        }
+
+        private void drawSliderBody(SKCanvas canvas, PreviewObject slider, SKColor colour, float alpha, float radius, SKPaint stroke)
         {
             if (slider.Path.Count < 2 || alpha <= 0)
             {
@@ -246,28 +390,96 @@ public sealed class PlayfieldPreviewView : Control
             }
 
             var byteAlpha = (byte)(alpha * 255);
+            var border = skin.SliderBorder is { } skinBorder ? toSk(skinBorder) : SKColors.White;
+            var track = skin.SliderTrackOverride is { } skinTrack ? toSk(skinTrack) : darken(colour, 0.55f);
             stroke.StrokeWidth = radius * 2f;
-            stroke.Color = SKColors.White.WithAlpha((byte)(byteAlpha * 0.8));
+            stroke.Color = border.WithAlpha((byte)(byteAlpha * 0.8));
             canvas.DrawPath(path, stroke);
             stroke.StrokeWidth = radius * 1.7f;
-            stroke.Color = darken(colour, 0.55f).WithAlpha((byte)(byteAlpha * 0.9));
+            stroke.Color = track.WithAlpha((byte)(byteAlpha * 0.9));
             canvas.DrawPath(path, stroke);
 
-            // Repeat arrow / end marker.
-            var end = slider.Path[^1];
-            stroke.StrokeWidth = radius * 0.1f;
-            stroke.Color = SKColors.White.WithAlpha((byte)(byteAlpha * 0.7));
-            canvas.DrawCircle(end.X, end.Y, radius * 0.7f, stroke);
+            if (sprites.Get("reversearrow") is null)
+            {
+                // End marker (the skinned look uses reversearrow instead).
+                var end = slider.Path[^1];
+                stroke.StrokeWidth = radius * 0.1f;
+                stroke.Color = SKColors.White.WithAlpha((byte)(byteAlpha * 0.7));
+                canvas.DrawCircle(end.X, end.Y, radius * 0.7f, stroke);
+            }
+        }
+
+        /// <summary>Repeat arrow at whichever end the ball bounces off next.</summary>
+        private void drawReverseArrow(SKCanvas canvas, PreviewObject slider, float alpha, float radius)
+        {
+            if (slider.Repeats < 2 || slider.Path.Count < 2 || alpha <= 0 || sprites.Get("reversearrow") is not { } arrow)
+            {
+                return;
+            }
+
+            var span = currentSpan(slider);
+            if (span + 1 >= slider.Repeats)
+            {
+                return; // last span: no more bounces
+            }
+
+            Vector2 at, towards;
+            if (span % 2 == 0)
+            {
+                at = slider.Path[^1];
+                towards = slider.Path[^2];
+            }
+            else
+            {
+                at = slider.Path[0];
+                towards = slider.Path[1];
+            }
+
+            var direction = towards - at;
+            var angle = MathF.Atan2(direction.Y, direction.X) * 180f / MathF.PI;
+            var pulse = 1f + 0.1f * MathF.Sin((float)(time.TotalMilliseconds / 120));
+            drawSprite(canvas, arrow, at.X, at.Y, radius / sprite_base_radius * pulse, SKColors.White, alpha, angle);
+        }
+
+        private int currentSpan(PreviewObject slider)
+        {
+            var duration = slider.Duration.TotalMilliseconds;
+            if (duration <= 0 || time < slider.StartTime)
+            {
+                return 0;
+            }
+
+            var spans = Math.Max(1, slider.Repeats);
+            var progress = Math.Clamp((time - slider.StartTime).TotalMilliseconds / duration, 0, 1) * spans;
+            return Math.Min(spans - 1, (int)Math.Floor(progress));
         }
 
         private void drawSliderBall(SKCanvas canvas, PreviewObject slider, SKColor colour, float radius, SKPaint fill, SKPaint stroke)
         {
             var position = sliderPosition(slider, time);
-            fill.Color = colour;
-            canvas.DrawCircle(position.X, position.Y, radius * 0.9f, fill);
-            stroke.StrokeWidth = radius * 0.1f;
-            stroke.Color = SKColors.White;
-            canvas.DrawCircle(position.X, position.Y, radius * 1.9f, stroke);
+            var frames = sprites.Frames("sliderb");
+            if (frames.Count > 0)
+            {
+                var frame = frames[(int)(time.TotalMilliseconds / slider_ball_frame.TotalMilliseconds) % frames.Count];
+                var tint = skin.AllowSliderBallTint ? colour : skin.SliderBall is { } ballColour ? toSk(ballColour) : SKColors.White;
+                drawSprite(canvas, frame, position.X, position.Y, radius / sprite_base_radius, tint, 1f);
+            }
+            else
+            {
+                fill.Color = colour;
+                canvas.DrawCircle(position.X, position.Y, radius * 0.9f, fill);
+            }
+
+            if (sprites.Get("sliderfollowcircle") is { } follow)
+            {
+                drawSprite(canvas, follow, position.X, position.Y, radius / sprite_base_radius, SKColors.White, 1f);
+            }
+            else
+            {
+                stroke.StrokeWidth = radius * 0.1f;
+                stroke.Color = SKColors.White;
+                canvas.DrawCircle(position.X, position.Y, radius * 1.9f, stroke);
+            }
         }
 
         private static Vector2 sliderPosition(PreviewObject slider, TimeSpan at)
@@ -304,6 +516,15 @@ public sealed class PlayfieldPreviewView : Control
 
             var centre = new Vector2(playfield_width / 2, playfield_height / 2);
             var progress = spinner.Duration.TotalMilliseconds <= 0 ? 1 : Math.Clamp((time - spinner.StartTime).TotalMilliseconds / spinner.Duration.TotalMilliseconds, 0, 1);
+            var spinning = time >= spinner.StartTime;
+            var angleDegrees = spinning ? (float)(time.TotalMilliseconds * 0.36) : 0f;
+            if (sprites.Get("spinner-circle") is { } circle)
+            {
+                var diameter = 320f * (float)(1 - 0.4 * progress);
+                drawSprite(canvas, circle, centre.X, centre.Y, fit(circle, diameter), SKColors.White, alpha, angleDegrees);
+                return;
+            }
+
             var radius = 150f * (float)(1 - 0.75 * progress);
             var byteAlpha = (byte)(alpha * 255);
             stroke.StrokeWidth = 6;
@@ -311,7 +532,7 @@ public sealed class PlayfieldPreviewView : Control
             canvas.DrawCircle(centre.X, centre.Y, radius, stroke);
             fill.Color = new SKColor(255, 255, 255, (byte)(byteAlpha * 0.15));
             canvas.DrawCircle(centre.X, centre.Y, radius, fill);
-            if (time >= spinner.StartTime)
+            if (spinning)
             {
                 var angle = (float)(time.TotalMilliseconds / 500 * Math.PI * 2);
                 stroke.StrokeWidth = 4;
@@ -325,6 +546,13 @@ public sealed class PlayfieldPreviewView : Control
             var position = cursorPosition();
             if (position is not { } at)
             {
+                return;
+            }
+
+            if (sprites.Get("cursor") is { } cursor)
+            {
+                var anchor = skin.CursorCentre ? 0.5f : 0f;
+                drawSprite(canvas, cursor, at.X, at.Y, cursor_scale, SKColors.White, 1f, anchorX: anchor, anchorY: anchor);
                 return;
             }
 
@@ -401,6 +629,7 @@ public sealed class PlayfieldPreviewView : Control
             stroke.Color = new SKColor(255, 255, 255, 160);
             canvas.DrawLine(left, judgeY, left + laneWidth, judgeY, stroke);
 
+            var maniaColours = skin.ManiaFor(columns);
             foreach (var note in data.Objects)
             {
                 if (note.EndTime < time || note.StartTime > time + lookahead)
@@ -408,34 +637,75 @@ public sealed class PlayfieldPreviewView : Control
                     continue;
                 }
 
+                var style = maniaNoteStyle(note.Column, columns);
                 var x = left + note.Column * columnWidth + 3;
                 var width = columnWidth - 6;
-                var colour = maniaColour(note.Column, columns);
+                var colour = maniaColour(note.Column, columns, maniaColours);
                 var headY = judgeY - (float)(note.StartTime - time).TotalMilliseconds * speed;
+                var noteSprite = sprites.Get($"mania-note{style}");
                 if (note.Kind == PreviewObjectKind.ManiaHold)
                 {
                     var tailY = judgeY - (float)(note.EndTime - time).TotalMilliseconds * speed;
                     var visibleHead = Math.Min(headY, judgeY);
-                    fill.Color = colour.WithAlpha(150);
-                    canvas.DrawRoundRect(new SKRect(x + width * 0.2f, Math.Max(top, tailY), x + width * 0.8f, visibleHead), 4, 4, fill);
+                    var bodyTop = Math.Max(top, tailY);
+                    if (sprites.Get($"mania-note{style}L") is { } body)
+                    {
+                        drawSpriteStretched(canvas, body, new SKRect(x, bodyTop, x + width, visibleHead), SKColors.White, 1f);
+                    }
+                    else
+                    {
+                        fill.Color = (maniaColours?.Hold is { } hold ? toSk(hold) : colour).WithAlpha(150);
+                        canvas.DrawRoundRect(new SKRect(x + width * 0.2f, bodyTop, x + width * 0.8f, visibleHead), 4, 4, fill);
+                    }
+
+                    if (tailY >= top && sprites.Get($"mania-note{style}T") is { } tail)
+                    {
+                        drawSprite(canvas, tail, x + width / 2f, tailY, fitWidth(tail, width), SKColors.White, 1f, anchorY: 0.5f);
+                    }
+
+                    noteSprite = sprites.Get($"mania-note{style}H") ?? noteSprite;
                 }
 
                 if (headY <= judgeY + 2)
                 {
-                    fill.Color = colour;
-                    canvas.DrawRoundRect(new SKRect(x, headY - 14, x + width, headY), 4, 4, fill);
+                    if (noteSprite is not null)
+                    {
+                        drawSprite(canvas, noteSprite, x + width / 2f, headY, fitWidth(noteSprite, width), SKColors.White, 1f, anchorY: 1f);
+                    }
+                    else
+                    {
+                        fill.Color = colour;
+                        canvas.DrawRoundRect(new SKRect(x, headY - 14, x + width, headY), 4, 4, fill);
+                    }
                 }
             }
         }
 
-        private static SKColor maniaColour(int column, int columns)
+        /// <summary>osu!'s default column layout: "1" / "2" alternating from the outside in, "S" in the middle of odd key counts.</summary>
+        private static string maniaNoteStyle(int column, int columns)
         {
+            if (columns % 2 == 1 && column == columns / 2)
+            {
+                return "S";
+            }
+
+            var fromEdge = column < columns / 2 ? column : columns - 1 - column;
+            return fromEdge % 2 == 0 ? "1" : "2";
+        }
+
+        private static SKColor maniaColour(int column, int columns, ManiaSkinColours? skinColours)
+        {
+            if (skinColours is not null && column < skinColours.Columns.Count)
+            {
+                return toSk(skinColours.Columns[column]);
+            }
+
             if (columns % 2 == 1 && column == columns / 2)
             {
                 return new SKColor(255, 210, 60);
             }
 
-            return column % 2 == 0 ? new SKColor(235, 235, 245) : new SKColor(100, 160, 255);
+            return maniaNoteStyle(column, columns) == "1" ? new SKColor(235, 235, 245) : new SKColor(100, 160, 255);
         }
 
         // ---------------------------------------------------------------- osu!taiko
@@ -471,20 +741,32 @@ public sealed class PlayfieldPreviewView : Control
                 {
                     case PreviewObjectKind.TaikoDrumroll:
                         var endX = targetX + (float)(note.EndTime - time).TotalMilliseconds * speed;
-                        fill.Color = new SKColor(255, 200, 40, 220);
-                        canvas.DrawRoundRect(new SKRect(Math.Max(targetX, x), centreY - size, endX, centreY + size), size, size, fill);
+                        var startX = Math.Max(targetX, x);
+                        if (sprites.Get("taiko-roll-middle") is { } middle)
+                        {
+                            drawSpriteStretched(canvas, middle, new SKRect(startX, centreY - size, endX, centreY + size), taiko_roll, 1f);
+                            if (sprites.Get("taiko-roll-end") is { } end)
+                            {
+                                drawSprite(canvas, end, endX, centreY, fit(end, size * 2), taiko_roll, 1f, anchorX: 0f);
+                            }
+                        }
+                        else
+                        {
+                            fill.Color = taiko_roll.WithAlpha(220);
+                            canvas.DrawRoundRect(new SKRect(startX, centreY - size, endX, centreY + size), size, size, fill);
+                        }
+
                         break;
                     case PreviewObjectKind.TaikoSwell:
                         if (time >= note.StartTime && time <= note.EndTime)
                         {
                             stroke.StrokeWidth = 6;
-                            stroke.Color = new SKColor(255, 200, 40, 200);
+                            stroke.Color = taiko_roll.WithAlpha(200);
                             canvas.DrawCircle(targetX, centreY, radius * 2.2f, stroke);
                         }
                         else if (time < note.StartTime)
                         {
-                            fill.Color = new SKColor(255, 200, 40, 200);
-                            canvas.DrawCircle(x, centreY, radius * 1.2f, fill);
+                            drawTaikoCircle(canvas, x, centreY, radius * 1.2f, taiko_roll, false, fill, stroke);
                         }
 
                         break;
@@ -494,14 +776,32 @@ public sealed class PlayfieldPreviewView : Control
                             break; // hit
                         }
 
-                        fill.Color = note.Kind == PreviewObjectKind.TaikoKat ? new SKColor(67, 142, 173) : new SKColor(235, 69, 43);
-                        canvas.DrawCircle(x, centreY, size, fill);
-                        stroke.StrokeWidth = size * 0.14f;
-                        stroke.Color = SKColors.White;
-                        canvas.DrawCircle(x, centreY, size * 0.92f, stroke);
+                        drawTaikoCircle(canvas, x, centreY, size, note.Kind == PreviewObjectKind.TaikoKat ? taiko_kat : taiko_don, note.IsLarge, fill, stroke);
                         break;
                 }
             }
+        }
+
+        private void drawTaikoCircle(SKCanvas canvas, float x, float y, float size, SKColor colour, bool large, SKPaint fill, SKPaint stroke)
+        {
+            var baseName = large ? "taikobigcircle" : "taikohitcircle";
+            if (sprites.Get(baseName) is { } circle)
+            {
+                var scale = fit(circle, size * 2);
+                drawSprite(canvas, circle, x, y, scale, colour, 1f);
+                if (sprites.Get(baseName + "overlay") is { } overlay)
+                {
+                    drawSprite(canvas, overlay, x, y, scale, SKColors.White, 1f);
+                }
+
+                return;
+            }
+
+            fill.Color = colour;
+            canvas.DrawCircle(x, y, size, fill);
+            stroke.StrokeWidth = size * 0.14f;
+            stroke.Color = SKColors.White;
+            canvas.DrawCircle(x, y, size * 0.92f, stroke);
         }
 
         // ---------------------------------------------------------------- osu!catch
@@ -532,13 +832,15 @@ public sealed class PlayfieldPreviewView : Control
                 }
 
                 var colour = comboColour(fruit.ComboColourIndex);
+                var fruitName = "fruit-" + fruit_names[Math.Abs(fruit.ComboNumber) % fruit_names.Length];
                 switch (fruit.Kind)
                 {
                     case PreviewObjectKind.CatchJuiceStream:
                         for (var at = fruit.StartTime; at <= fruit.EndTime; at += TimeSpan.FromMilliseconds(100))
                         {
                             var position = sliderPosition(fruit, at);
-                            drawFruit(canvas, position.X, at, radius * (at == fruit.StartTime ? 1f : 0.5f), colour, catcherY, speed, fill, ref catcherX);
+                            var isHead = at == fruit.StartTime;
+                            drawFruit(canvas, position.X, at, radius * (isHead ? 1f : 0.5f), colour, isHead ? fruitName : "fruit-drop", catcherY, speed, fill, ref catcherX);
                         }
 
                         break;
@@ -546,23 +848,31 @@ public sealed class PlayfieldPreviewView : Control
                         for (var at = fruit.StartTime; at <= fruit.EndTime; at += TimeSpan.FromMilliseconds(80))
                         {
                             var pseudoRandom = (float)((at.TotalMilliseconds * 7919) % 512);
-                            drawFruit(canvas, pseudoRandom, at, radius * 0.7f, new SKColor(255, 230, 60), catcherY, speed, fill, ref catcherX);
+                            drawFruit(canvas, pseudoRandom, at, radius * 0.7f, new SKColor(255, 230, 60), "fruit-bananas", catcherY, speed, fill, ref catcherX, tintSprite: false);
                         }
 
                         break;
                     default:
-                        drawFruit(canvas, fruit.Position.X, fruit.StartTime, radius, colour, catcherY, speed, fill, ref catcherX);
+                        drawFruit(canvas, fruit.Position.X, fruit.StartTime, radius, colour, fruitName, catcherY, speed, fill, ref catcherX);
                         break;
                 }
             }
 
             var plateX = catcherX ?? playfield_width / 2;
-            fill.Color = new SKColor(255, 255, 255, 220);
-            canvas.DrawRoundRect(new SKRect(plateX - 40, catcherY, plateX + 40, catcherY + 10), 5, 5, fill);
+            if (sprites.Get("fruit-catcher-idle") is { } catcher)
+            {
+                drawSprite(canvas, catcher, plateX, catcherY + 10, fitWidth(catcher, 100), SKColors.White, 1f, anchorY: 1f);
+            }
+            else
+            {
+                fill.Color = new SKColor(255, 255, 255, 220);
+                canvas.DrawRoundRect(new SKRect(plateX - 40, catcherY, plateX + 40, catcherY + 10), 5, 5, fill);
+            }
+
             canvas.Restore();
         }
 
-        private void drawFruit(SKCanvas canvas, float x, TimeSpan hitTime, float radius, SKColor colour, float catcherY, float speed, SKPaint fill, ref float? catcherX)
+        private void drawFruit(SKCanvas canvas, float x, TimeSpan hitTime, float radius, SKColor colour, string spriteName, float catcherY, float speed, SKPaint fill, ref float? catcherX, bool tintSprite = true)
         {
             var untilHit = (hitTime - time).TotalMilliseconds;
             if (untilHit < 0)
@@ -576,12 +886,22 @@ public sealed class PlayfieldPreviewView : Control
                 return;
             }
 
-            fill.Color = colour;
-            canvas.DrawCircle(x, y, radius, fill);
-            if (catcherX is null)
+            if (sprites.Get(spriteName) is { } sprite)
             {
-                catcherX = x; // the next fruit to land steers the auto-catcher
+                var scale = fit(sprite, radius * 2);
+                drawSprite(canvas, sprite, x, y, scale, tintSprite ? colour : SKColors.White, 1f);
+                if (sprites.Get(spriteName + "-overlay") is { } overlay)
+                {
+                    drawSprite(canvas, overlay, x, y, scale, SKColors.White, 1f);
+                }
             }
+            else
+            {
+                fill.Color = colour;
+                canvas.DrawCircle(x, y, radius, fill);
+            }
+
+            catcherX ??= x; // the next fruit to land steers the auto-catcher
         }
 
         // ---------------------------------------------------------------- helpers
@@ -604,16 +924,24 @@ public sealed class PlayfieldPreviewView : Control
             }
         }
 
+        /// <summary>
+        /// The beatmap's colours by default, the skin's when the beatmap has none or the user
+        /// prefers the skin, and osu!'s default palette when neither says anything.
+        /// </summary>
         private SKColor comboColour(int index)
         {
-            if (data.ComboColours.Count == 0)
+            var palette = skin.ComboColours.Count > 0 && (preferSkinColours || !data.HasBeatmapComboColours)
+                ? skin.ComboColours
+                : data.ComboColours;
+            if (palette.Count == 0)
             {
                 return new SKColor(255, 192, 0);
             }
 
-            var colour = data.ComboColours[Math.Abs(index) % data.ComboColours.Count];
-            return new SKColor(colour.R, colour.G, colour.B);
+            return toSk(palette[Math.Abs(index) % palette.Count]);
         }
+
+        private static SKColor toSk(PreviewComboColour colour) => new(colour.R, colour.G, colour.B);
 
         private static SKColor darken(SKColor colour, float factor) =>
             new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor), colour.Alpha);

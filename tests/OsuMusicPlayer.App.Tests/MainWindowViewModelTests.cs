@@ -7,6 +7,7 @@ using OsuMusicPlayer.Core;
 using OsuMusicPlayer.Core.Hitsounds;
 using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.Core.Models;
+using OsuMusicPlayer.Core.Skins;
 
 namespace OsuMusicPlayer.App.Tests;
 
@@ -896,7 +897,77 @@ public sealed class MainWindowViewModelTests
         audio = new FakeAudioEngine();
         environment = new TestEnvironment();
         var manager = new BeatmapManager([environment.Loader], new DuplicateDetector());
-        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe, environment.Theme);
+        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe, environment.Theme, environment.SkinCatalog);
+    }
+
+    [Fact]
+    public async Task PreviewSkin_ListsSkinFoldersRestoresTheSavedOneAndPersistsChanges()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        using var skins = environment.Skins;
+        Directory.CreateDirectory(Path.Combine(environment.SkinCatalog.RootPath, "Neon"));
+        File.WriteAllLines(Path.Combine(environment.SkinCatalog.RootPath, "Neon", "skin.ini"), ["[General]", "Name: Neon Lights", "[Colours]", "Combo1: 1,2,3"]);
+        Directory.CreateDirectory(Path.Combine(environment.SkinCatalog.RootPath, "Plain"));
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { PreviewSkin = "neon", PreferSkinComboColours = true } };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.PreviewSkinNames.Should().Equal("Default", "Neon", "Plain");
+        viewModel.SelectedPreviewSkinName.Should().Be("Neon", "the saved name is matched case-insensitively against folder names");
+        viewModel.PreviewSkin.Name.Should().Be("Neon Lights", "skin.ini supplies the display name");
+        viewModel.PreviewSkin.ComboColours.Should().ContainSingle();
+        viewModel.PreferSkinComboColours.Should().BeTrue();
+        viewModel.PreviewSkinStatusText.Should().BeEmpty();
+        File.Exists(Path.Combine(environment.SkinCatalog.RootPath, PreviewSkinCatalog.ReadMeFileName)).Should().BeTrue("the folder is created with a README so users know what goes there");
+
+        viewModel.SelectedPreviewSkinName = "Plain";
+        viewModel.PreferSkinComboColours = false;
+        await viewModel.PendingSave;
+
+        viewModel.PreviewSkin.Directory.Should().Be(Path.Combine(environment.SkinCatalog.RootPath, "Plain"));
+        environment.Settings.Current.Appearance.PreviewSkin.Should().Be("Plain");
+        environment.Settings.Current.Appearance.PreferSkinComboColours.Should().BeFalse();
+
+        viewModel.SelectedPreviewSkinName = "Default";
+        await viewModel.PendingSave;
+        viewModel.PreviewSkin.IsDefault.Should().BeTrue();
+        environment.Settings.Current.Appearance.PreviewSkin.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PreviewSkin_FallsBackToDefaultWhenTheSavedSkinIsMissingAndKeepsTheNameForLater()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        using var skins = environment.Skins;
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { PreviewSkin = "Later" } };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedPreviewSkinName.Should().Be("Default");
+        viewModel.PreviewSkin.IsDefault.Should().BeTrue();
+        viewModel.PreviewSkinStatusText.Should().Contain("Later");
+        viewModel.BuildSettings().Appearance.PreviewSkin.Should().Be("Later", "a skin that is merely absent right now is not forgotten");
+
+        Directory.CreateDirectory(Path.Combine(environment.SkinCatalog.RootPath, "Later"));
+        viewModel.RefreshPreviewSkinsCommand.Execute(null);
+
+        viewModel.SelectedPreviewSkinName.Should().Be("Later");
+        viewModel.PreviewSkin.IsDefault.Should().BeFalse();
+        viewModel.PreviewSkinStatusText.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PreviewSkin_OpenSkinsFolderCreatesTheFolderAndShowsIt()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        using var skins = environment.Skins;
+        await viewModel.InitializeAsync();
+
+        viewModel.OpenSkinsFolderCommand.Execute(null);
+
+        Directory.Exists(environment.SkinCatalog.RootPath).Should().BeTrue();
+        environment.Links.OpenedFolders.Should().Equal(environment.SkinCatalog.RootPath);
+        viewModel.SkinsFolderPath.Should().Be(environment.SkinCatalog.RootPath);
     }
 
     [Fact]
@@ -1063,12 +1134,16 @@ public sealed class MainWindowViewModelTests
         public FakeLinkOpener Links { get; } = new();
         public FakeCollectionLoader Collections { get; } = new();
         public FakeThemeApplier Theme { get; } = new();
+        public TestDirectory Skins { get; } = new();
+        public PreviewSkinCatalog SkinCatalog => new(Path.Combine(Skins.Path, "Skins"));
     }
 
     private sealed class FakeLinkOpener : ILinkOpener
     {
         public List<Uri> Opened { get; } = [];
         public bool Open(Uri uri) { Opened.Add(uri); return true; }
+        public List<string> OpenedFolders { get; } = [];
+        public bool OpenFolder(string path) { OpenedFolders.Add(path); return true; }
     }
 
     private sealed class FakeCollectionLoader : ICollectionLoader

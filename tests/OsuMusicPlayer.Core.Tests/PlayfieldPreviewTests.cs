@@ -48,6 +48,7 @@ public sealed class PlayfieldPreviewTests
         data.Preempt.Should().Be(TimeSpan.FromMilliseconds(600));
         data.FadeIn.Should().Be(TimeSpan.FromMilliseconds(400));
         data.ComboColours.Should().HaveCount(2);
+        data.HasBeatmapComboColours.Should().BeTrue();
 
         data.Objects.Should().HaveCount(5);
         data.Objects[0].Should().Match<PreviewObject>(static o => o.Kind == PreviewObjectKind.Circle && o.ComboNumber == 1 && o.ComboColourIndex == 0);
@@ -105,6 +106,23 @@ public sealed class PlayfieldPreviewTests
     {
         PlayfieldPreviewBuilder.difficultyRange(approachRate, 1800, 1200, 450).Should().Be(preempt);
         PlayfieldPreviewBuilder.difficultyRange(approachRate, 1200, 800, 300).Should().Be(fadeIn);
+    }
+
+    [Fact]
+    public void Standard_WithoutBeatmapColours_UsesDefaultsAndKeepsTheColourIndexUnbounded()
+    {
+        var data = PlayfieldPreviewBuilder.Build(lines(0, 4, 9, """
+            [HitObjects]
+            100,100,1000,5,0,0:0:0:0:
+            100,100,2000,5,0,0:0:0:0:
+            100,100,3000,5,0,0:0:0:0:
+            100,100,4000,5,0,0:0:0:0:
+            100,100,5000,5,0,0:0:0:0:
+            """));
+
+        data.HasBeatmapComboColours.Should().BeFalse();
+        data.ComboColours.Should().HaveCount(4, "osu!'s default palette stands in");
+        data.Objects.Select(static o => o.ComboColourIndex).Should().Equal(0, 1, 2, 3, 4); // renderers wrap the index around whichever palette (beatmap or skin) they draw with
     }
 
     private static IEnumerable<string> lines(int mode, double circleSize, double approachRate, string body) =>

@@ -19,7 +19,7 @@ public sealed partial class MainWindowViewModel
         nameof(HitsoundVolume), nameof(HitsoundOffsetMs), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText),
-        nameof(SelectedThemeName), nameof(AccentColorText),
+        nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
     ];
 
     private readonly object saveSync = new();
@@ -227,7 +227,13 @@ public sealed partial class MainWindowViewModel
             DiscordApplicationId = DiscordApplicationId,
             OsuApiClientId = OsuApiClientId,
             OsuApiClientSecret = OsuApiClientSecret,
-            Appearance = new AppearanceSettings { ThemeName = SelectedThemeName, AccentColor = AccentColorText.Trim() },
+            Appearance = new AppearanceSettings
+            {
+                ThemeName = SelectedThemeName,
+                AccentColor = AccentColorText.Trim(),
+                PreviewSkin = string.Equals(requestedPreviewSkinName, Core.Skins.PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase) ? string.Empty : requestedPreviewSkinName,
+                PreferSkinComboColours = PreferSkinComboColours,
+            },
             Exclusions = new LibraryExclusionSettings
             {
                 MinimumLengthSeconds = Math.Max(0, ExcludeMinLengthSeconds),
@@ -283,6 +289,7 @@ public sealed partial class MainWindowViewModel
             OsuApiClientSecret = settings.OsuApiClientSecret ?? string.Empty;
             applyRestoredExclusions(settings);
             applyRestoredAppearance(settings);
+            applyRestoredPreviewSkin(settings);
 
             var gains = Equalizer.Normalize(settings.EqualizerGains);
             applyingPreset = true;
