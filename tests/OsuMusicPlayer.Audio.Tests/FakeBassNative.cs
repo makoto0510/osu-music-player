@@ -56,5 +56,10 @@ internal sealed class FakeBassNative : IBassNative
         return FailSync ? 0 : 1;
     }
 
+    public List<(int Effect, int Band, float Center, float Gain)> EqBands { get; } = [];
+    public bool FailEq { get; set; }
+    public int AddPeakEq(int stream) => FailEq ? 0 : 900 + stream;
+    public bool SetPeakEqBand(int effect, int band, float centerHz, float bandwidthOctaves, float gainDb) { EqBands.Add((effect, band, centerHz, gainDb)); return true; }
+
     public void RaiseEnded() => EndProcedure?.Invoke(1, CurrentTempoStream, 0, EndUser);
 }

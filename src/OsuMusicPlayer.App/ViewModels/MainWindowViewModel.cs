@@ -5,7 +5,9 @@ using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.Audio;
 using OsuMusicPlayer.Core;
 using OsuMusicPlayer.Core.Hitsounds;
+using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.Core.Models;
+using OsuMusicPlayer.Core.Search;
 
 namespace OsuMusicPlayer.App.ViewModels;
 
@@ -23,6 +25,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IHitsoundPlayer hitsoundPlayer;
     private readonly IHitsoundSampleSourceFactory sampleSourceFactory;
     private readonly IStoryboardLoader storyboardLoader;
+    private readonly ILinkOpener linkOpener;
+    private readonly IReadOnlyList<ICollectionLoader> collectionLoaders;
+    private readonly IOnlineMetadataService? onlineMetadataService;
+    private readonly IFileSaver? fileSaver;
     private TrackItemViewModel? observedTrack;
     private DateTime lastVideoResync = DateTime.MinValue;
     private readonly List<TrackItemViewModel> allTracks = [];
@@ -87,6 +93,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool isHitsoundEnabled;
 
+    /// <summary>Theater mode hides the track list and gives the video and storyboard the whole window.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VideoPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(ListColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(DetailsColumnWidth))]
+    private bool isTheaterMode;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
     [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
@@ -135,7 +149,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         IVideoPlayer videoPlayer,
         IHitsoundPlayer hitsoundPlayer,
         IHitsoundSampleSourceFactory sampleSourceFactory,
-        IStoryboardLoader storyboardLoader)
+        IStoryboardLoader storyboardLoader,
+        ILinkOpener linkOpener,
+        IEnumerable<ICollectionLoader> collectionLoaders,
+        IOnlineMetadataService? onlineMetadataService = null,
+        IFileSaver? fileSaver = null)
     {
         this.beatmapManager = beatmapManager ?? throw new ArgumentNullException(nameof(beatmapManager));
         this.audioEngine = audioEngine ?? throw new ArgumentNullException(nameof(audioEngine));
@@ -149,10 +167,16 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.hitsoundPlayer = hitsoundPlayer ?? throw new ArgumentNullException(nameof(hitsoundPlayer));
         this.sampleSourceFactory = sampleSourceFactory ?? throw new ArgumentNullException(nameof(sampleSourceFactory));
         this.storyboardLoader = storyboardLoader ?? throw new ArgumentNullException(nameof(storyboardLoader));
+        this.linkOpener = linkOpener ?? throw new ArgumentNullException(nameof(linkOpener));
+        this.collectionLoaders = collectionLoaders?.ToArray() ?? throw new ArgumentNullException(nameof(collectionLoaders));
+        this.onlineMetadataService = onlineMetadataService;
+        this.fileSaver = fileSaver;
         volume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
         audioEngine.PlaybackEnded += onPlaybackEnded;
+        hitsoundPlayer.HitPlayed += onHitPlayed;
+        initializePersistence();
     }
 
     public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
@@ -169,7 +193,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsStoryboardVisible => IsStoryboardEnabled && StoryboardSession is not null;
 
     /// <summary>Like the video surface, the storyboard box collapses to zero height instead of hiding.</summary>
-    public double StoryboardPanelHeight => IsStoryboardVisible ? 202 : 0;
+    public double StoryboardPanelHeight => IsStoryboardVisible ? visualPanelHeight : 0;
 
     /// <summary>The most recent hit sound / storyboard load, awaited by tests.</summary>
     internal Task LastVisualsLoad { get; private set; } = Task.CompletedTask;
@@ -179,7 +203,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     /// libVLC has no window handle when playback starts and opens its own window. The
     /// view therefore collapses the surface to zero height instead of hiding it.
     /// </summary>
-    public double VideoPanelHeight => IsVideoVisible ? 202 : 0;
+    public double VideoPanelHeight => IsVideoVisible ? visualPanelHeight : 0;
+
+    private double visualPanelHeight => IsTheaterMode ? 540 : 202;
+
+    public Avalonia.Controls.GridLength ListColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star);
+
+    public Avalonia.Controls.GridLength DetailsColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(360);
     public string QueueText => Queue.Count == 0 ? "Queue" : $"Queue ({Queue.Count})";
     public string RepeatText => RepeatMode switch
     {
@@ -226,6 +256,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                     manualInstallations.Add(installation);
                 }
             }
+
+            loadedSettings = settings;
+            await dispatcher.InvokeAsync(() => applyRestoredSettings(settings)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
         {
@@ -237,6 +270,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         await reloadLibraryAsync().ConfigureAwait(false);
+        if (loadedSettings is not null)
+        {
+            await restorePlaybackAsync(loadedSettings).ConfigureAwait(false);
+        }
+
         await dispatcher.InvokeAsync(() =>
         {
             if (!HasInstallations)
@@ -454,7 +492,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnIsShuffleEnabledChanged(bool value) => shuffleHistory.Clear();
 
-    partial void OnSearchTextChanged(string value) => applyFilterAndSort();
+    partial void OnSearchTextChanged(string value)
+    {
+        searchQuery = TrackSearchQuery.Parse(value);
+        applyFilterAndSort();
+    }
 
     partial void OnSelectedTrackChanged(TrackItemViewModel? value) => notifyDetailTrackChanged();
 
@@ -487,6 +529,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(DetailTrack));
         OnPropertyChanged(nameof(HasDetailTrack));
+        OnPropertyChanged(nameof(CanOpenOnWeb));
+        notifyFavouriteChanged();
     }
     partial void OnSelectedSortChanged(TrackSortOption value) => applyFilterAndSort();
 
@@ -534,11 +578,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
+        SaveSettingsNow();
         disposed = true;
         lifetimeCancellation.Cancel();
         libraryLoadCancellation?.Cancel();
         audioEngine.PositionChanged -= onPositionChanged;
         audioEngine.PlaybackEnded -= onPlaybackEnded;
+        hitsoundPlayer.HitPlayed -= onHitPlayed;
         videoPlayer.Stop();
         hitsoundPlayer.Clear();
         clearStoryboard();
@@ -625,12 +671,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task saveSettingsAsync()
     {
-        var settings = new AppSettings
-        {
-            ManualInstallations = manualInstallations
-                .Select(static installation => new ManualInstallationSetting(installation.Kind, installation.RootPath))
-                .ToArray(),
-        };
+        var settings = BuildSettings();
 
         try
         {
@@ -677,6 +718,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             }).ConfigureAwait(false);
 
             var models = await beatmapManager.LoadAsync(installations.Select(static entry => entry.Installation), token).ConfigureAwait(false);
+            var loadedCollections = await loadCollectionsAsync(installations.Select(static entry => entry.Installation).ToArray(), token).ConfigureAwait(false);
             var items = models
                 .Where(static model => !string.IsNullOrWhiteSpace(model.AudioFilePath))
                 .Select(model => new TrackItemViewModel(model, imageLoader))
@@ -684,6 +726,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             token.ThrowIfCancellationRequested();
             await dispatcher.InvokeAsync(() =>
             {
+                collections = loadedCollections;
                 replaceTracks(items);
                 LibraryStatusText = installations.Count == 0
                     ? string.Empty
@@ -772,6 +815,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
         notifyQueueChanged();
         shuffleHistory.Clear();
+        rebuildLibraryIndexes();
 
         foreach (var track in previous)
         {
@@ -781,29 +825,23 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void applyFilterAndSort()
     {
-        IEnumerable<TrackItemViewModel> query = allTracks;
-        var terms = SearchText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (terms.Length > 0)
+        var view = SelectedView;
+        IEnumerable<TrackItemViewModel> query = filterByView(allTracks);
+        if (!searchQuery.IsEmpty)
         {
-            // Every word must match some field, so "zero centimeters mikan" narrows by title and mapper.
-            query = query.Where(track => terms.All(term =>
-                track.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Artist.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Model.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Model.TitleUnicode.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Model.Artist.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Model.ArtistUnicode.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Creator.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                track.Tags.Contains(term, StringComparison.OrdinalIgnoreCase)));
+            query = query.Where(track => searchQuery.Matches(track.Model, track.Genre, track.Language));
         }
 
-        query = SelectedSort switch
+        if (view is null || !view.KeepsOwnOrder)
         {
-            TrackSortOption.Artist => query.OrderBy(static track => track.Artist, StringComparer.CurrentCultureIgnoreCase),
-            TrackSortOption.BPM => query.OrderByDescending(static track => track.BPM),
-            TrackSortOption.Length => query.OrderByDescending(static track => track.Length),
-            _ => query.OrderBy(static track => track.Title, StringComparer.CurrentCultureIgnoreCase),
-        };
+            query = SelectedSort switch
+            {
+                TrackSortOption.Artist => query.OrderBy(static track => track.Artist, StringComparer.CurrentCultureIgnoreCase),
+                TrackSortOption.BPM => query.OrderByDescending(static track => track.BPM),
+                TrackSortOption.Length => query.OrderByDescending(static track => track.Length),
+                _ => query.OrderBy(static track => track.Title, StringComparer.CurrentCultureIgnoreCase),
+            };
+        }
 
         var selected = SelectedTrack;
         Tracks.Clear();
@@ -974,6 +1012,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 updatePosition(audioEngine.CurrentTime, audioEngine.TotalTime);
             }).ConfigureAwait(false);
             _ = resolveMediaAsync(track, version);
+            recordPlay(track);
+            RequestSettingsSave();
         }
         catch (Exception exception) when (exception is AudioEngineException or IOException or UnauthorizedAccessException or NotSupportedException)
         {
@@ -1111,6 +1151,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private static string appendStatus(string current, string addition) =>
         string.IsNullOrEmpty(current) ? addition : current + "  ·  " + addition;
+
+    // Runs on the hit sound worker thread; the session takes its own lock.
+    private void onHitPlayed(object? sender, HitsoundEvent hit) => StoryboardSession?.Trigger(hit);
 
     private void onPositionChanged(object? sender, PlaybackPositionChangedEventArgs args) =>
         _ = dispatcher.InvokeAsync(() => updatePosition(args.CurrentTime, args.TotalTime));

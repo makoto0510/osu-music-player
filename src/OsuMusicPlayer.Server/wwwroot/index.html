@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>osu! music player</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #11131a; color: #e6e8ef; }
+  header { position: sticky; top: 0; background: #191c25; border-bottom: 1px solid #292d3a; padding: 10px 14px; display: flex; gap: 8px; align-items: center; z-index: 2; }
+  header input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #292d3a; background: #11131a; color: inherit; font-size: 16px; }
+  header select { padding: 10px; border-radius: 8px; border: 1px solid #292d3a; background: #11131a; color: inherit; }
+  main { padding: 8px 8px 160px; }
+  .track { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; padding: 8px; border-radius: 10px; }
+  .track:active { background: #1c2029; }
+  .track img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; background: #292d3a; }
+  .track .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track .sub { font-size: 12px; color: #aeb4c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track .meta { font-size: 11px; color: #737a8d; }
+  .actions { display: flex; gap: 6px; }
+  button { border: 1px solid #292d3a; background: #1c2029; color: inherit; border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+  button.primary { background: #2f6fed; border-color: #2f6fed; }
+  button.fav { color: #ff66aa; }
+  footer { position: fixed; left: 0; right: 0; bottom: 0; background: #191c25; border-top: 1px solid #292d3a; padding: 10px 14px; }
+  footer .now { display: flex; gap: 10px; align-items: center; }
+  footer img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; background: #292d3a; }
+  footer .info { flex: 1; min-width: 0; }
+  footer .controls { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  footer progress { width: 100%; height: 6px; margin-top: 6px; accent-color: #2f6fed; }
+  footer input[type=range] { flex: 1; }
+  .mode { font-size: 12px; color: #aeb4c4; }
+  #status { font-size: 12px; color: #737a8d; padding: 4px 14px; }
+</style>
+</head>
+<body>
+<header>
+  <input id="q" type="search" placeholder="Search title, artist, mapper…" autocomplete="off">
+  <select id="mode" title="Where to play">
+    <option value="pc">Play on PC</option>
+    <option value="here">Play here</option>
+  </select>
+</header>
+<div id="status"></div>
+<main id="list"></main>
+<footer>
+  <div class="now">
+    <img id="nowImg" alt="">
+    <div class="info">
+      <div id="nowTitle" class="title">Nothing playing</div>
+      <div id="nowSub" class="sub"></div>
+      <progress id="nowProgress" value="0" max="1"></progress>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="prev">⏮</button>
+    <button id="toggle" class="primary">⏯</button>
+    <button id="next">⏭</button>
+    <input id="vol" type="range" min="0" max="1" step="0.01" title="PC volume">
+    <span id="nowMode" class="mode"></span>
+  </div>
+  <audio id="local" controls style="width:100%; margin-top:8px; display:none"></audio>
+</footer>
+<script>
+(() => {
+  const list = document.getElementById('list');
+  const status = document.getElementById('status');
+  const q = document.getElementById('q');
+  const mode = document.getElementById('mode');
+  const local = document.getElementById('local');
+  let tracks = [];
+  let localIndex = -1;
+
+  const api = (path, options) => fetch(path, options).then(r => { if (!r.ok) throw new Error(r.status); return r.headers.get('content-type')?.includes('json') ? r.json() : null; });
+  const fmt = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+  async function load() {
+    const data = await api('/api/tracks?limit=300&q=' + encodeURIComponent(q.value));
+    tracks = data.items;
+    status.textContent = data.total.toLocaleString() + ' tracks' + (data.total > tracks.length ? ' (showing ' + tracks.length + ')' : '');
+    list.innerHTML = '';
+    for (const [i, t] of tracks.entries()) {
+      const row = document.createElement('div');
+      row.className = 'track';
+      row.innerHTML = `<img loading="lazy" ${t.hasBackground ? `src="/api/tracks/${t.id}/background"` : ''} alt="">
+        <div><div class="title"></div><div class="sub"></div><div class="meta">${t.bpm.toFixed(0)} BPM · ${fmt(t.lengthSeconds)}</div></div>
+        <div class="actions"><button class="fav" title="Favourite">${t.isFavourite ? '♥' : '♡'}</button><button title="Queue on PC">＋</button><button class="primary" title="Play">▶</button></div>`;
+      row.querySelector('.title').textContent = t.title;
+      row.querySelector('.sub').textContent = t.artist + ' · ' + t.creator;
+      const [fav, queue, play] = row.querySelectorAll('button');
+      fav.onclick = async () => { await api('/api/favourite/' + t.id, { method: 'POST' }); t.isFavourite = !t.isFavourite; fav.textContent = t.isFavourite ? '♥' : '♡'; };
+      queue.onclick = () => api('/api/queue/' + t.id, { method: 'POST' });
+      play.onclick = () => mode.value === 'here' ? playHere(i) : api('/api/play/' + t.id, { method: 'POST' });
+      list.appendChild(row);
+    }
+  }
+
+  function playHere(index) {
+    localIndex = index;
+    const t = tracks[index];
+    local.style.display = 'block';
+    local.src = '/api/tracks/' + t.id + '/audio';
+    local.play().catch(() => {});
+    document.getElementById('nowTitle').textContent = t.title;
+    document.getElementById('nowSub').textContent = t.artist + ' · playing on this device';
+  }
+  local.onended = () => { if (localIndex >= 0 && localIndex + 1 < tracks.length) playHere(localIndex + 1); };
+
+  async function refreshState() {
+    if (mode.value === 'here') return;
+    try {
+      const s = await api('/api/state');
+      const img = document.getElementById('nowImg');
+      if (s.current) {
+        document.getElementById('nowTitle').textContent = s.current.title;
+        document.getElementById('nowSub').textContent = s.current.artist + ' · ' + fmt(s.positionSeconds) + ' / ' + fmt(s.durationSeconds);
+        img.src = s.current.hasBackground ? '/api/tracks/' + s.current.id + '/background' : '';
+      } else {
+        document.getElementById('nowTitle').textContent = 'Nothing playing';
+        document.getElementById('nowSub').textContent = '';
+        img.removeAttribute('src');
+      }
+      document.getElementById('nowProgress').value = s.durationSeconds > 0 ? s.positionSeconds / s.durationSeconds : 0;
+      document.getElementById('toggle').textContent = s.isPlaying ? '⏸' : '▶';
+      document.getElementById('nowMode').textContent = [s.mod !== 'None' ? s.mod : '', s.shuffle ? 'shuffle' : '', s.repeat !== 'Off' ? 'repeat ' + s.repeat.toLowerCase() : ''].filter(Boolean).join(' · ');
+      if (document.activeElement !== document.getElementById('vol')) document.getElementById('vol').value = s.volume;
+    } catch { document.getElementById('nowSub').textContent = 'Server unreachable'; }
+  }
+
+  document.getElementById('prev').onclick = () => api('/api/previous', { method: 'POST' });
+  document.getElementById('next').onclick = () => api('/api/next', { method: 'POST' });
+  document.getElementById('toggle').onclick = () => mode.value === 'here' ? (local.paused ? local.play() : local.pause()) : api('/api/toggle', { method: 'POST' });
+  document.getElementById('vol').oninput = e => api('/api/volume?value=' + e.target.value, { method: 'POST' });
+  document.getElementById('nowProgress').onclick = e => { const r = e.target.getBoundingClientRect(); const ratio = (e.clientX - r.left) / r.width; api('/api/state').then(s => api('/api/seek?seconds=' + (ratio * s.durationSeconds), { method: 'POST' })); };
+  let timer; q.oninput = () => { clearTimeout(timer); timer = setTimeout(load, 250); };
+  mode.onchange = () => { if (mode.value === 'pc') local.pause(); };
+  load(); refreshState(); setInterval(refreshState, 2000);
+})();
+</script>
+</body>
+</html>

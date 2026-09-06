@@ -25,7 +25,61 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
         this.imageLoader = imageLoader ?? throw new ArgumentNullException(nameof(imageLoader));
     }
 
+    private bool isFavourite;
+
     public UnifiedBeatmapSet Model { get; }
+
+    public bool IsFavourite
+    {
+        get => isFavourite;
+        set
+        {
+            if (SetProperty(ref isFavourite, value))
+            {
+                OnPropertyChanged(nameof(FavouriteMark));
+            }
+        }
+    }
+
+    public string FavouriteMark => IsFavourite ? "♥" : string.Empty;
+
+    private string? genre;
+    private string? language;
+
+    /// <summary>Genre and language fetched from the osu! API; empty until the user runs the fetch.</summary>
+    public string? Genre
+    {
+        get => genre;
+        set
+        {
+            if (SetProperty(ref genre, value))
+            {
+                notifyOnlineMetadata();
+            }
+        }
+    }
+
+    public string? Language
+    {
+        get => language;
+        set
+        {
+            if (SetProperty(ref language, value))
+            {
+                notifyOnlineMetadata();
+            }
+        }
+    }
+
+    public bool HasOnlineMetadata => !string.IsNullOrWhiteSpace(Genre) || !string.IsNullOrWhiteSpace(Language);
+
+    public string OnlineMetadataText => string.Join(" · ", new[] { Genre, Language }.Where(static value => !string.IsNullOrWhiteSpace(value)));
+
+    private void notifyOnlineMetadata()
+    {
+        OnPropertyChanged(nameof(HasOnlineMetadata));
+        OnPropertyChanged(nameof(OnlineMetadataText));
+    }
     public string Title => firstNonEmpty(Model.TitleUnicode, Model.Title, "(Untitled)");
     public string Artist => firstNonEmpty(Model.ArtistUnicode, Model.Artist, "(Unknown artist)");
     public string Creator => Model.Creator;

@@ -108,27 +108,40 @@ public sealed class StoryboardLoader(ILogger<StoryboardLoader>? logger = null) :
 
     private Dictionary<string, SKImage?> decodeTextures(IEnumerable<StoryboardObject> objects, IBeatmapFileResolver files, CancellationToken cancellationToken)
     {
-        var textures = new Dictionary<string, SKImage?>(StringComparer.OrdinalIgnoreCase);
-        long budget = max_texture_bytes;
-        foreach (var name in objects.SelectMany(imageNames).Distinct(StringComparer.OrdinalIgnoreCase))
+        // Large storyboards reference hundreds of images; decode them on all cores.
+        var names = objects.SelectMany(imageNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var decoded = new System.Collections.Concurrent.ConcurrentDictionary<string, SKImage?>(StringComparer.OrdinalIgnoreCase);
+        long used = 0;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (budget <= 0)
+            Parallel.ForEach(names, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount) }, name =>
             {
-                textures[name] = null;
-                continue;
+                if (Interlocked.Read(ref used) >= max_texture_bytes)
+                {
+                    decoded[name] = null;
+                    return;
+                }
+
+                var image = decode(resolveImage(files, name));
+                if (image is not null)
+                {
+                    Interlocked.Add(ref used, (long)image.Width * image.Height * 4);
+                }
+
+                decoded[name] = image;
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            foreach (var image in decoded.Values)
+            {
+                image?.Dispose();
             }
 
-            var image = decode(resolveImage(files, name));
-            if (image is not null)
-            {
-                budget -= (long)image.Width * image.Height * 4;
-            }
-
-            textures[name] = image;
+            throw;
         }
 
-        return textures;
+        return new Dictionary<string, SKImage?>(decoded, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<string> imageNames(StoryboardObject storyboardObject)

@@ -14,6 +14,8 @@ internal sealed class UnavailableAudioEngine(AudioEngineException error) : IAudi
     public TimeSpan TotalTime => TimeSpan.Zero;
     public float Volume { get => volume; set => volume = Math.Clamp(value, 0f, 1f); }
     public OsuAudioMod Mod { get => mod; set => mod = value; }
+    public IReadOnlyList<float> EqualizerGains { get; private set; } = new float[Equalizer.BandCount];
+    public void SetEqualizer(IReadOnlyList<float> gainsDb) => EqualizerGains = Equalizer.Normalize(gainsDb);
     public Task LoadAsync(string audioFilePath) => Task.FromException(new AudioEngineException(error.Message, error));
     public void Play() { }
     public void Pause() { }

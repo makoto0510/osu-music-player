@@ -51,6 +51,8 @@ public sealed class BassHitsoundPlayer : IHitsoundPlayer
         }
     }
 
+    public event EventHandler<HitsoundEvent>? HitPlayed;
+
     public bool IsEnabled
     {
         get => enabled;
@@ -246,8 +248,16 @@ public sealed class BassHitsoundPlayer : IHitsoundPlayer
 
         var played = 0;
         var masterVolume = volume * engine.Volume;
+        // Nightcore and Daycore pitch the samples the same way they pitch the track.
+        var pitchRatio = engine.Mod switch
+        {
+            OsuAudioMod.NC => 1.5f,
+            OsuAudioMod.DC => 0.75f,
+            _ => 1f,
+        };
         foreach (var hit in due)
         {
+            HitPlayed?.Invoke(this, hit);
             foreach (var sample in hit.Samples)
             {
                 if (!currentSamples.TryGetValue(HitsoundSampleResolver.CacheKey(sample), out var handle) || handle == 0)
@@ -262,6 +272,11 @@ public sealed class BassHitsoundPlayer : IHitsoundPlayer
                 }
 
                 native.SetVolume(channel, (float)Math.Clamp(sample.Volume * masterVolume, 0, 1));
+                if (pitchRatio != 1f)
+                {
+                    native.SetFrequencyRatio(channel, pitchRatio);
+                }
+
                 if (native.Play(channel))
                 {
                     played++;

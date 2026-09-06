@@ -26,6 +26,7 @@
 - https://github.com/MikiraSora/ReOsuStoryboardPlayerを利用してストーリーボードを再生可能
 - バックグラウンド動画を再生可能
 - 譜面プレビュー機能
+- ビートマップ難易度プレビュー機能
 - DT/NC/HT/DC modを適用可能
 - OBSオーバーレイ
 - ミュージックサーバー

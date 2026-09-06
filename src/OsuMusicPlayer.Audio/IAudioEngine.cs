@@ -16,6 +16,12 @@ public interface IAudioEngine : IDisposable
 
     OsuAudioMod Mod { get; set; }
 
+    /// <summary>Current equalizer gains in dB, one per band in <see cref="Equalizer.CenterFrequencies"/>.</summary>
+    IReadOnlyList<float> EqualizerGains { get; }
+
+    /// <summary>Applies equalizer gains to the current and every future stream.</summary>
+    void SetEqualizer(IReadOnlyList<float> gainsDb);
+
     Task LoadAsync(string audioFilePath);
 
     void Play();

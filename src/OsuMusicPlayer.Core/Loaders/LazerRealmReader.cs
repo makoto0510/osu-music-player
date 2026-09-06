@@ -38,15 +38,95 @@ internal sealed record LazerBeatmapSetData(
     IReadOnlyDictionary<string, string> FileHashes,
     IReadOnlyList<LazerBeatmapData> Beatmaps);
 
+internal sealed record LazerCollectionData(string Name, IReadOnlyList<string> Md5Hashes);
+
+/// <summary>A lazer skin: its name and the file-name to hash map of its files.</summary>
+internal sealed record LazerSkinData(Guid Id, string Name, bool Protected, IReadOnlyDictionary<string, string> FileHashes);
+
 internal interface ILazerRealmReader
 {
     Task<IReadOnlyList<LazerBeatmapSetData>> ReadAsync(string realmPath, CancellationToken cancellationToken);
 }
 
-internal sealed class LazerRealmReader : ILazerRealmReader
+internal interface ILazerCollectionReader
+{
+    Task<IReadOnlyList<LazerCollectionData>> ReadCollectionsAsync(string realmPath, CancellationToken cancellationToken);
+}
+
+internal interface ILazerSkinReader
+{
+    LazerSkinData? ReadSkin(string realmPath, Guid skinId);
+}
+
+internal sealed class LazerRealmReader : ILazerRealmReader, ILazerCollectionReader, ILazerSkinReader
 {
     public Task<IReadOnlyList<LazerBeatmapSetData>> ReadAsync(string realmPath, CancellationToken cancellationToken) =>
         Task.Run(() => read(realmPath, cancellationToken), cancellationToken);
+
+    public Task<IReadOnlyList<LazerCollectionData>> ReadCollectionsAsync(string realmPath, CancellationToken cancellationToken) =>
+        Task.Run(() => readCollections(realmPath, cancellationToken), cancellationToken);
+
+    public LazerSkinData? ReadSkin(string realmPath, Guid skinId)
+    {
+        var configuration = new RealmConfiguration(realmPath) { IsReadOnly = true, IsDynamic = true };
+        using var realm = Realm.GetInstance(configuration);
+        foreach (var skin in realm.DynamicApi.All("Skin"))
+        {
+            try
+            {
+                if (get(skin, "ID", Guid.Empty) != skinId || get(skin, "DeletePending", false))
+                {
+                    continue;
+                }
+
+                var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var usage in skin.DynamicApi.GetList<IRealmObjectBase>("Files"))
+                {
+                    try
+                    {
+                        var filename = get(usage, "Filename", string.Empty);
+                        var hash = get(usage.DynamicApi.Get<IRealmObjectBase>("File"), "Hash", string.Empty);
+                        if (!string.IsNullOrWhiteSpace(filename) && !string.IsNullOrWhiteSpace(hash))
+                        {
+                            files[filename] = hash;
+                        }
+                    }
+                    catch (Exception exception) when (isSchemaOrDataError(exception))
+                    {
+                    }
+                }
+
+                return new LazerSkinData(skinId, get(skin, "Name", string.Empty), get(skin, "Protected", false), files);
+            }
+            catch (Exception exception) when (isSchemaOrDataError(exception))
+            {
+            }
+        }
+
+        return null;
+    }
+
+    private static IReadOnlyList<LazerCollectionData> readCollections(string realmPath, CancellationToken cancellationToken)
+    {
+        var configuration = new RealmConfiguration(realmPath) { IsReadOnly = true, IsDynamic = true };
+        cancellationToken.ThrowIfCancellationRequested();
+        using var realm = Realm.GetInstance(configuration);
+        var results = new List<LazerCollectionData>();
+        foreach (var collection in realm.DynamicApi.All("BeatmapCollection"))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var hashes = collection.DynamicApi.GetList<string>("BeatmapMD5Hashes").ToArray();
+                results.Add(new LazerCollectionData(get(collection, "Name", string.Empty), hashes));
+            }
+            catch (Exception exception) when (isSchemaOrDataError(exception))
+            {
+            }
+        }
+
+        return results;
+    }
 
     private static IReadOnlyList<LazerBeatmapSetData> read(string realmPath, CancellationToken cancellationToken)
     {

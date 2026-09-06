@@ -92,6 +92,8 @@ public sealed class HitsoundPlayerTests
 
         public int DeviceLatencyMs => 0;
         public ManagedBass.Errors LastError => ManagedBass.Errors.OK;
+        public List<(int Channel, float Ratio)> Ratios { get; } = [];
+        public bool SetFrequencyRatio(int channel, float ratio) { Ratios.Add((channel, ratio)); return true; }
         public int LoadedCount { get; private set; }
         public int FreedCount { get; private set; }
         public List<(int Channel, float Volume)> Played { get; } = [];
@@ -113,6 +115,8 @@ public sealed class HitsoundPlayerTests
         public TimeSpan TotalTime => TimeSpan.FromMinutes(2);
         public float Volume { get; set; } = 1;
         public OsuAudioMod Mod { get; set; }
+        public IReadOnlyList<float> EqualizerGains { get; private set; } = new float[Equalizer.BandCount];
+        public void SetEqualizer(IReadOnlyList<float> gainsDb) => EqualizerGains = Equalizer.Normalize(gainsDb);
         public Task LoadAsync(string audioFilePath) => Task.CompletedTask;
         public void Play() { }
         public void Pause() { }

@@ -18,6 +18,9 @@ internal interface IBassSampleNative
     bool SetVolume(int channel, float volume);
 
     bool Play(int channel);
+
+    /// <summary>Scales the channel's playback frequency (1 = original pitch).</summary>
+    bool SetFrequencyRatio(int channel, float ratio);
 }
 
 internal sealed class BassSampleNative : IBassSampleNative
@@ -51,4 +54,14 @@ internal sealed class BassSampleNative : IBassSampleNative
     public bool SetVolume(int channel, float volume) => Bass.ChannelSetAttribute(channel, ChannelAttribute.Volume, volume);
 
     public bool Play(int channel) => Bass.ChannelPlay(channel);
+
+    public bool SetFrequencyRatio(int channel, float ratio)
+    {
+        if (!Bass.ChannelGetAttribute(channel, ChannelAttribute.Frequency, out float frequency) || frequency <= 0)
+        {
+            return false;
+        }
+
+        return Bass.ChannelSetAttribute(channel, ChannelAttribute.Frequency, frequency * ratio);
+    }
 }

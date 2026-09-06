@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../OsuMusicPlayer.Core/OsuMusicPlayer.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\index.html" LogicalName="index.html" />
+    <EmbeddedResource Include="wwwroot\overlay.html" LogicalName="overlay.html" />
+  </ItemGroup>
+</Project>

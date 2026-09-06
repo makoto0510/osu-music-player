@@ -38,6 +38,11 @@ internal interface IBassNative
     bool SetPosition(int stream, long position);
 
     int SetEndSync(int stream, SyncProcedure procedure, nint user);
+
+    /// <summary>Attaches a BASS_FX peaking equalizer to the stream and returns its handle (0 on failure).</summary>
+    int AddPeakEq(int stream);
+
+    bool SetPeakEqBand(int effect, int band, float centerHz, float bandwidthOctaves, float gainDb);
 }
 
 internal sealed class BassNative : IBassNative
@@ -79,4 +84,17 @@ internal sealed class BassNative : IBassNative
 
     public int SetEndSync(int stream, SyncProcedure procedure, nint user) =>
         Bass.ChannelSetSync(stream, SyncFlags.End | SyncFlags.Onetime, 0, procedure, user);
+
+    public int AddPeakEq(int stream) => Bass.ChannelSetFX(stream, EffectType.PeakEQ, 0);
+
+    public bool SetPeakEqBand(int effect, int band, float centerHz, float bandwidthOctaves, float gainDb) =>
+        Bass.FXSetParameters(effect, new PeakEQParameters
+        {
+            lBand = band,
+            fCenter = centerHz,
+            fBandwidth = bandwidthOctaves,
+            fQ = 0f,
+            fGain = gainDb,
+            lChannel = FXChannelFlags.All,
+        });
 }

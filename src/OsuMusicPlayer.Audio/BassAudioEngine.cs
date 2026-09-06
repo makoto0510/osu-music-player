@@ -19,6 +19,8 @@ public sealed class BassAudioEngine : IAudioEngine
     private long generation;
     private long endedGeneration = -1;
     private float volume = 1f;
+    private float[] equalizerGains = new float[Equalizer.BandCount];
+    private int equalizerEffect;
     private OsuAudioMod mod;
     private bool disposed;
 
@@ -112,6 +114,31 @@ public sealed class BassAudioEngine : IAudioEngine
         }
     }
 
+    public IReadOnlyList<float> EqualizerGains
+    {
+        get
+        {
+            lock (syncRoot)
+            {
+                return equalizerGains.ToArray();
+            }
+        }
+    }
+
+    public void SetEqualizer(IReadOnlyList<float> gainsDb)
+    {
+        var normalized = Equalizer.Normalize(gainsDb);
+        lock (syncRoot)
+        {
+            throwIfDisposed();
+            equalizerGains = normalized;
+            if (stream != 0)
+            {
+                applyEqualizerLocked(stream);
+            }
+        }
+    }
+
     public OsuAudioMod Mod
     {
         get
@@ -187,6 +214,7 @@ public sealed class BassAudioEngine : IAudioEngine
                 generation++;
                 endedGeneration = -1;
                 applyModLocked(stream, mod);
+                applyEqualizerLocked(stream);
                 bass.SetAttribute(stream, ChannelAttribute.Volume, volume);
                 if (bass.SetEndSync(stream, endSyncProcedure, (nint)generation) == 0)
                 {
@@ -349,6 +377,32 @@ public sealed class BassAudioEngine : IAudioEngine
         }
     }
 
+    /// <summary>
+    /// One BASS_FX peaking EQ effect carries all ten bands. A flat curve removes nothing;
+    /// the effect simply has 0 dB on every band, which is inaudible and keeps the code simple.
+    /// </summary>
+    private void applyEqualizerLocked(int channel)
+    {
+        if (equalizerEffect == 0)
+        {
+            equalizerEffect = bass.AddPeakEq(channel);
+            if (equalizerEffect == 0)
+            {
+                logger.LogWarning("Could not create the BASS_FX equalizer: {BassError}.", bass.LastError);
+                return;
+            }
+        }
+
+        for (var band = 0; band < Equalizer.BandCount; band++)
+        {
+            if (!bass.SetPeakEqBand(equalizerEffect, band, Equalizer.CenterFrequencies[band], 1f, equalizerGains[band]))
+            {
+                logger.LogWarning("Could not set equalizer band {Band}: {BassError}.", band, bass.LastError);
+                return;
+            }
+        }
+    }
+
     private void onPlaybackEnded(int handle, int channel, int data, nint user)
     {
         bool raiseEvent;
@@ -420,6 +474,7 @@ public sealed class BassAudioEngine : IAudioEngine
         bass.Stop(stream);
         bass.FreeStream(stream);
         stream = 0;
+        equalizerEffect = 0; // effects die with their stream
     }
 
     private AudioEngineException createBassException(string operation) =>

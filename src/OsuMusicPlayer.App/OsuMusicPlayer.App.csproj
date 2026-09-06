@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="../OsuMusicPlayer.Audio/OsuMusicPlayer.Audio.csproj" />
     <ProjectReference Include="../OsuMusicPlayer.Core/OsuMusicPlayer.Core.csproj" />
+    <ProjectReference Include="../OsuMusicPlayer.Server/OsuMusicPlayer.Server.csproj" />
   </ItemGroup>
   <ItemGroup Condition="('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))) or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">
     <None Include="../../third_party/native/win-x64/bass.dll"

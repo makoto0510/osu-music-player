@@ -9,6 +9,9 @@ namespace OsuMusicPlayer.Audio;
 /// </summary>
 public interface IHitsoundPlayer : IDisposable
 {
+    /// <summary>Raised (on the audio worker thread) for every hit whose time has come, so storyboard triggers can follow.</summary>
+    event EventHandler<HitsoundEvent>? HitPlayed;
+
     bool IsEnabled { get; set; }
 
     /// <summary>Master hit sound volume from 0 to 1, applied on top of the engine volume.</summary>

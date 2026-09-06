@@ -589,6 +589,238 @@ public sealed class MainWindowViewModelTests
         return string.Join(Environment.NewLine, lines);
     }
 
+    [Fact]
+    public async Task Favourites_ToggleFilterAndPersist()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        await viewModel.InitializeAsync();
+        viewModel.ReplaceTracksForTesting([createSet("A", "Artist", "Mapper", "", 100, 100), createSet("B", "Artist", "Mapper", "", 100, 100)]);
+        viewModel.SelectedTrack = viewModel.Tracks[1];
+
+        viewModel.ToggleFavouriteCommand.Execute(null);
+
+        viewModel.IsDetailFavourite.Should().BeTrue();
+        viewModel.Tracks[1].FavouriteMark.Should().Be("♥");
+        viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Favourites).Count.Should().Be(1);
+        viewModel.SelectedView = viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Favourites);
+        viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("B");
+
+        viewModel.BuildSettings().Favourites.Should().Equal(viewModel.Tracks[0].Model.Id);
+        await viewModel.PendingSave;
+        environment.Settings.Current.Favourites.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Playlists_CreateAddReorderRemoveAndRename()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        await viewModel.InitializeAsync();
+        viewModel.ReplaceTracksForTesting([
+            createSet("A", "Artist", "Mapper", "", 100, 100),
+            createSet("B", "Artist", "Mapper", "", 100, 100),
+            createSet("C", "Artist", "Mapper", "", 100, 100),
+        ]);
+
+        viewModel.NewPlaylistName = "Work";
+        viewModel.CreatePlaylistCommand.Execute(null);
+        viewModel.Playlists.Should().ContainSingle().Which.Name.Should().Be("Work");
+        viewModel.IsPlaylistViewSelected.Should().BeTrue("a new playlist becomes the current view");
+        viewModel.Tracks.Should().BeEmpty();
+
+        viewModel.SelectedView = viewModel.Views[0];
+        foreach (var title in new[] { "C", "A", "B" })
+        {
+            viewModel.SelectedTrack = viewModel.Tracks.Single(track => track.Title == title);
+            viewModel.AddToPlaylistCommand.Execute(null);
+        }
+
+        viewModel.AddToPlaylistCommand.Execute(null);
+        viewModel.Playlists[0].Count.Should().Be(3, "duplicates are ignored");
+
+        viewModel.SelectedView = viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Playlist);
+        viewModel.Tracks.Select(static track => track.Title).Should().Equal(new[] { "C", "A", "B" }, "playlists keep insertion order regardless of the sort selector");
+
+        viewModel.SelectedTrack = viewModel.Tracks[2];
+        viewModel.MoveTrackUpCommand.Execute(null);
+        viewModel.Tracks.Select(static track => track.Title).Should().Equal("C", "B", "A");
+
+        viewModel.RemoveFromPlaylistCommand.Execute(viewModel.Tracks[0]);
+        viewModel.Tracks.Select(static track => track.Title).Should().Equal("B", "A");
+
+        viewModel.NewPlaylistName = "Renamed";
+        viewModel.RenamePlaylistCommand.Execute(null);
+        viewModel.SelectedView!.Name.Should().Be("Renamed");
+
+        await viewModel.PendingSave;
+        environment.Settings.Current.Playlists.Should().ContainSingle().Which.Name.Should().Be("Renamed");
+
+        viewModel.DeletePlaylistCommand.Execute(null);
+        viewModel.Playlists.Should().BeEmpty();
+        viewModel.SelectedView!.Kind.Should().Be(LibraryViewKind.All);
+    }
+
+    [Fact]
+    public async Task Settings_RestoreOnStartupIncludingPlaylistsEqualizerAndLastTrack()
+    {
+        using var viewModel = createViewModel(out var audio, out var environment);
+        var set = createSet("Restored", "Artist", "Mapper", "", 150, 100);
+        environment.Loader.Sets = [set, createSet("Other", "Artist", "Mapper", "", 150, 100)];
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Settings.Current = new AppSettings
+        {
+            Volume = 0.3,
+            Mod = OsuAudioMod.NC,
+            Shuffle = true,
+            Repeat = RepeatMode.All,
+            HitsoundsEnabled = true,
+            HitsoundOffsetMs = 25,
+            EqualizerGains = Equalizer.Presets["Rock"],
+            Favourites = [set.Id],
+            Playlists = [new PlaylistSetting(Guid.NewGuid(), "Saved", [set.Id])],
+            LastPlayback = new PlaybackStateSetting(set.Id, 42, [set.Id]),
+        };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.Volume.Should().Be(0.3);
+        audio.Mod.Should().Be(OsuAudioMod.NC);
+        viewModel.IsShuffleEnabled.Should().BeTrue();
+        viewModel.RepeatMode.Should().Be(RepeatMode.All);
+        environment.Hitsounds.IsEnabled.Should().BeTrue();
+        environment.Hitsounds.OffsetMs.Should().Be(25);
+        viewModel.SelectedEqualizerPreset.Should().Be("Rock");
+        audio.EqualizerGains.Should().Equal(Equalizer.Presets["Rock"]);
+        viewModel.Playlists.Should().ContainSingle().Which.Count.Should().Be(1);
+        viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Favourites).Count.Should().Be(1);
+        viewModel.CurrentTrack!.Title.Should().Be("Restored");
+        viewModel.IsPlaying.Should().BeFalse("the last track is restored paused");
+        audio.LastSeek.Should().Be(TimeSpan.FromSeconds(42));
+        viewModel.Queue.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Equalizer_PresetAppliesGainsAndManualChangeMakesItCustom()
+    {
+        using var viewModel = createViewModel(out var audio);
+
+        viewModel.SelectedEqualizerPreset = "Bass Boost";
+        audio.EqualizerGains.Should().Equal(Equalizer.Presets["Bass Boost"]);
+        viewModel.EqualizerPresetText.Should().Be("Bass Boost");
+
+        viewModel.EqualizerBands[9].Gain = 3;
+        audio.EqualizerGains[9].Should().Be(3f);
+        viewModel.EqualizerPresetText.Should().Be("Custom");
+
+        viewModel.ResetEqualizerCommand.Execute(null);
+        audio.EqualizerGains.Should().AllBeEquivalentTo(0f);
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task Collections_BecomeViewsResolvedByBeatmapHash()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        var set = createSet("In collection", "Artist", "Mapper", "", 150, 100) with
+        {
+            Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Normal", Tags = "", Md5Hash = "abc" }],
+        };
+        environment.Loader.Sets = [set, createSet("Other", "Artist", "Mapper", "", 150, 100)];
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Collections.Collections = [new BeatmapCollectionInfo("Practice", OsuInstallationKind.Lazer, ["ABC", "missing"])];
+
+        await viewModel.InitializeAsync();
+
+        var view = viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Collection);
+        view.Name.Should().Be("Practice");
+        view.Count.Should().Be(1);
+        viewModel.SelectedView = view;
+        viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("In collection");
+    }
+
+    [Fact]
+    public void Search_SupportsFieldSyntaxAndBrowseChips()
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.ReplaceTracksForTesting([
+            createSet("Song A", "Camellia", "Mapper One", "electronic speedcore", 200, 100),
+            createSet("Song B", "YOASOBI", "Mapper Two", "anime jpop", 166, 100),
+            createSet("Song C", "Camellia", "Mapper Two", "electronic", 180, 100),
+        ]);
+
+        viewModel.SearchText = "artist:camellia bpm:>190";
+        viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("Song A");
+
+        viewModel.TopArtists[0].Label.Should().Be("Camellia");
+        viewModel.TopArtists[0].Count.Should().Be(2);
+        viewModel.SelectBrowseCommand.Execute(viewModel.TopTags.Single(static tag => tag.Label == "electronic"));
+        viewModel.SearchText.Should().Be("tag:\"electronic\"");
+        viewModel.Tracks.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void OpenOnWeb_UsesTheOnlineSetId()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        viewModel.ReplaceTracksForTesting([createSet("Online", "Artist", "Mapper", "", 100, 100) with { OnlineId = 1234 }, createSet("Local", "Artist", "Mapper", "", 100, 100)]);
+
+        viewModel.SelectedTrack = viewModel.Tracks.Single(static track => track.Title == "Online");
+        viewModel.CanOpenOnWeb.Should().BeTrue();
+        viewModel.OpenOnWebCommand.Execute(null);
+        environment.Links.Opened.Should().ContainSingle().Which.ToString().Should().Be("https://osu.ppy.sh/beatmapsets/1234");
+
+        viewModel.SelectedTrack = viewModel.Tracks.Single(static track => track.Title == "Local");
+        viewModel.CanOpenOnWeb.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SmartPlaylists_SaveTheSearchAndStayLive()
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.ReplaceTracksForTesting([
+            createSet("Fast", "Artist", "Mapper", "electronic", 220, 100),
+            createSet("Slow", "Artist", "Mapper", "electronic", 120, 100),
+        ]);
+
+        viewModel.SearchText = "tag:electronic bpm:>200";
+        viewModel.NewPlaylistName = "Speed";
+        viewModel.CreateSmartPlaylistCommand.Execute(null);
+
+        viewModel.SearchText.Should().BeEmpty("the query now lives in the smart playlist");
+        viewModel.IsSmartPlaylistViewSelected.Should().BeTrue();
+        viewModel.SelectedView!.Name.Should().Be("Speed");
+        viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("Fast");
+        viewModel.BuildSettings().SmartPlaylists.Should().ContainSingle().Which.Query.Should().Be("tag:electronic bpm:>200");
+
+        viewModel.DeleteSmartPlaylistCommand.Execute(null);
+        viewModel.SmartPlaylists.Should().BeEmpty();
+        viewModel.SelectedView!.Kind.Should().Be(LibraryViewKind.All);
+    }
+
+    [Fact]
+    public async Task ExportView_WritesCollectionDbOutsideOsuFolders()
+    {
+        using var directory = new TestDirectory();
+        var target = Path.Combine(directory.Path, "out", "collection.db");
+        var saver = new FakeFileSaver { NextPath = target };
+        using var viewModel = createViewModel(out _, out var environment, saver);
+        viewModel.ReplaceTracksForTesting([createSet("A", "Artist", "Mapper", "", 100, 100) with
+        {
+            Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "N", Tags = "", Md5Hash = "abc" }],
+        }]);
+
+        await viewModel.ExportViewAsCollectionCommand.ExecuteAsync(null);
+
+        File.Exists(target).Should().BeTrue();
+        viewModel.LibraryStatusText.Should().Contain("1 譜面");
+        environment.Links.Opened.Should().BeEmpty();
+    }
+
+    private sealed class FakeFileSaver : IFileSaver
+    {
+        public string? NextPath { get; set; }
+        public Task<string?> PickSavePathAsync(string title, string suggestedFileName, CancellationToken cancellationToken = default) => Task.FromResult(NextPath);
+    }
+
     private static string createLazerInstallation(TestDirectory directory, string name)
     {
         directory.CreateFile(Path.Combine(name, "client.realm"));
@@ -597,12 +829,12 @@ public sealed class MainWindowViewModelTests
 
     private static MainWindowViewModel createViewModel(out FakeAudioEngine audio) => createViewModel(out audio, out _);
 
-    private static MainWindowViewModel createViewModel(out FakeAudioEngine audio, out TestEnvironment environment)
+    private static MainWindowViewModel createViewModel(out FakeAudioEngine audio, out TestEnvironment environment, IFileSaver? fileSaver = null)
     {
         audio = new FakeAudioEngine();
         environment = new TestEnvironment();
         var manager = new BeatmapManager([environment.Loader], new DuplicateDetector());
-        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard);
+        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver);
     }
 
     private static UnifiedBeatmapSet createSet(string title, string artist, string creator, string tags, double bpm, int seconds) => new()
@@ -650,10 +882,26 @@ public sealed class MainWindowViewModelTests
         public FakeVideoPlayer Video { get; } = new();
         public FakeHitsoundPlayer Hitsounds { get; } = new();
         public FakeStoryboardLoader Storyboard { get; } = new();
+        public FakeLinkOpener Links { get; } = new();
+        public FakeCollectionLoader Collections { get; } = new();
+    }
+
+    private sealed class FakeLinkOpener : ILinkOpener
+    {
+        public List<Uri> Opened { get; } = [];
+        public bool Open(Uri uri) { Opened.Add(uri); return true; }
+    }
+
+    private sealed class FakeCollectionLoader : ICollectionLoader
+    {
+        public OsuInstallationKind Kind => OsuInstallationKind.Lazer;
+        public IReadOnlyList<BeatmapCollectionInfo> Collections { get; set; } = [];
+        public Task<IReadOnlyList<BeatmapCollectionInfo>> LoadAsync(string installationPath, CancellationToken cancellationToken = default) => Task.FromResult(Collections);
     }
 
     private sealed class FakeHitsoundPlayer : IHitsoundPlayer
     {
+        public event EventHandler<HitsoundEvent>? HitPlayed { add { } remove { } }
         public bool IsEnabled { get; set; }
         public float Volume { get; set; } = 1;
         public int OffsetMs { get; set; }
@@ -785,6 +1033,8 @@ public sealed class MainWindowViewModelTests
         public TimeSpan TotalTime { get; private set; } = TimeSpan.FromSeconds(120);
         public float Volume { get; set; } = 1;
         public OsuAudioMod Mod { get; set; }
+        public IReadOnlyList<float> EqualizerGains { get; private set; } = new float[Equalizer.BandCount];
+        public void SetEqualizer(IReadOnlyList<float> gainsDb) => EqualizerGains = Equalizer.Normalize(gainsDb);
         public List<string> LoadedPaths { get; } = [];
         public Exception? LoadError { get; set; }
         public TimeSpan LastSeek { get; private set; }

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.Core.Models;
 
 namespace OsuMusicPlayer.Core.Hitsounds;
@@ -10,13 +11,20 @@ public interface IHitsoundSampleSourceFactory
 }
 
 /// <summary>
-/// Sample chain: beatmap files, then the osu!stable skin currently selected in the
-/// user's config, then osu!lazer's bundled default samples. Nothing is ever written.
+/// Sample chain: beatmap files, then the skin the user selected in osu!stable and in
+/// osu!lazer, then osu!lazer's bundled default samples (the argon set when the lazer
+/// skin is argon-based). Nothing is ever written.
 /// </summary>
 public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceFactory
 {
+    private const string classic_prefix = "osu.Game.Resources.Samples.Gameplay.";
+    private const string argon_prefix = "osu.Game.Resources.Samples.Gameplay.Argon.";
+    private const string argon_pro_prefix = "osu.Game.Resources.Samples.Gameplay.ArgonPro.";
+
     private readonly Func<string?> lazerResourcesLocator;
+    private readonly ILazerSkinReader skinReader;
     private readonly Dictionary<string, ISampleFileSource> sharedSources = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LazerSkinData?> skinCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly object sync = new();
 
     public HitsoundSampleSourceFactory()
@@ -25,8 +33,14 @@ public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceF
     }
 
     public HitsoundSampleSourceFactory(Func<string?> lazerResourcesLocator)
+        : this(lazerResourcesLocator, new LazerRealmReader())
+    {
+    }
+
+    internal HitsoundSampleSourceFactory(Func<string?> lazerResourcesLocator, ILazerSkinReader skinReader)
     {
         this.lazerResourcesLocator = lazerResourcesLocator ?? throw new ArgumentNullException(nameof(lazerResourcesLocator));
+        this.skinReader = skinReader ?? throw new ArgumentNullException(nameof(skinReader));
     }
 
     public HitsoundSampleResolver Create(UnifiedBeatmapSet set, IEnumerable<OsuInstallation> installations)
@@ -35,6 +49,7 @@ public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceF
         ArgumentNullException.ThrowIfNull(installations);
 
         var fallbacks = new List<ISampleFileSource>();
+        var resourcePrefix = classic_prefix;
         foreach (var installation in installations)
         {
             if (installation.Kind == OsuInstallationKind.Stable && OperatingSystem.IsWindows())
@@ -45,12 +60,32 @@ public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceF
                     fallbacks.Add(shared(skin, static path => new DirectorySampleFileSource(path)));
                 }
             }
+            else if (installation.Kind == OsuInstallationKind.Lazer)
+            {
+                var skin = findLazerSkin(installation.RootPath);
+                if (skin is null)
+                {
+                    continue;
+                }
+
+                if (skin.FileHashes.Count > 0)
+                {
+                    var filesPath = Path.Combine(installation.RootPath, "files");
+                    fallbacks.Add(shared("lazer-skin:" + skin.Id, _ => new BeatmapSampleFileSource(new LazerHashFileResolver(filesPath, skin.FileHashes))));
+                }
+
+                resourcePrefix = ResourcePrefixForSkinName(skin.Name);
+            }
         }
 
         var resources = lazerResourcesLocator();
         if (resources is not null)
         {
-            fallbacks.Add(shared(resources, static path => new ManagedResourceSampleFileSource(path)));
+            fallbacks.Add(shared(resources + "|" + resourcePrefix, _ => new ManagedResourceSampleFileSource(resources, resourcePrefix)));
+            if (resourcePrefix != classic_prefix)
+            {
+                fallbacks.Add(shared(resources + "|" + classic_prefix, _ => new ManagedResourceSampleFileSource(resources, classic_prefix)));
+            }
         }
 
         return new HitsoundSampleResolver(set.Files is null ? null : new BeatmapSampleFileSource(set.Files), fallbacks);
@@ -96,6 +131,82 @@ public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceF
         }
 
         return null;
+    }
+
+    /// <summary>Reads the active skin id from lazer's <c>game.ini</c>.</summary>
+    public static Guid? FindLazerSkinId(string lazerRoot)
+    {
+        try
+        {
+            var config = Path.Combine(lazerRoot, "game.ini");
+            if (!File.Exists(config))
+            {
+                return null;
+            }
+
+            foreach (var line in File.ReadLines(config))
+            {
+                var match = SkinLinePattern().Match(line);
+                if (match.Success && Guid.TryParse(match.Groups["name"].Value.Trim(), out var id))
+                {
+                    return id;
+                }
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+        }
+
+        return null;
+    }
+
+    /// <summary>Picks which bundled sample set matches a lazer skin name (argon skins ship their own sounds).</summary>
+    public static string ResourcePrefixForSkinName(string? skinName)
+    {
+        if (string.IsNullOrWhiteSpace(skinName) || !skinName.Contains("argon", StringComparison.OrdinalIgnoreCase))
+        {
+            return classic_prefix;
+        }
+
+        return skinName.Contains("pro", StringComparison.OrdinalIgnoreCase) ? argon_pro_prefix : argon_prefix;
+    }
+
+    private LazerSkinData? findLazerSkin(string lazerRoot)
+    {
+        var skinId = FindLazerSkinId(lazerRoot);
+        if (skinId is null)
+        {
+            return null;
+        }
+
+        var key = lazerRoot + "|" + skinId;
+        lock (sync)
+        {
+            if (skinCache.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+        }
+
+        LazerSkinData? skin = null;
+        try
+        {
+            var realmPath = Path.Combine(lazerRoot, "client.realm");
+            if (File.Exists(realmPath))
+            {
+                skin = skinReader.ReadSkin(realmPath, skinId.Value);
+            }
+        }
+        catch (Exception exception) when (exception is Realms.Exceptions.RealmException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+        }
+
+        lock (sync)
+        {
+            skinCache[key] = skin;
+        }
+
+        return skin;
     }
 
     private ISampleFileSource shared(string key, Func<string, ISampleFileSource> create)

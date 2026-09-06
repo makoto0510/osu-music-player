@@ -1,4 +1,6 @@
+using OsuMusicPlayer.Core.Models;
 using ReOsuStoryboardPlayer.Core.Base;
+using ReOsuStoryboardPlayer.Core.Commands.Group.Trigger;
 using ReOsuStoryboardPlayer.Core.Kernel;
 using SkiaSharp;
 
@@ -31,6 +33,7 @@ public readonly record struct StoryboardSpriteFrame(
 public sealed class StoryboardSession : IDisposable
 {
     private readonly StoryboardUpdater updater;
+    private readonly List<StoryboardObject> triggerObjects;
     private readonly Dictionary<string, SKImage?> textures;
     private readonly List<StoryboardSpriteFrame> frame = [];
     private readonly object sync = new();
@@ -45,7 +48,81 @@ public sealed class StoryboardSession : IDisposable
         ObjectCount = objects.Count;
         TextureCount = textures.Values.Count(static image => image is not null);
         Widescreen = widescreen;
+        triggerObjects = objects.Where(static item => item.ContainTrigger).ToList();
         updater = new StoryboardUpdater(objects);
+    }
+
+    /// <summary>
+    /// Fires the storyboard's HitSound triggers for a hit that just played. The parser
+    /// registers every trigger sprite with the shared listener, so this session's sprites
+    /// react and stale ones are removed on dispose.
+    /// </summary>
+    public void Trigger(HitsoundEvent hit)
+    {
+        ArgumentNullException.ThrowIfNull(hit);
+        if (triggerObjects.Count == 0)
+        {
+            return;
+        }
+
+        var soundType = HitObjectSoundType.None;
+        var sampleSet = SampleSetType.None;
+        var additions = SampleSetType.None;
+        var customSet = CustomSampleSetType.Default;
+        foreach (var sample in hit.Samples)
+        {
+            var set = sample.SampleSetName switch
+            {
+                "soft" => SampleSetType.Soft,
+                "drum" => SampleSetType.Drum,
+                _ => SampleSetType.Normal,
+            };
+            switch (sample.SoundName)
+            {
+                case "hitnormal":
+                case "custom":
+                    soundType |= HitObjectSoundType.Normal;
+                    sampleSet = set;
+                    break;
+                case "hitwhistle":
+                    soundType |= HitObjectSoundType.Whistle;
+                    additions = set;
+                    break;
+                case "hitfinish":
+                    soundType |= HitObjectSoundType.Finish;
+                    additions = set;
+                    break;
+                case "hitclap":
+                    soundType |= HitObjectSoundType.Clap;
+                    additions = set;
+                    break;
+                default:
+                    continue; // slider ticks do not trigger storyboards
+            }
+
+            customSet = sample.CustomIndex switch
+            {
+                1 => CustomSampleSetType.Custom1,
+                2 => CustomSampleSetType.Custom2,
+                _ => CustomSampleSetType.Default,
+            };
+        }
+
+        if (soundType == HitObjectSoundType.None)
+        {
+            return;
+        }
+
+        lock (sync)
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            var time = (float)hit.Time.TotalMilliseconds;
+            TriggerListener.DefaultListener.Trig(new HitSoundInfo(hit.Time.TotalMilliseconds, soundType, sampleSet, customSet, additions == SampleSetType.None ? sampleSet : additions), time);
+        }
     }
 
     public int ObjectCount { get; }
@@ -143,6 +220,11 @@ public sealed class StoryboardSession : IDisposable
 
             disposed = true;
             frame.Clear();
+            foreach (var storyboardObject in triggerObjects)
+            {
+                TriggerListener.DefaultListener.Remove(storyboardObject);
+            }
+
             if (renderLeases == 0)
             {
                 releaseTextures();
