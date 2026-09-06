@@ -51,27 +51,45 @@ dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- realm       # 
 
 `--lazer <folder>` / `--stable <folder>` で自動検出以外のフォルダーも指定できます。
 
+## 画面構成とテーマ
+
+画面は「左サイドバー(ライブラリ / プレイリスト / osu! コレクション / ツール)」「中央のトラック一覧(上部にツールドロワー)」「右の詳細ペイン(上部に背景画像、その上に動画とストーリーボードを重ねて描画)」「下部のプレイヤーバー」の 4 つです。Queue / Browse / Equalizer / Sources / Settings はサイドバーの Tools から開き、中央上部のドロワーに表示されます。Settings はタブ(Appearance / Hit sounds / Library / Server・OBS / Discord / osu! API / Shortcuts)に分かれています。
+
+テーマは Settings → Appearance で切り替えます。プリセット(osu! Pink / Lazer Purple / Midnight Blue / Forest / OLED Black / Daylight)に加えて、アクセント色を `#RRGGBB` で自由に指定できます。変更は即座に反映され、`settings.json` の `Appearance` に保存されます。
+
+## キーボードショートカット
+
+Settings → Shortcuts に一覧があります。主なもの: Space(再生 / 一時停止)、Enter(選択曲を再生)、Ctrl+← / →(前 / 次)、Shift+← / →(5 秒シーク)、Ctrl+↑ / ↓(音量)、Ctrl+F(検索)、Ctrl+D(お気に入り)、Ctrl+E(キューに追加)、Ctrl+S(シャッフル)、Ctrl+R(リピート)、Ctrl+Q(キュー表示)、Ctrl+,(設定)、Ctrl+T(Theater)、Ctrl+P(動画 / ストーリーボードを別ウィンドウへ)、F11(全画面)、Ctrl+Shift+P(難易度プレビュー)、Esc(検索クリア / 全画面解除)。検索ボックス入力中は Space や Enter などの単独キーは無効で、Ctrl などの組み合わせとメディアキーだけが効きます。
+
+## 動画 / ストーリーボードのポップアップと全画面
+
+詳細ペイン上部の「Pop out」(Ctrl+P)で動画とストーリーボードを独立したウィンドウに移し、「Fullscreen」(F11)で全画面にします。Esc で全画面を解除、もう一度 Esc で元のペインに戻ります(ダブルクリックでも全画面を切り替え)。libVLC の描画面は 1 つだけなので、ポップアウト中は詳細ペイン側の動画は止まり、戻すと再び詳細ペインに表示されます。
+
+## 難易度プレビュー
+
+詳細ペインの「Preview play」(Ctrl+Shift+P)で、選択中の難易度をオートプレイ風に描画するウィンドウを開きます。再生中の音楽をクロックにするため、別の曲を選んでいた場合はその曲の再生を開始します。osu!(サークル / スライダー / スピナー / カーソル)、taiko、catch、mania を簡略描画で対応しています。譜面の解析は `OsuMusicPlayer.Core.Preview.PlayfieldPreviewBuilder`(スライダーのパス計算は `SliderPathCalculator`)が行い、`.osu` を読むだけで osu! のフォルダーには書き込みません。
+
 ## osu! フォルダーを手動で指定する
 
-自動検出に失敗した場合は、ウィンドウ右上の「Sources」を開き、「Add osu!stable folder…」または「Add osu!lazer folder…」から osu! のデータフォルダーを選択してください。stable は `osu!.db` と `Songs` を、lazer は `client.realm` と `files` を含むフォルダーが必要です。stable の追加ボタンは Windows でのみ表示されます。
+自動検出に失敗した場合は、左サイドバーの「Sources」を開き、「Add osu!stable folder…」または「Add osu!lazer folder…」から osu! のデータフォルダーを選択してください。stable は `osu!.db` と `Songs` を、lazer は `client.realm` と `files` を含むフォルダーが必要です。stable の追加ボタンは Windows でのみ表示されます。
 
 手動で追加したフォルダーはアプリ自身の設定ファイル `%AppData%\OsuMusicPlayer\settings.json`（macOS/Linux では `~/.config/OsuMusicPlayer/settings.json`）に保存されます。osu! のフォルダーには一切書き込みません。「Reload」で osu! 側の変更を再読み込みできます。
 
 ## 背景動画
 
-譜面に背景動画がある場合、右側の詳細ペインでミュート再生します(右上の「Video」で切り替え)。動画は libVLC(LibVLCSharp)で再生し、Windows x64 向けのネイティブライブラリは NuGet パッケージ `VideoLAN.LibVLC.Windows` から自動で配置されます。macOS / Linux では各 OS 向けの libVLC を別途用意する必要があり、無い場合は動画なしで動作します。
+譜面に背景動画がある場合、右側の詳細ペイン上部の背景画像の位置でミュート再生します(詳細ペイン上部の「Video」トグルで切り替え)。動画は libVLC(LibVLCSharp)で再生し、Windows x64 向けのネイティブライブラリは NuGet パッケージ `VideoLAN.LibVLC.Windows` から自動で配置されます。macOS / Linux では各 OS 向けの libVLC を別途用意する必要があり、無い場合は動画なしで動作します。
 
 Avalonia のネイティブコントロールをホストするため `src/OsuMusicPlayer.App/app.manifest` に対応 OS を宣言しています。削除すると起動時に例外になります。
 
 ## ヒットサウンドとストーリーボード
 
-右上の「Hitsounds」を有効にすると、詳細ペインで選択中の難易度のヒットサウンド(サークル、スライダーの頭・折り返し・終点・ティック、スピナー終了)を音楽に同期して再生します。サンプルは次の順で探します。
+詳細ペイン上部の「Hitsounds」を有効にすると、詳細ペインで選択中の難易度のヒットサウンド(サークル、スライダーの頭・折り返し・終点・ティック、スピナー終了)を音楽に同期して再生します。サンプルは次の順で探します。
 
 1. 譜面フォルダー(カスタムインデックスやファイル名指定のサンプル)
 2. osu!stable の設定ファイルで選択中のスキン(Windows のみ)
 3. osu!lazer に同梱の既定サンプル(`osu.Game.Resources.dll` を PE 形式として読み取るだけで、コードは実行しません)
 
-「Storyboard」を有効にすると、`.osb` と選択中難易度の `.osu` にあるストーリーボードを詳細ペインに描画します。解析には MIT ライセンスの ReOsuStoryboardPlayer.Core(NuGet)を使い、描画は Avalonia の Skia で行います(加算合成、回転、反転、アニメーション対応。Fail レイヤーとトリガーは未対応)。
+「Storyboard」を有効にすると、`.osb` と選択中難易度の `.osu` にあるストーリーボードを詳細ペイン上部(背景画像の上)に描画します。解析には MIT ライセンスの ReOsuStoryboardPlayer.Core(NuGet)を使い、描画は Avalonia の Skia で行います(加算合成、回転、反転、アニメーション対応。Fail レイヤーとトリガーは未対応)。
 
 ## ライブラリ機能
 

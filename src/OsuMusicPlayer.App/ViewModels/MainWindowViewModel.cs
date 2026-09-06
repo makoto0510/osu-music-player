@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OsuMusicPlayer.App.Services;
+using OsuMusicPlayer.App.Themes;
 using OsuMusicPlayer.Audio;
 using OsuMusicPlayer.Core;
 using OsuMusicPlayer.Core.Hitsounds;
@@ -41,6 +42,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? libraryLoadCancellation;
     private bool updatingPosition;
     private bool initialized;
+    private bool shuttingDown;
     private bool disposed;
     private long loadVersion;
 
@@ -76,12 +78,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasVideo))]
     [NotifyPropertyChangedFor(nameof(HasStoryboard))]
     [NotifyPropertyChangedFor(nameof(IsVideoVisible))]
-    [NotifyPropertyChangedFor(nameof(VideoPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(VideoSurfaceHeight))]
+    [NotifyPropertyChangedFor(nameof(PopupVideoSurfaceHeight))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInPopup))]
+    [NotifyPropertyChangedFor(nameof(HasVisuals))]
     private BeatmapMedia currentMedia = BeatmapMedia.None;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVideoVisible))]
-    [NotifyPropertyChangedFor(nameof(VideoPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(VideoSurfaceHeight))]
+    [NotifyPropertyChangedFor(nameof(PopupVideoSurfaceHeight))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInPopup))]
+    [NotifyPropertyChangedFor(nameof(HasVisuals))]
     private bool isVideoEnabled = true;
 
     [ObservableProperty]
@@ -94,23 +104,36 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool isHitsoundEnabled;
 
-    /// <summary>Theater mode hides the track list and gives the video and storyboard the whole window.</summary>
+    /// <summary>Theater mode hides the sidebar and the track list and gives the visuals the whole window.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(VideoPanelHeight))]
-    [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(VisualRowHeight))]
+    [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
     [NotifyPropertyChangedFor(nameof(ListColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailsColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(IsDetailsPaneVisible))]
     private bool isTheaterMode;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
-    [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(HasVisuals))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPane))]
     private bool isStoryboardEnabled = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
-    [NotifyPropertyChangedFor(nameof(StoryboardPanelHeight))]
+    [NotifyPropertyChangedFor(nameof(HasVisuals))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPane))]
     private StoryboardSession? storyboardSession;
+
+    /// <summary>The video / storyboard live in their own window (or fullscreen) instead of the details pane.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VisualsWindowButtonText))]
+    [NotifyPropertyChangedFor(nameof(VideoSurfaceHeight))]
+    [NotifyPropertyChangedFor(nameof(PopupVideoSurfaceHeight))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInPopup))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPane))]
+    private bool isVisualsPoppedOut;
 
     [ObservableProperty]
     private string visualsStatusText = string.Empty;
@@ -155,7 +178,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         IEnumerable<ICollectionLoader> collectionLoaders,
         IOnlineMetadataService? onlineMetadataService = null,
         IFileSaver? fileSaver = null,
-        IAudioDurationProbe? durationProbe = null)
+        IAudioDurationProbe? durationProbe = null,
+        IThemeApplier? themeApplier = null)
     {
         this.beatmapManager = beatmapManager ?? throw new ArgumentNullException(nameof(beatmapManager));
         this.audioEngine = audioEngine ?? throw new ArgumentNullException(nameof(audioEngine));
@@ -174,6 +198,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.onlineMetadataService = onlineMetadataService;
         this.fileSaver = fileSaver;
         this.durationProbe = durationProbe;
+        this.themeApplier = themeApplier;
         volume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
@@ -195,24 +220,42 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool IsVideoVisible => IsVideoEnabled && HasVideo && videoPlayer.IsAvailable;
     public bool IsStoryboardVisible => IsStoryboardEnabled && StoryboardSession is not null;
 
-    /// <summary>Like the video surface, the storyboard box collapses to zero height instead of hiding.</summary>
-    public double StoryboardPanelHeight => IsStoryboardVisible ? visualPanelHeight : 0;
+    /// <summary>Something animated is drawn over the background image (video or storyboard).</summary>
+    public bool HasVisuals => IsVideoVisible || IsStoryboardVisible;
 
     /// <summary>The most recent hit sound / storyboard load, awaited by tests.</summary>
     internal Task LastVisualsLoad { get; private set; } = Task.CompletedTask;
 
     /// <summary>
     /// The video surface must stay attached to the window even while hidden, otherwise
-    /// libVLC has no window handle when playback starts and opens its own window. The
-    /// view therefore collapses the surface to zero height instead of hiding it.
+    /// libVLC has no window handle when playback starts and opens its own window. The view
+    /// therefore collapses the surface to zero height instead of hiding it, and lets it
+    /// stretch (NaN = auto) over the background image when the video shows.
     /// </summary>
-    public double VideoPanelHeight => IsVideoVisible ? visualPanelHeight : 0;
+    public double VideoSurfaceHeight => ShowVideoInPane ? double.NaN : 0;
 
-    private double visualPanelHeight => IsTheaterMode ? 540 : 202;
+    /// <summary>Hidden (not detached) while there is no video, so the empty native host never shows as a stray line.</summary>
+    public bool ShowVideoInPane => IsVideoVisible && !IsVisualsPoppedOut;
+
+    public bool ShowVideoInPopup => IsVideoVisible && IsVisualsPoppedOut;
+
+    /// <summary>The popup window's surface: stretched while the visuals are popped out, collapsed otherwise.</summary>
+    public double PopupVideoSurfaceHeight => ShowVideoInPopup ? double.NaN : 0;
+
+    public bool ShowStoryboardInPane => IsStoryboardVisible && !IsVisualsPoppedOut;
+
+    /// <summary>The visual box is a fixed strip above the details, or the whole pane in theater mode.</summary>
+    public Avalonia.Controls.GridLength VisualRowHeight => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(202);
+
+    public bool IsDetailsPaneVisible => !IsTheaterMode;
+
+    public Avalonia.Controls.GridLength SidebarColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(220);
 
     public Avalonia.Controls.GridLength ListColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star);
 
-    public Avalonia.Controls.GridLength DetailsColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(360);
+    public Avalonia.Controls.GridLength DetailsColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(380);
+
+    public string VisualsWindowButtonText => IsVisualsPoppedOut ? "Bring back" : "Pop out";
     public string QueueText => Queue.Count == 0 ? "Queue" : $"Queue ({Queue.Count})";
     public string RepeatText => RepeatMode switch
     {
@@ -357,6 +400,21 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     };
 
     private TimeSpan toVideoTime(TimeSpan audioTime) => audioTime - CurrentMedia.VideoOffset;
+
+    /// <summary>
+    /// libVLC only picks up a new window handle when the media is (re)started, so after the
+    /// video surface moves to the pop-out window (or back) the current video is reloaded at
+    /// the audio position. No-op when nothing with a video is playing.
+    /// </summary>
+    public void RestartVideoSurface()
+    {
+        if (disposed || CurrentMedia.VideoFilePath is null)
+        {
+            return;
+        }
+
+        startVideoIfAvailable();
+    }
 
     /// <summary>Loads the current track's video (if any) and aligns it with the audio clock.</summary>
     private void startVideoIfAvailable()
@@ -574,6 +632,32 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     partial void OnCurrentTimeChanged(TimeSpan value) => OnPropertyChanged(nameof(CurrentTimeText));
     partial void OnTotalTimeChanged(TimeSpan value) => OnPropertyChanged(nameof(TotalTimeText));
 
+    /// <summary>
+    /// Silences playback and saves the state as soon as the window starts closing, before the
+    /// slower service shutdown runs. Safe to call more than once; <see cref="Dispose"/> follows.
+    /// </summary>
+    public void PrepareForShutdown()
+    {
+        if (disposed || shuttingDown)
+        {
+            return;
+        }
+
+        shuttingDown = true;
+        SaveSettingsNow();
+        lifetimeCancellation.Cancel();
+        libraryLoadCancellation?.Cancel();
+        try
+        {
+            hitsoundPlayer.Clear();
+            videoPlayer.Stop();
+            audioEngine.Stop();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
     public void Dispose()
     {
         if (disposed)
@@ -581,7 +665,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        SaveSettingsNow();
+        if (!shuttingDown)
+        {
+            SaveSettingsNow();
+        }
+
         disposed = true;
         lifetimeCancellation.Cancel();
         libraryLoadCancellation?.Cancel();

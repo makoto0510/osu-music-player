@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
+        xmlns:controls="using:OsuMusicPlayer.App.Controls"
+        x:Class="OsuMusicPlayer.App.DifficultyPreviewWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding DifficultyPreviewTitle}"
+        Width="900" Height="660" MinWidth="480" MinHeight="360"
+        Background="#0B0C10">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Grid.Row="0" Padding="12,8" Background="#151821">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{Binding DifficultyPreviewTitle}" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="{Binding DifficultyPreviewStatusText}" FontSize="11" Foreground="#AEB4C4" IsVisible="{Binding DifficultyPreviewStatusText.Length}" />
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="1">
+      <Image Source="{Binding CurrentTrack.LargeBackgroundImage^}" Stretch="UniformToFill" Opacity="0.25" />
+      <controls:PlayfieldPreviewView x:Name="Playfield" Data="{Binding DifficultyPreview}" />
+    </Grid>
+    <Border Grid.Row="2" Padding="12,6" Background="#151821">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="{Binding CurrentTimeText}" Foreground="#AEB4C4" />
+          <TextBlock Text="/" Foreground="#737A8D" />
+          <TextBlock Text="{Binding TotalTimeText}" Foreground="#AEB4C4" />
+          <TextBlock Text="Auto-play preview of the selected difficulty. The music is the clock: seek in the main window to jump around." FontSize="11" Foreground="#737A8D" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <Button Classes="small" Content="{Binding PlayPauseText}" Command="{Binding TogglePlayCommand}" MinWidth="70" />
+          <Button Classes="small" x:Name="FullscreenButton" Content="Fullscreen (F11)" />
+          <Button Classes="small" x:Name="CloseButton" Content="Close (Esc)" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

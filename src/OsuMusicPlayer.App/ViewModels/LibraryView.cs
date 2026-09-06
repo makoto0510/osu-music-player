@@ -33,6 +33,30 @@ public sealed class LibraryView
 
     public int Count { get; }
 
+    /// <summary>Section title drawn above the first view of each group in the sidebar; null for the rest.</summary>
+    public string? GroupHeader { get; set; }
+
+    public bool HasGroupHeader => GroupHeader is not null;
+
+    public string Icon => Kind switch
+    {
+        LibraryViewKind.All => "♪",
+        LibraryViewKind.Favourites => "♥",
+        LibraryViewKind.Recommended => "★",
+        LibraryViewKind.Playlist => "≡",
+        LibraryViewKind.SmartPlaylist => "⚡",
+        _ => "◆",
+    };
+
+    public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    public static string GroupOf(LibraryViewKind kind) => kind switch
+    {
+        LibraryViewKind.Playlist or LibraryViewKind.SmartPlaylist => "Playlists",
+        LibraryViewKind.Collection => "osu! collections",
+        _ => "Library",
+    };
+
     /// <summary>Playlists keep their own order; every other view is sorted by the sort selector.</summary>
     public bool KeepsOwnOrder => Kind == LibraryViewKind.Playlist;
 

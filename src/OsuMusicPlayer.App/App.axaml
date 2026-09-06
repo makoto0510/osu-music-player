@@ -2,7 +2,122 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="OsuMusicPlayer.App.App"
              RequestedThemeVariant="Dark">
+  <!-- Default palette (osu! Pink). ApplicationThemeApplier rewrites these when the user picks a theme. -->
+  <Application.Resources>
+    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#11131A" />
+    <SolidColorBrush x:Key="ThemeSurfaceBrush" Color="#15181F" />
+    <SolidColorBrush x:Key="ThemeSurfaceAltBrush" Color="#292D3A" />
+    <SolidColorBrush x:Key="ThemeBorderBrush" Color="#292D3A" />
+    <SolidColorBrush x:Key="ThemeTextBrush" Color="#F2F3F7" />
+    <SolidColorBrush x:Key="ThemeTextMutedBrush" Color="#AEB4C4" />
+    <SolidColorBrush x:Key="ThemeTextFaintBrush" Color="#737A8D" />
+    <SolidColorBrush x:Key="ThemeAccentBrush" Color="#FF66AA" />
+    <SolidColorBrush x:Key="ThemeAccentTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ThemeAccentSoftBrush" Color="#33FF66AA" />
+    <SolidColorBrush x:Key="ThemeSelectionBrush" Color="#40FF66AA" />
+  </Application.Resources>
+
   <Application.Styles>
     <FluentTheme />
+
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextMutedBrush}" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextFaintBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextFaintBrush}" />
+      <Setter Property="Margin" Value="14,14,0,4" />
+    </Style>
+    <Style Selector="TextBlock.title">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.accent">
+      <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.panel">
+      <Setter Property="Padding" Value="18,12" />
+      <Setter Property="Background" Value="{DynamicResource ThemeSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.badge">
+      <Setter Property="Background" Value="{DynamicResource ThemeSurfaceAltBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="7,2" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+    </Style>
+    <Style Selector="Border.badge TextBlock">
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Border.badge.accent">
+      <Setter Property="Background" Value="{DynamicResource ThemeAccentSoftBrush}" />
+    </Style>
+
+    <Style Selector="Button.chip">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+    </Style>
+    <Style Selector="Button.small, ToggleButton.small">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeAccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+
+    <!-- Sidebar navigation -->
+    <Style Selector="ListBox.nav">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" />
+    </Style>
+    <Style Selector="ListBox.nav ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ThemeAccentSoftBrush}" />
+    </Style>
+
+    <!-- Sidebar tool buttons -->
+    <Style Selector="ToggleButton.tool">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="14,6" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ToggleButton.tool:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
+    </Style>
+
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="10,4" />
+    </Style>
   </Application.Styles>
 </Application>

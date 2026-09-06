@@ -38,6 +38,14 @@ public sealed class ServerSettings
     public bool AllowRemoteConnections { get; init; } = true;
 }
 
+public sealed class AppearanceSettings
+{
+    public string ThemeName { get; init; } = "osu! Pink";
+
+    /// <summary>Hex accent override such as "#FF66AA"; empty keeps the preset's accent.</summary>
+    public string AccentColor { get; init; } = string.Empty;
+}
+
 public sealed class AppSettings
 {
     public IReadOnlyList<ManualInstallationSetting> ManualInstallations { get; init; } = [];
@@ -87,4 +95,6 @@ public sealed class AppSettings
     public string OsuApiClientId { get; init; } = string.Empty;
 
     public string OsuApiClientSecret { get; init; } = string.Empty;
+
+    public AppearanceSettings Appearance { get; init; } = new();
 }

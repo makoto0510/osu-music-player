@@ -18,13 +18,19 @@ public static class HitsoundTimelineBuilder
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(beatmapPath);
         using var stream = new FileStream(beatmapPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        return Build(BeatmapDecoder.Decode(stream));
+        lock (BeatmapDecoderGate.Sync)
+        {
+            return Build(BeatmapDecoder.Decode(stream));
+        }
     }
 
     public static IReadOnlyList<HitsoundEvent> Build(IEnumerable<string> beatmapLines)
     {
         ArgumentNullException.ThrowIfNull(beatmapLines);
-        return Build(BeatmapDecoder.Decode(beatmapLines));
+        lock (BeatmapDecoderGate.Sync)
+        {
+            return Build(BeatmapDecoder.Decode(beatmapLines));
+        }
     }
 
     internal static IReadOnlyList<HitsoundEvent> Build(Beatmap beatmap)

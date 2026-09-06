@@ -542,12 +542,12 @@ public sealed class MainWindowViewModelTests
 
         viewModel.StoryboardSession.Should().NotBeNull();
         viewModel.IsStoryboardVisible.Should().BeTrue();
-        viewModel.StoryboardPanelHeight.Should().Be(202);
+        viewModel.HasVisuals.Should().BeTrue();
         viewModel.VisualsStatusText.Should().Contain("storyboard");
 
         viewModel.IsStoryboardEnabled = false;
         viewModel.IsStoryboardVisible.Should().BeFalse();
-        viewModel.StoryboardPanelHeight.Should().Be(0);
+        viewModel.HasVisuals.Should().BeFalse();
 
         environment.Media.Next = BeatmapMedia.None;
         await viewModel.NextCommand.ExecuteAsync(null);
@@ -892,7 +892,123 @@ public sealed class MainWindowViewModelTests
         audio = new FakeAudioEngine();
         environment = new TestEnvironment();
         var manager = new BeatmapManager([environment.Loader], new DuplicateDetector());
-        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe);
+        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe, environment.Theme);
+    }
+
+    [Fact]
+    public async Task Appearance_AppliesThePickedThemeAndPersistsIt()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        await viewModel.InitializeAsync();
+        environment.Theme.Applied.Should().NotBeNull("the saved (default) theme is applied on start");
+
+        viewModel.SelectedThemeName = "Midnight Blue";
+        viewModel.AccentColorText = "#112233";
+        await viewModel.PendingSave;
+
+        environment.Theme.Applied!.Name.Should().Be("Midnight Blue");
+        environment.Theme.Applied.Accent.Should().Be(Avalonia.Media.Color.FromRgb(0x11, 0x22, 0x33));
+        environment.Settings.Current.Appearance.ThemeName.Should().Be("Midnight Blue");
+        environment.Settings.Current.Appearance.AccentColor.Should().Be("#112233");
+        viewModel.AccentColorStatusText.Should().Be("Custom accent");
+
+        viewModel.AccentColorText = "zzz";
+        viewModel.AccentColorStatusText.Should().Contain("#FF66AA");
+        environment.Theme.Applied.Accent.Should().Be(OsuMusicPlayer.App.Themes.PlayerThemes.Resolve("Midnight Blue", null).Accent, "an invalid accent falls back to the preset");
+    }
+
+    [Fact]
+    public async Task Appearance_RestoresTheSavedTheme()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { ThemeName = "daylight", AccentColor = "#ABCDEF" } };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.SelectedThemeName.Should().Be("Daylight");
+        viewModel.AccentColorText.Should().Be("#ABCDEF");
+        environment.Theme.Applied!.IsDark.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Shortcuts_StepVolumeSeekAndToggleState()
+    {
+        using var viewModel = createViewModel(out var audio);
+        viewModel.ReplaceTracksForTesting([createSet("First", "Artist", "Mapper", "", 100, 100)]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        viewModel.Volume = 0.5;
+
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.VolumeUp).Should().BeTrue();
+        viewModel.Volume.Should().BeApproximately(0.55, 0.0001);
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.VolumeDown);
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.VolumeDown);
+        viewModel.Volume.Should().BeApproximately(0.45, 0.0001);
+
+        audio.Seek(TimeSpan.FromSeconds(10));
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.SeekForward).Should().BeTrue();
+        audio.LastSeek.Should().Be(TimeSpan.FromSeconds(15));
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.SeekBackward);
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.SeekBackward);
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.SeekBackward);
+        audio.LastSeek.Should().Be(TimeSpan.Zero, "seeking is clamped at the start");
+
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.ToggleShuffle);
+        viewModel.IsShuffleEnabled.Should().BeTrue();
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.ToggleTheater);
+        viewModel.IsTheaterMode.Should().BeTrue();
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.TogglePlay);
+        viewModel.IsPlaying.Should().BeFalse();
+
+        viewModel.SearchText = string.Empty;
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.ClearSearch).Should().BeFalse("nothing to clear");
+        viewModel.SearchText = "abc";
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.ClearSearch).Should().BeTrue();
+        viewModel.SearchText.Should().BeEmpty();
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.FocusSearch).Should().BeFalse("focus belongs to the view");
+    }
+
+    [Fact]
+    public async Task DifficultyPreview_ParsesTheSelectedDifficultyAndStartsThatTrack()
+    {
+        using var directory = new TestDirectory();
+        var hard = directory.CreateFile("hard.osu", beatmapText(3));
+        using var viewModel = createViewModel(out var audio);
+        var set = createSet("Song", "Artist", "Mapper", "", 100, 100) with
+        {
+            Beatmaps =
+            [
+                new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Easy", Tags = "", StarRating = 1.5 },
+                new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Hard", Tags = "", StarRating = 5, BeatmapFilePath = hard },
+            ],
+        };
+        viewModel.ReplaceTracksForTesting([set, createSet("Other", "Artist", "Mapper", "", 100, 100)]);
+        var song = viewModel.Tracks.Single(static track => track.Title == "Song");
+        viewModel.SelectedTrack = viewModel.Tracks.Single(static track => track.Title == "Other");
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        viewModel.SelectedTrack = song;
+        song.SelectedDifficulty = song.Difficulties.Single(static difficulty => difficulty.Name == "Hard");
+
+        (await viewModel.OpenDifficultyPreviewAsync()).Should().BeTrue();
+
+        viewModel.DifficultyPreview.Should().NotBeNull();
+        viewModel.DifficultyPreview!.Objects.Should().HaveCount(3);
+        viewModel.DifficultyPreviewTitle.Should().Be("Artist - Song [Hard]");
+        viewModel.CurrentTrack.Should().BeSameAs(song, "the preview follows the music, so the previewed track starts");
+        audio.State.Should().Be(AudioPlaybackState.Playing);
+
+        viewModel.CloseDifficultyPreview();
+        viewModel.HasDifficultyPreview.Should().BeFalse();
+
+        song.SelectedDifficulty = song.Difficulties.Single(static difficulty => difficulty.Name == "Easy");
+        (await viewModel.OpenDifficultyPreviewAsync()).Should().BeFalse("Easy has no .osu file");
+        viewModel.DifficultyPreviewStatusText.Should().Contain(".osu");
+    }
+
+    private sealed class FakeThemeApplier : OsuMusicPlayer.App.Themes.IThemeApplier
+    {
+        public OsuMusicPlayer.App.Themes.PlayerTheme? Applied { get; private set; }
+        public void Apply(OsuMusicPlayer.App.Themes.PlayerTheme theme) => Applied = theme;
     }
 
     private static UnifiedBeatmapSet createSet(string title, string artist, string creator, string tags, double bpm, int seconds) => new()
@@ -942,6 +1058,7 @@ public sealed class MainWindowViewModelTests
         public FakeStoryboardLoader Storyboard { get; } = new();
         public FakeLinkOpener Links { get; } = new();
         public FakeCollectionLoader Collections { get; } = new();
+        public FakeThemeApplier Theme { get; } = new();
     }
 
     private sealed class FakeLinkOpener : ILinkOpener

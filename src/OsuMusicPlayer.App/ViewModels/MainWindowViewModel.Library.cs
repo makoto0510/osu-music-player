@@ -300,6 +300,14 @@ public sealed partial class MainWindowViewModel
                 }
             }
 
+            string? previousGroup = null;
+            foreach (var view in Views)
+            {
+                var groupName = LibraryView.GroupOf(view.Kind);
+                view.GroupHeader = groupName == previousGroup ? null : groupName;
+                previousGroup = groupName;
+            }
+
             SelectedView = Views.FirstOrDefault(view => view.SameAs(previous)) ?? Views.FirstOrDefault();
         }
         finally

@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
+        xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+        xmlns:controls="using:OsuMusicPlayer.App.Controls"
+        x:Class="OsuMusicPlayer.App.VisualsWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="osu! music player — visuals"
+        Width="960" Height="600" MinWidth="320" MinHeight="200"
+        Background="Black">
+  <Grid RowDefinitions="*,Auto">
+    <Grid Grid.Row="0" Background="Black">
+      <TextBlock Text="♪" FontSize="64" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#40FFFFFF" />
+      <Image Source="{Binding CurrentTrack.LargeBackgroundImage^}" Stretch="Uniform" />
+      <controls:StoryboardView x:Name="StoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding IsStoryboardVisible}" />
+      <vlc:VideoView x:Name="VideoView" Height="{Binding PopupVideoSurfaceHeight}" IsVisible="{Binding ShowVideoInPopup}" VerticalAlignment="Stretch" />
+    </Grid>
+    <Border Grid.Row="1" x:Name="Toolbar" Background="#CC101218" Padding="12,6">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="{Binding CurrentTrack.Title, FallbackValue='Nothing playing'}" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding CurrentTrack.Artist}" Foreground="#AEB4C4" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding CurrentTimeText}" Foreground="#AEB4C4" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <Button Classes="small" Content="⏮" Command="{Binding PreviousCommand}" />
+          <Button Classes="small" Content="{Binding PlayPauseText}" Command="{Binding TogglePlayCommand}" MinWidth="70" />
+          <Button Classes="small" Content="⏭" Command="{Binding NextCommand}" />
+          <Button Classes="small" x:Name="FullscreenButton" Content="Fullscreen (F11)" />
+          <Button Classes="small" x:Name="CloseButton" Content="Back to player (Esc)" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
