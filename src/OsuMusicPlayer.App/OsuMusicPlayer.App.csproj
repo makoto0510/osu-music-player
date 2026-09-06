@@ -12,6 +12,7 @@
     <PackageReference Include="LibVLCSharp.Avalonia" Version="3.10.1" />
     <PackageReference Include="ReOsuStoryboardPlayer.Core" Version="1.5.14" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.1.3.1" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
   </ItemGroup>
@@ -20,14 +21,5 @@
     <ProjectReference Include="../OsuMusicPlayer.Core/OsuMusicPlayer.Core.csproj" />
     <ProjectReference Include="../OsuMusicPlayer.Server/OsuMusicPlayer.Server.csproj" />
   </ItemGroup>
-  <ItemGroup Condition="('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))) or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">
-    <None Include="../../third_party/native/win-x64/bass.dll"
-          Link="bass.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
-    <None Include="../../third_party/native/win-x64/bass_fx.dll"
-          Link="bass_fx.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
+  <Import Project="BassNatives.targets" />
 </Project>

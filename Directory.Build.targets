@@ -1,0 +1,9 @@
+<Project>
+  <!--
+    Avalonia.BuildServices adds an "AvaloniaStats" build-time telemetry task that writes usage
+    data under the user's AppData. In locked-down environments that write fails and the build
+    emits errors. Redefining the target here (Directory.Build.targets is imported after the
+    package targets) replaces it with a no-op, so builds are offline-safe and deterministic.
+  -->
+  <Target Name="AvaloniaStats" />
+</Project>

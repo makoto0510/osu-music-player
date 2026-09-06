@@ -15,6 +15,19 @@ public sealed record PlaybackStateSetting(Guid TrackId, double PositionSeconds, 
 
 public sealed record PlayHistoryEntry(Guid TrackId, int PlayCount, DateTime LastPlayedUtc);
 
+/// <summary>Rules that hide sets from the library without touching any osu! files.</summary>
+public sealed class LibraryExclusionSettings
+{
+    /// <summary>Sets shorter than this are hidden; 0 disables the rule.</summary>
+    public int MinimumLengthSeconds { get; init; }
+
+    /// <summary>Sets longer than this are hidden; 0 disables the rule.</summary>
+    public int MaximumLengthSeconds { get; init; }
+
+    /// <summary>A search-language query; sets that match are hidden (e.g. <c>mode:mania</c> or <c>tag:tv</c>).</summary>
+    public string ExcludeQuery { get; init; } = string.Empty;
+}
+
 public sealed class ServerSettings
 {
     public bool Enabled { get; init; }
@@ -63,6 +76,8 @@ public sealed class AppSettings
     public IReadOnlyList<PlayHistoryEntry> PlayHistory { get; init; } = [];
 
     public ServerSettings Server { get; init; } = new();
+
+    public LibraryExclusionSettings Exclusions { get; init; } = new();
 
     public bool RichPresenceEnabled { get; init; }
 

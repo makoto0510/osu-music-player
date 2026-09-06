@@ -251,6 +251,22 @@
           </Grid>
         </StackPanel>
         <StackPanel Width="340" Spacing="6" Margin="0,0,24,8">
+          <TextBlock Text="Library exclusions" FontWeight="SemiBold" />
+          <TextBlock Classes="hint" Text="Hide sets by length or by a search query (e.g. mode:mania, tag:tv, artist:x). Applies on Reload too." />
+          <Grid ColumnDefinitions="110,*" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Min length (s)" Foreground="#AEB4C4" VerticalAlignment="Center" />
+            <NumericUpDown Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="36000" Increment="10" FormatString="0" Value="{Binding ExcludeMinLengthSeconds, Mode=TwoWay}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Max length (s)" Foreground="#AEB4C4" VerticalAlignment="Center" ToolTip.Tip="0 = no limit" />
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="36000" Increment="10" FormatString="0" Value="{Binding ExcludeMaxLengthSeconds, Mode=TwoWay}" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Exclude query" Foreground="#AEB4C4" VerticalAlignment="Center" />
+            <TextBox Grid.Row="2" Grid.Column="1" Watermark="mode:mania -tag:keep" Text="{Binding ExcludeQueryText, Mode=TwoWay}" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button Content="Apply exclusions" Command="{Binding ApplyExclusionsCommand}" />
+            <TextBlock Text="{Binding ExclusionStatusText}" FontSize="11" Foreground="#AEB4C4" VerticalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Width="340" Spacing="6" Margin="0,0,24,8">
           <TextBlock Text="Music server (LAN / OBS overlay)" FontWeight="SemiBold" />
           <TextBlock Classes="hint" Text="Serves the library, audio streams, a web remote and an OBS overlay over HTTP." />
           <StackPanel Orientation="Horizontal" Spacing="10">
@@ -292,7 +308,7 @@
         <ColumnDefinition Width="{Binding DetailsColumnWidth}" />
       </Grid.ColumnDefinitions>
       <Grid Grid.Column="0">
-        <ListBox ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}" Background="Transparent" Margin="12">
+        <ListBox x:Name="TrackList" ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}" Background="Transparent" Margin="12">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
           </ListBox.ItemsPanel>

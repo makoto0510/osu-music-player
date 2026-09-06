@@ -29,6 +29,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IReadOnlyList<ICollectionLoader> collectionLoaders;
     private readonly IOnlineMetadataService? onlineMetadataService;
     private readonly IFileSaver? fileSaver;
+    private readonly IAudioDurationProbe? durationProbe;
     private TrackItemViewModel? observedTrack;
     private DateTime lastVideoResync = DateTime.MinValue;
     private readonly List<TrackItemViewModel> allTracks = [];
@@ -153,7 +154,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         ILinkOpener linkOpener,
         IEnumerable<ICollectionLoader> collectionLoaders,
         IOnlineMetadataService? onlineMetadataService = null,
-        IFileSaver? fileSaver = null)
+        IFileSaver? fileSaver = null,
+        IAudioDurationProbe? durationProbe = null)
     {
         this.beatmapManager = beatmapManager ?? throw new ArgumentNullException(nameof(beatmapManager));
         this.audioEngine = audioEngine ?? throw new ArgumentNullException(nameof(audioEngine));
@@ -171,6 +173,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.collectionLoaders = collectionLoaders?.ToArray() ?? throw new ArgumentNullException(nameof(collectionLoaders));
         this.onlineMetadataService = onlineMetadataService;
         this.fileSaver = fileSaver;
+        this.durationProbe = durationProbe;
         volume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
@@ -718,19 +721,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             }).ConfigureAwait(false);
 
             var models = await beatmapManager.LoadAsync(installations.Select(static entry => entry.Installation), token).ConfigureAwait(false);
+            models = await fillMissingDurationsAsync(models, token).ConfigureAwait(false);
             var loadedCollections = await loadCollectionsAsync(installations.Select(static entry => entry.Installation).ToArray(), token).ConfigureAwait(false);
-            var items = models
-                .Where(static model => !string.IsNullOrWhiteSpace(model.AudioFilePath))
-                .Select(model => new TrackItemViewModel(model, imageLoader))
-                .ToArray();
             token.ThrowIfCancellationRequested();
             await dispatcher.InvokeAsync(() =>
             {
                 collections = loadedCollections;
+                loadedModels = models;
+                var items = buildTrackItems(models);
                 replaceTracks(items);
                 LibraryStatusText = installations.Count == 0
                     ? string.Empty
-                    : $"{items.Length:N0} tracks from {installations.Count} source{(installations.Count == 1 ? string.Empty : "s")}";
+                    : $"{items.Length:N0} tracks from {installations.Count} source{(installations.Count == 1 ? string.Empty : "s")}" + (lastExcludedCount > 0 ? $" ({lastExcludedCount:N0} excluded)" : string.Empty);
             }).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)

@@ -48,6 +48,7 @@ public sealed partial class App : Application
         services.AddSingleton<ISettingsStore, JsonSettingsStore>(static _ => new JsonSettingsStore());
         services.AddSingleton<IFolderPicker, AvaloniaFolderPicker>();
         services.AddSingleton<IFileSaver, AvaloniaFileSaver>();
+        services.AddSingleton<IAudioDurationProbe, BassAudioDurationProbe>();
         services.AddSingleton<IDuplicateDetector, DuplicateDetector>();
         services.AddSingleton<IBeatmapLoader, OsuStableLoader>();
         services.AddSingleton<IBeatmapLoader, OsuLazerLoader>();

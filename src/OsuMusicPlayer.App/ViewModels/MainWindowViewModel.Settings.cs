@@ -18,6 +18,7 @@ public sealed partial class MainWindowViewModel
         nameof(IsHitsoundEnabled), nameof(IsStoryboardEnabled), nameof(IsVideoEnabled),
         nameof(HitsoundVolume), nameof(HitsoundOffsetMs), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
+        nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText),
     ];
 
     private readonly object saveSync = new();
@@ -225,6 +226,12 @@ public sealed partial class MainWindowViewModel
             DiscordApplicationId = DiscordApplicationId,
             OsuApiClientId = OsuApiClientId,
             OsuApiClientSecret = OsuApiClientSecret,
+            Exclusions = new LibraryExclusionSettings
+            {
+                MinimumLengthSeconds = Math.Max(0, ExcludeMinLengthSeconds),
+                MaximumLengthSeconds = Math.Max(0, ExcludeMaxLengthSeconds),
+                ExcludeQuery = ExcludeQueryText.Trim(),
+            },
         };
     }
 
@@ -272,6 +279,7 @@ public sealed partial class MainWindowViewModel
             DiscordApplicationId = settings.DiscordApplicationId ?? string.Empty;
             OsuApiClientId = settings.OsuApiClientId ?? string.Empty;
             OsuApiClientSecret = settings.OsuApiClientSecret ?? string.Empty;
+            applyRestoredExclusions(settings);
 
             var gains = Equalizer.Normalize(settings.EqualizerGains);
             applyingPreset = true;

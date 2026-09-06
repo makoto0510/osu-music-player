@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    Copies the official BASS / BASS_FX native libraries for the current platform next to the
+    build output. Windows x64, macOS (universal dylib) and Linux x64 / arm64 are vendored under
+    third_party/native; see third_party/README.md for sources, versions, hashes and licence.
+    ManagedBass resolves "bass" to bass.dll / libbass.dylib / libbass.so at runtime.
+  -->
+  <PropertyGroup>
+    <BassNativeRoot>$(MSBuildThisFileDirectory)../../third_party/native/</BassNativeRoot>
+    <_BassRid>$(RuntimeIdentifier)</_BassRid>
+    <_BassIsWindows Condition="'$(_BassRid)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">true</_BassIsWindows>
+    <_BassIsWindows Condition="$([System.String]::Copy('$(_BassRid)').StartsWith('win-'))">true</_BassIsWindows>
+    <_BassIsOsx Condition="'$(_BassRid)' == '' and $([MSBuild]::IsOSPlatform('OSX'))">true</_BassIsOsx>
+    <_BassIsOsx Condition="$([System.String]::Copy('$(_BassRid)').StartsWith('osx-'))">true</_BassIsOsx>
+    <_BassIsLinuxArm64 Condition="$([System.String]::Copy('$(_BassRid)').StartsWith('linux-arm64'))">true</_BassIsLinuxArm64>
+    <_BassIsLinuxArm64 Condition="'$(_BassRid)' == '' and $([MSBuild]::IsOSPlatform('Linux')) and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">true</_BassIsLinuxArm64>
+    <_BassIsLinuxX64 Condition="'$(_BassIsLinuxArm64)' != 'true' and ($([System.String]::Copy('$(_BassRid)').StartsWith('linux-')) or ('$(_BassRid)' == '' and $([MSBuild]::IsOSPlatform('Linux'))))">true</_BassIsLinuxX64>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(_BassIsWindows)' == 'true'">
+    <None Include="$(BassNativeRoot)win-x64/bass.dll" Link="bass.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(BassNativeRoot)win-x64/bass_fx.dll" Link="bass_fx.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(_BassIsOsx)' == 'true'">
+    <None Include="$(BassNativeRoot)osx/libbass.dylib" Link="libbass.dylib" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(BassNativeRoot)osx/libbass_fx.dylib" Link="libbass_fx.dylib" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(_BassIsLinuxX64)' == 'true'">
+    <None Include="$(BassNativeRoot)linux-x64/libbass.so" Link="libbass.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(BassNativeRoot)linux-x64/libbass_fx.so" Link="libbass_fx.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(_BassIsLinuxArm64)' == 'true'">
+    <None Include="$(BassNativeRoot)linux-arm64/libbass.so" Link="libbass.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(BassNativeRoot)linux-arm64/libbass_fx.so" Link="libbass_fx.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

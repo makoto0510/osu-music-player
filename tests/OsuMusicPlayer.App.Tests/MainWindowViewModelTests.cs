@@ -815,6 +815,64 @@ public sealed class MainWindowViewModelTests
         environment.Links.Opened.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Exclusions_HideShortLongAndQueryMatchedSetsAndPersist()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Loader.Sets =
+        [
+            createSet("Short", "Artist", "Mapper", "", 100, 20),
+            createSet("Normal", "Artist", "Mapper", "", 100, 200),
+            createSet("Long", "Artist", "Mapper", "", 100, 900),
+            createSet("Mania", "Artist", "Mapper", "", 100, 200) with { Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "4K", Tags = "", Ruleset = OsuRuleset.Mania, Length = TimeSpan.FromSeconds(200) }] },
+        ];
+        environment.Settings.Current = new AppSettings { Exclusions = new LibraryExclusionSettings { MinimumLengthSeconds = 30 } };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.Tracks.Select(static track => track.Title).Should().BeEquivalentTo("Normal", "Long", "Mania");
+        viewModel.LibraryStatusText.Should().Contain("1 excluded");
+
+        viewModel.ExcludeMaxLengthSeconds = 600;
+        viewModel.ExcludeQueryText = "mode:mania";
+        viewModel.ApplyExclusionsCommand.Execute(null);
+
+        viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("Normal");
+        viewModel.ExclusionStatusText.Should().Contain("3");
+        var saved = viewModel.BuildSettings().Exclusions;
+        saved.MinimumLengthSeconds.Should().Be(30);
+        saved.MaximumLengthSeconds.Should().Be(600);
+        saved.ExcludeQuery.Should().Be("mode:mania");
+
+        viewModel.ExcludeMinLengthSeconds = 0;
+        viewModel.ExcludeMaxLengthSeconds = 0;
+        viewModel.ExcludeQueryText = string.Empty;
+        viewModel.ApplyExclusionsCommand.Execute(null);
+        viewModel.Tracks.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task ZeroLengthSets_GetTheirDurationFromTheAudioFile()
+    {
+        var probe = new FakeDurationProbe();
+        using var viewModel = createViewModel(out _, out var environment, durationProbe: probe);
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Loader.Sets = [createSet("WIP", "Artist", "Mapper", "", 100, 0), createSet("Done", "Artist", "Mapper", "", 100, 120)];
+
+        await viewModel.InitializeAsync();
+
+        probe.Probed.Should().Equal(new[] { "WIP.mp3" }, "only sets without a known length are probed");
+        viewModel.Tracks.Single(static track => track.Title == "WIP").LengthText.Should().Be("1:30");
+        viewModel.Tracks.Single(static track => track.Title == "Done").LengthText.Should().Be("2:00");
+    }
+
+    private sealed class FakeDurationProbe : IAudioDurationProbe
+    {
+        public List<string> Probed { get; } = [];
+        public TimeSpan? Probe(string audioFilePath) { Probed.Add(audioFilePath); return TimeSpan.FromSeconds(90); }
+    }
+
     private sealed class FakeFileSaver : IFileSaver
     {
         public string? NextPath { get; set; }
@@ -829,12 +887,12 @@ public sealed class MainWindowViewModelTests
 
     private static MainWindowViewModel createViewModel(out FakeAudioEngine audio) => createViewModel(out audio, out _);
 
-    private static MainWindowViewModel createViewModel(out FakeAudioEngine audio, out TestEnvironment environment, IFileSaver? fileSaver = null)
+    private static MainWindowViewModel createViewModel(out FakeAudioEngine audio, out TestEnvironment environment, IFileSaver? fileSaver = null, IAudioDurationProbe? durationProbe = null)
     {
         audio = new FakeAudioEngine();
         environment = new TestEnvironment();
         var manager = new BeatmapManager([environment.Loader], new DuplicateDetector());
-        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver);
+        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe);
     }
 
     private static UnifiedBeatmapSet createSet(string title, string artist, string creator, string tags, double bpm, int seconds) => new()

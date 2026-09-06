@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using LibVLCSharp.Shared;
 using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.App.ViewModels;
@@ -33,6 +34,15 @@ public sealed partial class MainWindow : Window
         // the visual tree. Assigning here (before the window is shown) would leave libVLC
         // without a handle and it would open its own window, so assign on every attach.
         VideoView.AttachedToVisualTree += (_, _) => attachVideoSurface();
+
+        // Double-clicking a row plays it; the first click of the pair already selected it.
+        TrackList.DoubleTapped += (_, args) =>
+        {
+            if (viewModel.SelectedTrack is not null && args.Source is Avalonia.Visual source && source.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null)
+            {
+                viewModel.PlaySelectedCommand.Execute(null);
+            }
+        };
 
         Opened += async (_, _) =>
         {
