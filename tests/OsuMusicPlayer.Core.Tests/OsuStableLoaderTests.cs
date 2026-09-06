@@ -73,6 +73,7 @@ public sealed class OsuStableLoaderTests
             DrainRate = 6d,
             OverallDifficulty = 8d,
             BeatmapFilePath = easyPath,
+            Md5Hash = 1.ToString("x32"),
         });
         result[0].Beatmaps[0].BPM.Should().BeApproximately(180, 0.001);
     }

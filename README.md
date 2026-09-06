@@ -46,6 +46,7 @@ dotnet run --project .\src\OsuMusicPlayer.App\OsuMusicPlayer.App.csproj
 dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- load        # 読み込みと統合の統計
 dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- audio       # BASS で数秒再生(小音量)
 dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- hitsounds   # サンプル解決の欠落数
+dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- collections # コレクションの楽曲がいくつ解決できるか
 dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- realm       # lazer 更新後の client.realm スキーマ確認
 ```
 

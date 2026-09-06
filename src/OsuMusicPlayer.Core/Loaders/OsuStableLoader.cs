@@ -205,6 +205,7 @@ public sealed class OsuStableLoader : IBeatmapLoader
         {
             Id = createGuid($"stable-beatmap:{entry.MD5Hash ?? entry.FileName}"),
             OnlineId = positiveOrNull(entry.BeatmapId),
+            Md5Hash = string.IsNullOrWhiteSpace(entry.MD5Hash) ? null : entry.MD5Hash.Trim().ToLowerInvariant(),
             DifficultyName = entry.Difficulty ?? string.Empty,
             Ruleset = ruleset,
             StarRating = readStarRating(entry, ruleset),

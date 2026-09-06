@@ -9,7 +9,7 @@
 - 対象: Windows / macOS / Linux。BASS ネイティブは 3 OS 分を同梱(実行確認は Windows のみ。macOS / Linux は手順を README に記載)
 - 技術: .NET 8(ランタイムは `RollForward=Major` で新しい版も可)/ Avalonia 11.3 / ManagedBass / OsuParsers / Realm 20.1 / LibVLCSharp / ReOsuStoryboardPlayer.Core / ASP.NET Core(Kestrel)
 - プロジェクト: Core(ドメイン・ローダー・検索・ヒットサウンド解析)、Audio(BASS 再生・EQ・ヒットサウンド)、App(Avalonia UI)、Server(HTTP API・Web リモート・オーバーレイ)、ServerHost(ヘッドレス実行ファイル)
-- テスト: 149 件合格(Core 63 / Audio 18 / App 65 / Server 3)、警告ゼロ(TreatWarningsAsErrors)
+- テスト: 150 件合格(Core 64 / Audio 18 / App 65 / Server 3)、警告ゼロ(TreatWarningsAsErrors)
 - 実データ検証: この PC の stable(約 3,000 フォルダ)と lazer(約 3,950 セット)で読み込み・再生・動画・ヒットサウンド・ストーリーボード・サーバー API を確認済み
 - Git: Codex が管理(コミットは Codex 側で実施)
 
@@ -72,6 +72,7 @@
 - [x] テーマ変更(`Themes/`、Settings → Appearance)
 - [x] キーボードショートカット(`Input/ShortcutMap.cs`、Settings → Shortcuts)
 - [x] OBS オーバーレイ(`/overlay`、Settings → Server / OBS に案内)、おすすめ(Recommended ビュー)、プレイリストからコレクション生成(Export view as collection.db)は実装済みのためチェックのみ
+- [x] コレクションの楽曲が表示されない(stable ローダーが osu!.db の MD5 を保持していなかった + stable / lazer 統合時に片方のハッシュが消えていた)。`UnifiedBeatmap.AlternateMd5Hashes` で両方のハッシュを保持し、ハーネスの `collections` モードで実データの解決率を確認(stable 28 / lazer 36 コレクションがほぼ全件解決)
 
 ## 守るべきルール(AGENT.md より)
 

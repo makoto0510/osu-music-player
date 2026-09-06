@@ -8,9 +8,10 @@ using OsuMusicPlayer.Core.Models;
 
 // Integration harness against the real osu! installations on this machine.
 //
-//   osu-music-harness [load|audio|hitsounds|realm|all] [--lazer <folder>] [--stable <folder>]
+//   osu-music-harness [load|audio|hitsounds|collections|realm|all] [--lazer <folder>] [--stable <folder>]
 //
-// load       loads every installation, prints counts and anomalies, then merges
+// load        loads every installation, prints counts and anomalies, then merges
+// collections reads collection.db / lazer collections and reports how many members resolve to loaded sets
 // audio      plays a few seconds of a stable and a lazer track through BASS (needs the natives)
 // hitsounds  builds the hit sound timeline of a few maps and reports unresolved samples
 // realm      dumps the lazer Realm schema (run this when a new lazer release changes client.realm)
@@ -82,6 +83,41 @@ report("MERGED", merged, mergeStopwatch.Elapsed);
 foreach (var group in merged.GroupBy(static set => set.Source))
 {
     log.LogInformation("  merged source {Source}: {Count}", group.Key, group.Count());
+}
+
+if (mode is "collections" or "all")
+{
+    var byHash = new Dictionary<string, UnifiedBeatmapSet>(StringComparer.OrdinalIgnoreCase);
+    foreach (var set in merged)
+    {
+        foreach (var hash in set.Beatmaps.SelectMany(static beatmap => beatmap.AllMd5Hashes))
+        {
+            byHash.TryAdd(hash, set);
+        }
+    }
+
+    log.LogInformation("Hash index: {Hashes} hashes over {Sets} sets", byHash.Count, merged.Count);
+    foreach (var installation in installations)
+    {
+        ICollectionLoader collectionLoader = installation.Kind == OsuInstallationKind.Stable
+            ? new OsuStableCollectionLoader(loggerFactory.CreateLogger<OsuStableCollectionLoader>())
+            : new OsuLazerCollectionLoader(loggerFactory.CreateLogger<OsuLazerCollectionLoader>());
+        var collections = await collectionLoader.LoadAsync(installation.RootPath);
+        log.LogInformation("{Kind}: {Count} collections", installation.Kind, collections.Count);
+        foreach (var collection in collections)
+        {
+            var resolved = collection.BeatmapMd5Hashes.Where(byHash.ContainsKey).Select(hash => byHash[hash]).Distinct().Count();
+            var unresolved = collection.BeatmapMd5Hashes.Where(hash => !byHash.ContainsKey(hash)).ToArray();
+            log.LogInformation("  {Name}: {Hashes} hashes -> {Sets} sets, {Unresolved} unresolved{Sample}",
+                collection.Name, collection.BeatmapMd5Hashes.Count, resolved, unresolved.Length,
+                unresolved.Length == 0 ? string.Empty : " (e.g. " + string.Join(", ", unresolved.Take(2)) + ")");
+        }
+    }
+
+    if (mode == "collections")
+    {
+        return 0;
+    }
 }
 
 if (mode is "hitsounds" or "all")

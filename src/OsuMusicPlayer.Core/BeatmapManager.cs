@@ -81,7 +81,7 @@ public sealed class BeatmapManager(
         var beatmaps = first.Beatmaps
             .Concat(second.Beatmaps)
             .GroupBy(static beatmap => beatmap.OnlineId is > 0 ? $"online:{beatmap.OnlineId}" : $"local:{beatmap.DifficultyName}", StringComparer.OrdinalIgnoreCase)
-            .Select(static group => group.First())
+            .Select(static group => mergeDifficulty(group.ToArray()))
             .ToArray();
 
         return first with
@@ -95,6 +95,26 @@ public sealed class BeatmapManager(
             Files = first.Files ?? second.Files,
             Beatmaps = beatmaps,
         };
+    }
+
+    /// <summary>
+    /// The first difficulty of a group wins, but every hash the others carried is kept so
+    /// collections made in either installation still find it.
+    /// </summary>
+    private static UnifiedBeatmap mergeDifficulty(UnifiedBeatmap[] group)
+    {
+        var winner = group[0];
+        if (group.Length == 1)
+        {
+            return winner;
+        }
+
+        var alternates = group
+            .SelectMany(static beatmap => beatmap.AllMd5Hashes)
+            .Where(hash => !string.Equals(hash, winner.Md5Hash, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return alternates.Length == 0 ? winner : winner with { AlternateMd5Hashes = alternates };
     }
 
     private static string prefer(string first, string second) => string.IsNullOrWhiteSpace(first) ? second : first;

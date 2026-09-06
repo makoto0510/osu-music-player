@@ -96,7 +96,7 @@ public sealed partial class MainWindowViewModel
         await dispatcher.InvokeAsync(() => roots = Installations.Select(static item => item.Installation).ToArray()).ConfigureAwait(false);
         try
         {
-            var hashes = tracks.SelectMany(static track => track.Model.Beatmaps).Select(static beatmap => beatmap.Md5Hash).Where(static hash => hash is not null).Cast<string>().ToArray();
+            var hashes = tracks.SelectMany(static track => track.Model.Beatmaps).SelectMany(static beatmap => beatmap.AllMd5Hashes).ToArray();
             await Task.Run(() => CollectionExporter.Write(path, name, hashes, roots.Select(static root => root.RootPath)), lifetimeCancellation.Token).ConfigureAwait(false);
             await dispatcher.InvokeAsync(() =>
             {

@@ -722,18 +722,22 @@ public sealed class MainWindowViewModelTests
         using var viewModel = createViewModel(out _, out var environment);
         var set = createSet("In collection", "Artist", "Mapper", "", 150, 100) with
         {
-            Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Normal", Tags = "", Md5Hash = "abc" }],
+            Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Normal", Tags = "", Md5Hash = "abc", AlternateMd5Hashes = ["stable-revision"] }],
         };
         environment.Loader.Sets = [set, createSet("Other", "Artist", "Mapper", "", 150, 100)];
         environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
-        environment.Collections.Collections = [new BeatmapCollectionInfo("Practice", OsuInstallationKind.Lazer, ["ABC", "missing"])];
+        environment.Collections.Collections =
+        [
+            new BeatmapCollectionInfo("Practice", OsuInstallationKind.Lazer, ["ABC", "missing"]),
+            new BeatmapCollectionInfo("Old revision", OsuInstallationKind.Lazer, ["STABLE-REVISION"]),
+        ];
 
         await viewModel.InitializeAsync();
 
-        var view = viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Collection);
-        view.Name.Should().Be("Practice");
-        view.Count.Should().Be(1);
-        viewModel.SelectedView = view;
+        var views = viewModel.Views.Where(static view => view.Kind == LibraryViewKind.Collection).ToArray();
+        views.Select(static view => view.Name).Should().Equal(new[] { "Practice", "Old revision" });
+        views.Should().AllSatisfy(static view => view.Count.Should().Be(1, "hashes match case-insensitively and through alternate revisions"));
+        viewModel.SelectedView = views[1];
         viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("In collection");
     }
 

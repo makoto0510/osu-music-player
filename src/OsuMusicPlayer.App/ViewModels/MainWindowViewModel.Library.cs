@@ -246,7 +246,7 @@ public sealed partial class MainWindowViewModel
             track.IsFavourite = favouriteIds.Contains(track.Model.Id);
             foreach (var beatmap in track.Model.Beatmaps)
             {
-                if (beatmap.Md5Hash is { Length: > 0 } hash)
+                foreach (var hash in beatmap.AllMd5Hashes)
                 {
                     tracksByMd5.TryAdd(hash, track);
                 }
