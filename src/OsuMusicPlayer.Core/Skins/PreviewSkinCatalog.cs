@@ -22,6 +22,9 @@ public sealed class PreviewSkinCatalog
     /// <summary>The player's own skins folder, e.g. <c>Documents/OsuMusicPlayer/Skins</c>.</summary>
     public string RootPath { get; }
 
+    /// <summary>A catalog rooted at <see cref="GetDefaultRootPath"/>.</summary>
+    public static PreviewSkinCatalog CreateDefault() => new(GetDefaultRootPath());
+
     /// <summary>The folder the player uses by default: the user's Documents folder, so it is easy to find in a file manager.</summary>
     public static string GetDefaultRootPath()
     {

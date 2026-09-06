@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace OsuMusicPlayer.App.Services;
 
@@ -17,37 +16,17 @@ public sealed class ShellLinkOpener : ILinkOpener
     public bool Open(Uri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
-        if (uri.Scheme is not ("http" or "https"))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo(uri.ToString()) { UseShellExecute = true });
-            return process is not null;
-        }
-        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException)
-        {
-            return false;
-        }
+        return uri.Scheme is "http" or "https" && start(uri.ToString());
     }
 
-    public bool OpenFolder(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
-        {
-            return false;
-        }
+    public bool OpenFolder(string path) => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path) && start(Path.GetFullPath(path));
 
+    /// <summary>Hands the target to the OS shell (browser for URLs, file manager for folders); false when nothing could be launched.</summary>
+    private static bool start(string target)
+    {
         try
         {
-            var fullPath = Path.GetFullPath(path);
-            var start = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? new ProcessStartInfo("explorer.exe", $"\"{fullPath}\"")
-                : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? new ProcessStartInfo("open", $"\"{fullPath}\"")
-                : new ProcessStartInfo("xdg-open", $"\"{fullPath}\"");
-            start.UseShellExecute = false;
-            using var process = Process.Start(start);
+            using var process = Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
             return process is not null;
         }
         catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException or IOException)

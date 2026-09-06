@@ -45,7 +45,11 @@ public sealed record PreviewObject(
 
 public sealed record PreviewComboColour(byte R, byte G, byte B);
 
-/// <summary>Everything the preview renderer needs; immutable so it can be shared with the render thread.</summary>
+/// <summary>
+/// Everything the preview renderer needs; immutable so it can be shared with the render thread.
+/// <see cref="ComboColours"/> is empty when the beatmap declares none, leaving the renderer to
+/// fall back to the skin's palette or <see cref="PlayfieldPreviewBuilder.DefaultComboColours"/>.
+/// </summary>
 public sealed record PlayfieldPreviewData(
     OsuRuleset Ruleset,
     IReadOnlyList<PreviewObject> Objects,
@@ -55,12 +59,6 @@ public sealed record PlayfieldPreviewData(
     int ColumnCount,
     IReadOnlyList<PreviewComboColour> ComboColours)
 {
-    /// <summary>
-    /// True when <see cref="ComboColours"/> came from the beatmap's [Colours] section rather than
-    /// the built-in defaults, so a skin's own colours only replace them when the user asks.
-    /// </summary>
-    public bool HasBeatmapComboColours { get; init; }
-
     public TimeSpan FirstObjectTime => Objects.Count == 0 ? TimeSpan.Zero : Objects[0].StartTime;
 
     public TimeSpan LastObjectTime => Objects.Count == 0 ? TimeSpan.Zero : Objects.Max(static hitObject => hitObject.EndTime);
@@ -69,7 +67,8 @@ public sealed record PlayfieldPreviewData(
 /// <summary>Reads a .osu file into <see cref="PlayfieldPreviewData"/> for the difficulty preview popup.</summary>
 public static class PlayfieldPreviewBuilder
 {
-    private static readonly PreviewComboColour[] default_colours =
+    /// <summary>osu!'s built-in combo palette, used when neither the beatmap nor the skin declares colours.</summary>
+    public static IReadOnlyList<PreviewComboColour> DefaultComboColours { get; } =
     [
         new(255, 192, 0),
         new(0, 202, 0),
@@ -110,10 +109,9 @@ public static class PlayfieldPreviewBuilder
         var circleSize = beatmap.DifficultySection.CircleSize;
         var approachRate = beatmap.DifficultySection.ApproachRate;
         var columns = ruleset == OsuRuleset.Mania ? Math.Clamp((int)Math.Round(circleSize), 1, 18) : 0;
-        var hasBeatmapColours = beatmap.ColoursSection.ComboColours is { Count: > 0 };
-        var colours = hasBeatmapColours
-            ? beatmap.ColoursSection.ComboColours.Select(static colour => new PreviewComboColour(colour.R, colour.G, colour.B)).ToArray()
-            : default_colours;
+        var colours = (beatmap.ColoursSection.ComboColours ?? [])
+            .Select(static colour => new PreviewComboColour(colour.R, colour.G, colour.B))
+            .ToArray();
 
         var objects = new List<PreviewObject>(beatmap.HitObjects.Count);
         var comboNumber = 0;
@@ -145,10 +143,7 @@ public static class PlayfieldPreviewBuilder
             Preempt: TimeSpan.FromMilliseconds(difficultyRange(approachRate, 1800, 1200, 450)),
             FadeIn: TimeSpan.FromMilliseconds(difficultyRange(approachRate, 1200, 800, 300)),
             columns,
-            colours)
-        {
-            HasBeatmapComboColours = hasBeatmapColours,
-        };
+            colours);
     }
 
     /// <summary>osu!'s piecewise mapping of a 0..10 difficulty value onto min / mid / max.</summary>

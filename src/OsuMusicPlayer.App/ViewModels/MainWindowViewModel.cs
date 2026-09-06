@@ -204,7 +204,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.fileSaver = fileSaver;
         this.durationProbe = durationProbe;
         this.themeApplier = themeApplier;
-        this.skinCatalog = skinCatalog ?? new PreviewSkinCatalog(PreviewSkinCatalog.GetDefaultRootPath());
+        this.skinCatalog = skinCatalog ?? PreviewSkinCatalog.CreateDefault();
         volume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
@@ -885,10 +885,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(HasInstallations));
         OnPropertyChanged(nameof(EmptyStateText));
-        if (initialized)
-        {
-            refreshPreviewSkins(); // osu!stable's Skins folder becomes available with its installation
-        }
+        refreshPreviewSkins(); // osu!stable's Skins folder becomes available with its installation
     }
 
     private void replaceTracks(IReadOnlyCollection<TrackItemViewModel> items)

@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OsuMusicPlayer.App.Services;
 using OsuMusicPlayer.Audio;
+using OsuMusicPlayer.Core.Skins;
 
 namespace OsuMusicPlayer.App.ViewModels;
 
@@ -231,7 +232,7 @@ public sealed partial class MainWindowViewModel
             {
                 ThemeName = SelectedThemeName,
                 AccentColor = AccentColorText.Trim(),
-                PreviewSkin = string.Equals(requestedPreviewSkinName, Core.Skins.PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase) ? string.Empty : requestedPreviewSkinName,
+                PreviewSkin = string.Equals(requestedPreviewSkinName, PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase) ? string.Empty : requestedPreviewSkinName,
                 PreferSkinComboColours = PreferSkinComboColours,
             },
             Exclusions = new LibraryExclusionSettings

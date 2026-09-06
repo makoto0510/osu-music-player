@@ -16,16 +16,16 @@ public sealed partial class MainWindowViewModel
     private readonly PreviewSkinCatalog skinCatalog;
     private IReadOnlyList<PreviewSkinEntry> skinEntries = [];
 
-    /// <summary>The name the user last picked or the settings asked for, kept so a skin that shows up later (osu! found) is still selected.</summary>
-    private string requestedPreviewSkinName = Core.Skins.PreviewSkin.DefaultName;
-    private bool refreshingPreviewSkins;
-
-    [ObservableProperty]
-    private string selectedPreviewSkinName = Core.Skins.PreviewSkin.DefaultName;
+    /// <summary>
+    /// The one piece of state: the name the user picked (or the settings asked for). The
+    /// selection shown in the UI is derived from it, so a skin that only shows up later (an
+    /// osu!stable install detected after start) is still selected once it appears.
+    /// </summary>
+    private string requestedPreviewSkinName = PreviewSkin.DefaultName;
 
     /// <summary>The loaded skin the preview window draws with; never null.</summary>
     [ObservableProperty]
-    private PreviewSkin previewSkin = Core.Skins.PreviewSkin.Default;
+    private PreviewSkin activePreviewSkin = PreviewSkin.Default;
 
     [ObservableProperty]
     private bool preferSkinComboColours;
@@ -34,17 +34,30 @@ public sealed partial class MainWindowViewModel
     private string previewSkinStatusText = string.Empty;
 
     /// <summary>"Default" followed by every skin folder found.</summary>
-    public ObservableCollection<string> PreviewSkinNames { get; } = [Core.Skins.PreviewSkin.DefaultName];
+    public ObservableCollection<string> PreviewSkinNames { get; } = [PreviewSkin.DefaultName];
+
+    /// <summary>The requested skin when it exists, otherwise "Default". Setting null (which the ComboBox does while its items are replaced) is ignored.</summary>
+    public string SelectedPreviewSkinName
+    {
+        get => PreviewSkinCatalog.Find(skinEntries, requestedPreviewSkinName)?.Name ?? PreviewSkin.DefaultName;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value) || string.Equals(value, requestedPreviewSkinName, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            requestedPreviewSkinName = value;
+            OnPropertyChanged();
+            loadPreviewSkin();
+        }
+    }
 
     public string SkinsFolderPath => skinCatalog.RootPath;
 
     /// <summary>Re-scans the skin folders; call after adding a folder while the app is running.</summary>
     [RelayCommand]
-    private void RefreshPreviewSkins()
-    {
-        skinCatalog.EnsureRootExists();
-        refreshPreviewSkins();
-    }
+    private void RefreshPreviewSkins() => refreshPreviewSkins();
 
     /// <summary>Creates the skins folder if needed and shows it in the file manager.</summary>
     [RelayCommand]
@@ -62,51 +75,34 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    partial void OnSelectedPreviewSkinNameChanged(string value)
-    {
-        if (refreshingPreviewSkins)
-        {
-            return;
-        }
-
-        requestedPreviewSkinName = string.IsNullOrWhiteSpace(value) ? Core.Skins.PreviewSkin.DefaultName : value;
-        loadPreviewSkin();
-    }
-
     private void applyRestoredPreviewSkin(AppSettings settings)
     {
         PreferSkinComboColours = settings.Appearance.PreferSkinComboColours;
-        requestedPreviewSkinName = string.IsNullOrWhiteSpace(settings.Appearance.PreviewSkin) ? Core.Skins.PreviewSkin.DefaultName : settings.Appearance.PreviewSkin;
-        skinCatalog.EnsureRootExists();
+        requestedPreviewSkinName = string.IsNullOrWhiteSpace(settings.Appearance.PreviewSkin) ? PreviewSkin.DefaultName : settings.Appearance.PreviewSkin;
         refreshPreviewSkins();
     }
 
-    /// <summary>Rebuilds the name list from the catalog and re-selects the requested skin if it is (now) present.</summary>
+    /// <summary>Rebuilds the name list from the catalog; the selection follows <see cref="requestedPreviewSkinName"/>.</summary>
     private void refreshPreviewSkins()
     {
+        skinCatalog.EnsureRootExists();
         var stableRoots = Installations
             .Select(static item => item.Installation)
             .Where(static installation => installation.Kind == OsuInstallationKind.Stable)
-            .Select(static installation => installation.RootPath)
-            .ToArray();
+            .Select(static installation => installation.RootPath);
+        var previousSelection = SelectedPreviewSkinName;
         skinEntries = skinCatalog.Enumerate(stableRoots);
 
-        refreshingPreviewSkins = true;
-        try
+        PreviewSkinNames.Clear();
+        PreviewSkinNames.Add(PreviewSkin.DefaultName);
+        foreach (var entry in skinEntries)
         {
-            PreviewSkinNames.Clear();
-            PreviewSkinNames.Add(Core.Skins.PreviewSkin.DefaultName);
-            foreach (var entry in skinEntries)
-            {
-                PreviewSkinNames.Add(entry.Name);
-            }
-
-            var match = PreviewSkinCatalog.Find(skinEntries, requestedPreviewSkinName);
-            SelectedPreviewSkinName = match?.Name ?? Core.Skins.PreviewSkin.DefaultName;
+            PreviewSkinNames.Add(entry.Name);
         }
-        finally
+
+        if (!string.Equals(previousSelection, SelectedPreviewSkinName, StringComparison.Ordinal))
         {
-            refreshingPreviewSkins = false;
+            OnPropertyChanged(nameof(SelectedPreviewSkinName));
         }
 
         loadPreviewSkin();
@@ -114,24 +110,29 @@ public sealed partial class MainWindowViewModel
 
     private void loadPreviewSkin()
     {
-        var entry = PreviewSkinCatalog.Find(skinEntries, SelectedPreviewSkinName);
+        var entry = PreviewSkinCatalog.Find(skinEntries, requestedPreviewSkinName);
         if (entry is null)
         {
-            PreviewSkin = Core.Skins.PreviewSkin.Default;
-            PreviewSkinStatusText = string.Equals(requestedPreviewSkinName, Core.Skins.PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase)
+            ActivePreviewSkin = PreviewSkin.Default;
+            PreviewSkinStatusText = string.Equals(requestedPreviewSkinName, PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase)
                 ? string.Empty
                 : $"Skin \"{requestedPreviewSkinName}\" was not found; using the default look.";
             return;
         }
 
+        if (string.Equals(ActivePreviewSkin.Directory, entry.Directory, StringComparison.Ordinal))
+        {
+            return; // same folder: keep the loaded skin (and the preview's decoded sprites)
+        }
+
         try
         {
-            PreviewSkin = PreviewSkinLoader.Load(entry.Directory, entry.Name);
+            ActivePreviewSkin = PreviewSkinLoader.Load(entry.Directory, entry.Name);
             PreviewSkinStatusText = string.Empty;
         }
         catch (DirectoryNotFoundException)
         {
-            PreviewSkin = Core.Skins.PreviewSkin.Default;
+            ActivePreviewSkin = PreviewSkin.Default;
             PreviewSkinStatusText = $"Skin folder \"{entry.Directory}\" disappeared; using the default look.";
         }
     }

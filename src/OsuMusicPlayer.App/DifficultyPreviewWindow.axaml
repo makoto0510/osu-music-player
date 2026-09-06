@@ -16,7 +16,7 @@
     </Border>
     <Grid Grid.Row="1">
       <Image Source="{Binding CurrentTrack.LargeBackgroundImage^}" Stretch="UniformToFill" Opacity="0.25" />
-      <controls:PlayfieldPreviewView x:Name="Playfield" Data="{Binding DifficultyPreview}" Skin="{Binding PreviewSkin}" PreferSkinColours="{Binding PreferSkinComboColours}" />
+      <controls:PlayfieldPreviewView x:Name="Playfield" Data="{Binding DifficultyPreview}" Skin="{Binding ActivePreviewSkin}" PreferSkinColours="{Binding PreferSkinComboColours}" />
     </Grid>
     <Border Grid.Row="2" Padding="12,6" Background="#151821">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">

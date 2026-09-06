@@ -18,6 +18,11 @@ public sealed class PreviewSkin
     public const string DefaultName = "Default";
 
     private static readonly string[] image_extensions = [".png", ".jpg", ".jpeg"];
+    private static readonly (string Suffix, float Scale)[] resolutions = [("@2x", 2f), ("", 1f)];
+    private static readonly string[] frame_separators = ["-", string.Empty];
+
+    /// <summary>Relative path (forward slashes, case-insensitive) to full path, listed once per skin.</summary>
+    private readonly Lazy<Dictionary<string, string>> files;
 
     public PreviewSkin(
         string name,
@@ -46,6 +51,7 @@ public sealed class PreviewSkin
         AllowSliderBallTint = allowSliderBallTint;
         CursorCentre = cursorCentre;
         Mania = mania ?? [];
+        files = new Lazy<Dictionary<string, string>>(listFiles, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     /// <summary>The built-in look: no folder, no images, every element drawn as vectors.</summary>
@@ -81,7 +87,18 @@ public sealed class PreviewSkin
 
     public IReadOnlyList<ManiaSkinColours> Mania { get; }
 
-    public ManiaSkinColours? ManiaFor(int keys) => Mania.FirstOrDefault(section => section.Keys == keys);
+    public ManiaSkinColours? ManiaFor(int keys)
+    {
+        foreach (var section in Mania)
+        {
+            if (section.Keys == keys)
+            {
+                return section;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Finds an element by its osu! name (without extension), preferring the "@2x" version.
@@ -95,21 +112,15 @@ public sealed class PreviewSkin
             return null;
         }
 
-        foreach (var extension in image_extensions)
+        var index = files.Value;
+        foreach (var (suffix, scale) in resolutions)
         {
-            var highResolution = System.IO.Path.Combine(Directory, name + "@2x" + extension);
-            if (File.Exists(highResolution))
+            foreach (var extension in image_extensions)
             {
-                return new SkinImage(highResolution, 2f);
-            }
-        }
-
-        foreach (var extension in image_extensions)
-        {
-            var path = System.IO.Path.Combine(Directory, name + extension);
-            if (File.Exists(path))
-            {
-                return new SkinImage(path, 1f);
+                if (index.TryGetValue(name + suffix + extension, out var path))
+                {
+                    return new SkinImage(path, scale);
+                }
             }
         }
 
@@ -123,22 +134,11 @@ public sealed class PreviewSkin
     public IReadOnlyList<SkinImage> FindAnimation(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        if (Directory is null)
-        {
-            return [];
-        }
-
-        foreach (var separator in new[] { "-", string.Empty })
+        foreach (var separator in frame_separators)
         {
             var frames = new List<SkinImage>();
-            for (var index = 0; ; index++)
+            for (var index = 0; FindImage($"{name}{separator}{index}") is { } frame; index++)
             {
-                var frame = FindImage($"{name}{separator}{index}");
-                if (frame is null)
-                {
-                    break;
-                }
-
                 frames.Add(frame);
             }
 
@@ -149,5 +149,30 @@ public sealed class PreviewSkin
         }
 
         return FindImage(name) is { } single ? [single] : [];
+    }
+
+    private Dictionary<string, string> listFiles()
+    {
+        var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (Directory is null)
+        {
+            return index;
+        }
+
+        try
+        {
+            // Sub-folders are included because HitCirclePrefix may point into one ("fonts/hitcircle").
+            foreach (var path in System.IO.Directory.EnumerateFiles(Directory, "*", SearchOption.AllDirectories))
+            {
+                var relative = System.IO.Path.GetRelativePath(Directory, path).Replace('\\', '/');
+                index.TryAdd(relative, path);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // An unreadable folder is an empty skin; the vector look takes over.
+        }
+
+        return index;
     }
 }

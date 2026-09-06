@@ -914,8 +914,8 @@ public sealed class MainWindowViewModelTests
 
         viewModel.PreviewSkinNames.Should().Equal("Default", "Neon", "Plain");
         viewModel.SelectedPreviewSkinName.Should().Be("Neon", "the saved name is matched case-insensitively against folder names");
-        viewModel.PreviewSkin.Name.Should().Be("Neon Lights", "skin.ini supplies the display name");
-        viewModel.PreviewSkin.ComboColours.Should().ContainSingle();
+        viewModel.ActivePreviewSkin.Name.Should().Be("Neon Lights", "skin.ini supplies the display name");
+        viewModel.ActivePreviewSkin.ComboColours.Should().ContainSingle();
         viewModel.PreferSkinComboColours.Should().BeTrue();
         viewModel.PreviewSkinStatusText.Should().BeEmpty();
         File.Exists(Path.Combine(environment.SkinCatalog.RootPath, PreviewSkinCatalog.ReadMeFileName)).Should().BeTrue("the folder is created with a README so users know what goes there");
@@ -924,13 +924,13 @@ public sealed class MainWindowViewModelTests
         viewModel.PreferSkinComboColours = false;
         await viewModel.PendingSave;
 
-        viewModel.PreviewSkin.Directory.Should().Be(Path.Combine(environment.SkinCatalog.RootPath, "Plain"));
+        viewModel.ActivePreviewSkin.Directory.Should().Be(Path.Combine(environment.SkinCatalog.RootPath, "Plain"));
         environment.Settings.Current.Appearance.PreviewSkin.Should().Be("Plain");
         environment.Settings.Current.Appearance.PreferSkinComboColours.Should().BeFalse();
 
         viewModel.SelectedPreviewSkinName = "Default";
         await viewModel.PendingSave;
-        viewModel.PreviewSkin.IsDefault.Should().BeTrue();
+        viewModel.ActivePreviewSkin.IsDefault.Should().BeTrue();
         environment.Settings.Current.Appearance.PreviewSkin.Should().BeEmpty();
     }
 
@@ -944,7 +944,7 @@ public sealed class MainWindowViewModelTests
         await viewModel.InitializeAsync();
 
         viewModel.SelectedPreviewSkinName.Should().Be("Default");
-        viewModel.PreviewSkin.IsDefault.Should().BeTrue();
+        viewModel.ActivePreviewSkin.IsDefault.Should().BeTrue();
         viewModel.PreviewSkinStatusText.Should().Contain("Later");
         viewModel.BuildSettings().Appearance.PreviewSkin.Should().Be("Later", "a skin that is merely absent right now is not forgotten");
 
@@ -952,7 +952,7 @@ public sealed class MainWindowViewModelTests
         viewModel.RefreshPreviewSkinsCommand.Execute(null);
 
         viewModel.SelectedPreviewSkinName.Should().Be("Later");
-        viewModel.PreviewSkin.IsDefault.Should().BeFalse();
+        viewModel.ActivePreviewSkin.IsDefault.Should().BeFalse();
         viewModel.PreviewSkinStatusText.Should().BeEmpty();
     }
 

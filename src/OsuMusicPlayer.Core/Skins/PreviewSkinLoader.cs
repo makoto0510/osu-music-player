@@ -69,8 +69,8 @@ public static class PreviewSkinLoader
             if (line[0] == '[' && line[^1] == ']')
             {
                 flushMania();
-                section = line[1..^1].Trim();
-                if (section.Equals("Mania", StringComparison.OrdinalIgnoreCase))
+                section = line[1..^1].Trim().ToUpperInvariant();
+                if (section == "MANIA")
                 {
                     currentMania = new ManiaSection();
                 }
@@ -86,7 +86,7 @@ public static class PreviewSkinLoader
 
             var key = line[..separator].Trim();
             var value = line[(separator + 1)..].Trim();
-            switch (section.ToUpperInvariant())
+            switch (section)
             {
                 case "GENERAL":
                     if (key.Equals("Name", StringComparison.OrdinalIgnoreCase))
@@ -108,23 +108,29 @@ public static class PreviewSkinLoader
 
                     break;
                 case "COLOURS":
-                    if (key.StartsWith("Combo", StringComparison.OrdinalIgnoreCase)
-                        && int.TryParse(key.AsSpan(5), NumberStyles.Integer, CultureInfo.InvariantCulture, out var index)
-                        && TryParseColour(value, out var combo))
+                    if (!TryParseColour(value, out var colour))
                     {
-                        combos[index] = combo;
+                        break;
                     }
-                    else if (key.Equals("SliderBorder", StringComparison.OrdinalIgnoreCase) && TryParseColour(value, out var border))
+
+                    if (key.StartsWith("Combo", StringComparison.OrdinalIgnoreCase) && int.TryParse(key.AsSpan(5), NumberStyles.Integer, CultureInfo.InvariantCulture, out var index))
                     {
-                        sliderBorder = border;
+                        combos[index] = colour;
                     }
-                    else if (key.Equals("SliderTrackOverride", StringComparison.OrdinalIgnoreCase) && TryParseColour(value, out var track))
+                    else
                     {
-                        sliderTrack = track;
-                    }
-                    else if (key.Equals("SliderBall", StringComparison.OrdinalIgnoreCase) && TryParseColour(value, out var ball))
-                    {
-                        sliderBall = ball;
+                        switch (key.ToUpperInvariant())
+                        {
+                            case "SLIDERBORDER":
+                                sliderBorder = colour;
+                                break;
+                            case "SLIDERTRACKOVERRIDE":
+                                sliderTrack = colour;
+                                break;
+                            case "SLIDERBALL":
+                                sliderBall = colour;
+                                break;
+                        }
                     }
 
                     break;

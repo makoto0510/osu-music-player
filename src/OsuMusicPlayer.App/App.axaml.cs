@@ -137,7 +137,7 @@ public sealed partial class App : Application
         services.AddSingleton<IHitsoundSampleSourceFactory, HitsoundSampleSourceFactory>();
         services.AddSingleton<IStoryboardLoader>(static _ => new StoryboardLoader());
         services.AddSingleton<ILinkOpener, ShellLinkOpener>();
-        services.AddSingleton(static _ => new PreviewSkinCatalog(PreviewSkinCatalog.GetDefaultRootPath()));
+        services.AddSingleton(static _ => PreviewSkinCatalog.CreateDefault());
         services.AddSingleton<IThemeApplier, ApplicationThemeApplier>();
         services.AddSingleton<IOnlineMetadataService>(static _ => new OnlineMetadataService());
         services.AddSingleton<IPlayerBridge, ViewModelPlayerBridge>();
