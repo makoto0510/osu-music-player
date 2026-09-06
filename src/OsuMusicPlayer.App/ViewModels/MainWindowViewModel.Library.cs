@@ -197,6 +197,8 @@ public sealed partial class MainWindowViewModel
     partial void OnSelectedViewChanged(LibraryView? value)
     {
         OnPropertyChanged(nameof(IsSmartPlaylistViewSelected));
+        syncViewSelection();
+        notifyShellTexts();
         if (!suppressViewRefresh)
         {
             applyFilterAndSort();
@@ -230,6 +232,7 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(IsDetailFavourite));
         OnPropertyChanged(nameof(FavouriteButtonText));
+        OnPropertyChanged(nameof(DetailFavouriteIconKey));
     }
 
     /// <summary>Applies the selected view on top of the full track list.</summary>
@@ -315,6 +318,7 @@ public sealed partial class MainWindowViewModel
             suppressViewRefresh = false;
         }
 
+        rebuildViewGroups();
         OnPropertyChanged(nameof(IsPlaylistViewSelected));
     }
 

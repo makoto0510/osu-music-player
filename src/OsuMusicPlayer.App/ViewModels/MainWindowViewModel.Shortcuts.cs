@@ -63,7 +63,7 @@ public sealed partial class MainWindowViewModel
                 SearchText = string.Empty;
                 return true;
             case ShortcutAction.ToggleQueue:
-                IsQueuePanelVisible = !IsQueuePanelVisible;
+                IsNowPlayingPaneVisible = !IsNowPlayingPaneVisible;
                 return true;
             case ShortcutAction.ToggleSettings:
                 IsSettingsPanelVisible = !IsSettingsPanelVisible;

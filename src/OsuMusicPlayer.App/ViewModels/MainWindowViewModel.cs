@@ -72,9 +72,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private bool isSourcesPanelVisible;
 
     [ObservableProperty]
-    private bool isQueuePanelVisible;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasVideo))]
     [NotifyPropertyChangedFor(nameof(HasStoryboard))]
     [NotifyPropertyChangedFor(nameof(IsVideoVisible))]
@@ -99,6 +96,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RepeatText))]
+    [NotifyPropertyChangedFor(nameof(IsRepeatOne))]
+    [NotifyPropertyChangedFor(nameof(IsRepeatOn))]
     private RepeatMode repeatMode = RepeatMode.Off;
 
     [ObservableProperty]
@@ -107,6 +106,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     /// <summary>Theater mode hides the sidebar and the track list and gives the visuals the whole window.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(VisualRowHeight))]
+    [NotifyPropertyChangedFor(nameof(DetailsRowHeight))]
     [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
     [NotifyPropertyChangedFor(nameof(ListColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailsColumnWidth))]
@@ -140,6 +140,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlayPauseText))]
+    [NotifyPropertyChangedFor(nameof(NowPlayingLabel))]
     private bool isPlaying;
 
     [ObservableProperty]
@@ -152,6 +153,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private double progress;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMuted))]
     private double volume;
 
     [ObservableProperty]
@@ -159,6 +161,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsNcActive))]
     [NotifyPropertyChangedFor(nameof(IsHtActive))]
     [NotifyPropertyChangedFor(nameof(IsDcActive))]
+    [NotifyPropertyChangedFor(nameof(ModText))]
     private OsuAudioMod mod;
 
     public MainWindowViewModel(
@@ -245,15 +248,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool ShowStoryboardInPane => IsStoryboardVisible && !IsVisualsPoppedOut;
 
     /// <summary>The visual box is a fixed strip above the details, or the whole pane in theater mode.</summary>
-    public Avalonia.Controls.GridLength VisualRowHeight => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(202);
+    public Avalonia.Controls.GridLength VisualRowHeight => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(256);
+
+    /// <summary>The details below the cover collapse in theater mode so the cover gets the whole pane.</summary>
+    public Avalonia.Controls.GridLength DetailsRowHeight => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star);
 
     public bool IsDetailsPaneVisible => !IsTheaterMode;
 
-    public Avalonia.Controls.GridLength SidebarColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(220);
+    public Avalonia.Controls.GridLength SidebarColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(236);
 
     public Avalonia.Controls.GridLength ListColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star);
 
-    public Avalonia.Controls.GridLength DetailsColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(380);
+    public Avalonia.Controls.GridLength DetailsColumnWidth => IsTheaterMode
+        ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star)
+        : new Avalonia.Controls.GridLength(IsNowPlayingPaneVisible ? 312 : 0);
 
     public string VisualsWindowButtonText => IsVisualsPoppedOut ? "Bring back" : "Pop out";
     public string QueueText => Queue.Count == 0 ? "Queue" : $"Queue ({Queue.Count})";
@@ -553,11 +561,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnIsShuffleEnabledChanged(bool value) => shuffleHistory.Clear();
 
-    partial void OnSearchTextChanged(string value)
-    {
-        searchQuery = TrackSearchQuery.Parse(value);
-        applyFilterAndSort();
-    }
+    partial void OnSearchTextChanged(string value) => refreshSearchQuery();
 
     partial void OnSelectedTrackChanged(TrackItemViewModel? value) => notifyDetailTrackChanged();
 
@@ -592,8 +596,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasDetailTrack));
         OnPropertyChanged(nameof(CanOpenOnWeb));
         notifyFavouriteChanged();
+        notifyDetailCurrentChanged();
     }
-    partial void OnSelectedSortChanged(TrackSortOption value) => applyFilterAndSort();
+    partial void OnSelectedSortChanged(TrackSortOption value)
+    {
+        applyFilterAndSort();
+        notifyShellTexts();
+    }
 
     partial void OnProgressChanged(double value)
     {
@@ -929,18 +938,29 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 TrackSortOption.Artist => query.OrderBy(static track => track.Artist, StringComparer.CurrentCultureIgnoreCase),
                 TrackSortOption.BPM => query.OrderByDescending(static track => track.BPM),
                 TrackSortOption.Length => query.OrderByDescending(static track => track.Length),
+                TrackSortOption.RecentlyPlayed => query.OrderByDescending(track => playHistory.GetValueOrDefault(track.Model.Id)?.LastPlayedUtc ?? DateTime.MinValue),
+                TrackSortOption.MostPlayed => query.OrderByDescending(track => playHistory.GetValueOrDefault(track.Model.Id)?.PlayCount ?? 0),
+                TrackSortOption.Stars => query.OrderByDescending(static track => track.MaxStarRating),
                 _ => query.OrderBy(static track => track.Title, StringComparer.CurrentCultureIgnoreCase),
             };
         }
 
         var selected = SelectedTrack;
+        foreach (var track in Tracks)
+        {
+            track.Position = 0;
+        }
+
         Tracks.Clear();
         foreach (var track in query)
         {
+            track.Position = Tracks.Count + 1;
             Tracks.Add(track);
         }
 
         OnPropertyChanged(nameof(HasTracks));
+        OnPropertyChanged(nameof(TrackCountText));
+        notifyShellTexts();
 
         if (selected is not null && Tracks.Contains(selected))
         {

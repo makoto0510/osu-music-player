@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace OsuMusicPlayer.App.ViewModels;
 
 public enum LibraryViewKind
@@ -11,8 +13,10 @@ public enum LibraryViewKind
 }
 
 /// <summary>One entry of the library selector: all tracks, favourites, a playlist, a collection…</summary>
-public sealed class LibraryView
+public sealed class LibraryView : ObservableObject
 {
+    private bool isSelected;
+
     public LibraryView(LibraryViewKind kind, string name, Guid? id, Func<IEnumerable<TrackItemViewModel>, IEnumerable<TrackItemViewModel>> filter, int count)
     {
         Kind = kind;
@@ -37,6 +41,24 @@ public sealed class LibraryView
     public string? GroupHeader { get; set; }
 
     public bool HasGroupHeader => GroupHeader is not null;
+
+    /// <summary>Mirrors <see cref="MainWindowViewModel.SelectedView"/> so the sidebar can highlight the entry.</summary>
+    public bool IsSelected
+    {
+        get => isSelected;
+        set => SetProperty(ref isSelected, value);
+    }
+
+    /// <summary>Key of the icon geometry resource drawn next to the name.</summary>
+    public string IconKey => Kind switch
+    {
+        LibraryViewKind.All => "IconMusicNote",
+        LibraryViewKind.Favourites => "IconHeart",
+        LibraryViewKind.Recommended => "IconStar",
+        LibraryViewKind.Playlist => "IconPlaylist",
+        LibraryViewKind.SmartPlaylist => "IconLightning",
+        _ => "IconCollection",
+    };
 
     public string Icon => Kind switch
     {

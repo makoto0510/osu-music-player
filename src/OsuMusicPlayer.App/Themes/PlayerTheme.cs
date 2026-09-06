@@ -99,7 +99,7 @@ public static class PlayerThemes
         return Color.FromArgb(color.A, mix(color.R), mix(color.G), mix(color.B));
     }
 
-    private static PlayerTheme dark(string name, string accent, string background = "#11131A", string surface = "#15181F", string surfaceAlt = "#292D3A", string border = "#292D3A") =>
+    private static PlayerTheme dark(string name, string accent, string background = "#0F0D14", string surface = "#16131D", string surfaceAlt = "#252030", string border = "#2B2536") =>
         new(name, true, parse(background), parse(surface), parse(surfaceAlt), parse(border), parse("#F2F3F7"), parse("#AEB4C4"), parse("#737A8D"), parse(accent));
 
     private static PlayerTheme light(string name, string accent) =>

@@ -26,8 +26,28 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
     }
 
     private bool isFavourite;
+    private int position;
+    private IReadOnlyList<string>? tagChips;
 
     public UnifiedBeatmapSet Model { get; }
+
+    /// <summary>1-based row number in the current list; 0 while the track is not listed.</summary>
+    public int Position
+    {
+        get => position;
+        set => SetProperty(ref position, value);
+    }
+
+    /// <summary>A handful of the set's tags, shown as chips in the now-playing pane.</summary>
+    public IReadOnlyList<string> TagChips => tagChips ??= Tags
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(static tag => tag.Length > 1)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Take(5)
+        .Select(static tag => '#' + tag)
+        .ToArray();
+
+    public bool HasTagChips => TagChips.Count > 0;
 
     public bool IsFavourite
     {
@@ -88,6 +108,9 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
     public TimeSpan Length => Model.Beatmaps.Count == 0 ? TimeSpan.Zero : Model.Beatmaps.Max(static beatmap => beatmap.Length);
     public double MaxStarRating => Model.Beatmaps.Count == 0 ? 0 : Model.Beatmaps.Max(static beatmap => beatmap.StarRating);
     public string BpmText => string.Create(CultureInfo.InvariantCulture, $"{BPM:0.#} BPM");
+    public string BpmValueText => string.Create(CultureInfo.InvariantCulture, $"{BPM:0}");
+    public string CreatorText => string.IsNullOrWhiteSpace(Creator) ? string.Empty : $"mapped by {Creator}";
+    public string StarValueText => MaxStarRating <= 0 ? "–" : string.Create(CultureInfo.InvariantCulture, $"{MaxStarRating:0.00}★");
     public string LengthText => formatTime(Length);
 
     public string SourceText => Model.Source switch

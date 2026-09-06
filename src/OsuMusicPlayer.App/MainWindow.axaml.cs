@@ -1,6 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using LibVLCSharp.Shared;
@@ -27,7 +30,31 @@ public sealed partial class MainWindow : Window
         ToggleVisualsWindowCommand = new RelayCommand(() => toggleVisualsWindow(fullscreen: false));
         FullscreenVisualsCommand = new RelayCommand(() => openVisualsWindow(fullscreen: true));
         OpenDifficultyPreviewCommand = new AsyncRelayCommand(openDifficultyPreviewAsync);
+
+        // The header doubles as the title bar. Windows and Linux get our own caption buttons;
+        // macOS keeps the system traffic lights, so the header leaves room for them.
+        ShowWindowButtons = !OperatingSystem.IsMacOS();
+        TitleBarPadding = OperatingSystem.IsMacOS() ? new Thickness(84, 8, 16, 8) : new Thickness(16, 8, 8, 8);
         InitializeComponent();
+
+        if (OperatingSystem.IsMacOS())
+        {
+            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome | ExtendClientAreaChromeHints.OSXThickTitleBar;
+        }
+
+        TitleBar.PointerPressed += onTitleBarPressed;
+        TitleBar.DoubleTapped += onTitleBarDoubleTapped;
+        MinimizeButton.Click += (_, _) => WindowState = WindowState.Minimized;
+        MaximizeButton.Click += (_, _) => toggleMaximized();
+        CloseButton.Click += (_, _) => Close();
+        PropertyChanged += (_, args) =>
+        {
+            if (args.Property == WindowStateProperty)
+            {
+                updateMaximizeGlyph();
+            }
+        };
+        updateMaximizeGlyph();
     }
 
     public MainWindow(MainWindowViewModel viewModel, IVideoPlayer videoPlayer, IAudioEngine audioEngine)
@@ -53,7 +80,9 @@ public sealed partial class MainWindow : Window
         // Double-clicking a row plays it; the first click of the pair already selected it.
         TrackList.DoubleTapped += (_, args) =>
         {
-            if (viewModel.SelectedTrack is not null && args.Source is Avalonia.Visual source && source.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null)
+            if (viewModel.SelectedTrack is not null && args.Source is Visual source
+                && source.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null
+                && source.FindAncestorOfType<Button>(includeSelf: true) is null)
             {
                 viewModel.PlaySelectedCommand.Execute(null);
             }
@@ -86,6 +115,41 @@ public sealed partial class MainWindow : Window
 
     public IAsyncRelayCommand OpenDifficultyPreviewCommand { get; }
 
+    /// <summary>Whether the header shows minimize / maximize / close (false on macOS, which keeps its own).</summary>
+    public bool ShowWindowButtons { get; }
+
+    public Thickness TitleBarPadding { get; }
+
+    private void onTitleBarPressed(object? sender, PointerPressedEventArgs args)
+    {
+        // Buttons and the search box handle their own presses, so only empty header space gets here.
+        if (args.GetCurrentPoint(this).Properties.IsLeftButtonPressed && !isInteractive(args.Source))
+        {
+            BeginMoveDrag(args);
+        }
+    }
+
+    private void onTitleBarDoubleTapped(object? sender, TappedEventArgs args)
+    {
+        if (ShowWindowButtons && !isInteractive(args.Source))
+        {
+            toggleMaximized();
+        }
+    }
+
+    private static bool isInteractive(object? source) =>
+        source is Visual visual && (visual.FindAncestorOfType<Button>(includeSelf: true) is not null || visual.FindAncestorOfType<TextBox>(includeSelf: true) is not null);
+
+    private void toggleMaximized() =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void updateMaximizeGlyph()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        MaximizeIcon.Data = this.FindResource(maximized ? "IconRestore" : "IconMaximize") as Geometry;
+        ToolTip.SetTip(MaximizeButton, maximized ? "Restore" : "Maximize");
+    }
+
     private void attachVideoSurface()
     {
         if (videoSurface is null || visualsWindow is not null)
@@ -107,7 +171,7 @@ public sealed partial class MainWindow : Window
         }
 
         var focused = FocusManager?.GetFocusedElement();
-        var typing = focused is TextBox || (focused as Avalonia.Visual)?.FindAncestorOfType<TextBox>() is not null;
+        var typing = focused is TextBox || (focused as Visual)?.FindAncestorOfType<TextBox>() is not null;
         if (ShortcutMap.Resolve(args.Key, args.KeyModifiers, typing) is not { } action)
         {
             return;
