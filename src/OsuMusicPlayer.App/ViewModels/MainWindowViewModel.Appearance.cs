@@ -11,6 +11,18 @@ public sealed partial class MainWindowViewModel
 {
     private readonly IThemeApplier? themeApplier;
 
+    public IReadOnlyList<string> InterfaceNames { get; } = ["Studio", "Classic"];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStudioInterface))]
+    [NotifyPropertyChangedFor(nameof(ArtistColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
+    private string selectedInterfaceName = "Studio";
+
+    public Avalonia.Controls.GridLength ArtistColumnWidth => IsStudioInterface ? new(1, Avalonia.Controls.GridUnitType.Star) : new(180);
+
+    public bool IsStudioInterface => SelectedInterfaceName == "Studio";
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentTheme))]
     private string selectedThemeName = PlayerThemes.DefaultName;
@@ -52,6 +64,7 @@ public sealed partial class MainWindowViewModel
 
     private void applyRestoredAppearance(AppSettings settings)
     {
+        SelectedInterfaceName = InterfaceNames.FirstOrDefault(name => string.Equals(name, settings.Appearance.InterfaceName, StringComparison.OrdinalIgnoreCase)) ?? "Studio";
         SelectedThemeName = PlayerThemes.Names.FirstOrDefault(name => string.Equals(name, settings.Appearance.ThemeName, StringComparison.OrdinalIgnoreCase)) ?? PlayerThemes.DefaultName;
         AccentColorText = PlayerThemes.TryParseColor(settings.Appearance.AccentColor, out _) ? settings.Appearance.AccentColor : string.Empty;
         applyTheme();

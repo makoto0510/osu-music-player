@@ -100,7 +100,8 @@
     </DataTemplate>
   </Window.Resources>
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Panel>
+  <Grid x:Name="ClassicShell" RowDefinitions="Auto,*,Auto" IsVisible="{Binding !IsStudioInterface}">
 
     <!-- ===== Header: logo · search · filter · tools · window buttons ===== -->
     <Border x:Name="TitleBar" Grid.Row="0" Height="66" Padding="{Binding #Root.TitleBarPadding}" Background="{DynamicResource ThemeBackgroundBrush}">
@@ -258,213 +259,11 @@
       <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" Margin="12,0,12,0" ClipToBounds="True" IsVisible="{Binding !IsTheaterMode}">
 
         <!-- Tool drawer -->
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" MaxHeight="400">
-          <StackPanel>
-
-            <!-- Sources -->
-            <Border Classes="panel" Margin="0,0,0,10" IsVisible="{Binding IsSourcesPanelVisible}">
-              <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                  <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock Text="Library sources" Classes="title" />
-                    <TextBlock Classes="hint" Text="osu! folders are only ever read. Add a folder manually when automatic detection fails." />
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Button Classes="small" Content="Add osu!stable folder…" Command="{Binding AddStableFolderCommand}" IsVisible="{Binding CanAddStableFolder}" />
-                    <Button Classes="small" Content="Add osu!lazer folder…" Command="{Binding AddLazerFolderCommand}" />
-                    <Button Classes="small" Content="Reload" Command="{Binding ReloadLibraryCommand}" />
-                  </StackPanel>
-                </Grid>
-                <TextBlock IsVisible="{Binding !HasInstallations}" Text="No osu! installation was detected on this computer." Classes="accent" />
-                <ItemsControl ItemsSource="{Binding Installations}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:InstallationItemViewModel">
-                      <Grid ColumnDefinitions="70,*,90,Auto" ColumnSpacing="12" Margin="0,2">
-                        <Border Grid.Column="0" Classes="badge" HorizontalAlignment="Left" Margin="0"><TextBlock Text="{Binding KindText}" /></Border>
-                        <TextBlock Grid.Column="1" Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
-                        <TextBlock Grid.Column="2" Text="{Binding OriginText}" Classes="hint" VerticalAlignment="Center" />
-                        <Button Grid.Column="3" Classes="small" Content="Remove" Command="{Binding RemoveCommand}" IsVisible="{Binding IsManual}" />
-                      </Grid>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-
-            <!-- Browse -->
-            <Border Classes="panel" Margin="0,0,0,10" IsVisible="{Binding IsBrowsePanelVisible}">
-              <StackPanel Spacing="6">
-                <TextBlock Text="Browse" Classes="title" />
-                <TextBlock Text="Artists" FontWeight="SemiBold" Classes="muted" />
-                <ItemsControl ItemsSource="{Binding TopArtists}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:BrowseEntry">
-                      <Button Classes="chip" Content="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Text="Mappers" FontWeight="SemiBold" Classes="muted" />
-                <ItemsControl ItemsSource="{Binding TopMappers}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:BrowseEntry">
-                      <Button Classes="chip" Content="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Text="Tags" FontWeight="SemiBold" Classes="muted" />
-                <ItemsControl ItemsSource="{Binding TopTags}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:BrowseEntry">
-                      <Button Classes="chip" Content="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}" />
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-
-            <!-- Equalizer -->
-            <Border Classes="panel" Margin="0,0,0,10" IsVisible="{Binding IsEqualizerPanelVisible}">
-              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="24">
-                <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Top" Width="190">
-                  <TextBlock Text="Equalizer" Classes="title" />
-                  <TextBlock Classes="hint" Text="Ten-band peaking EQ (BASS_FX). Presets or your own curve, saved automatically." />
-                  <ComboBox ItemsSource="{Binding EqualizerPresetNames}" SelectedItem="{Binding SelectedEqualizerPreset, Mode=TwoWay}" HorizontalAlignment="Stretch" PlaceholderText="{Binding EqualizerPresetText}" />
-                  <Button Classes="small" Content="Reset to flat" Command="{Binding ResetEqualizerCommand}" />
-                </StackPanel>
-                <ItemsControl Grid.Column="1" ItemsSource="{Binding EqualizerBands}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:EqualizerBandViewModel">
-                      <StackPanel Width="52" Spacing="2">
-                        <TextBlock Text="{Binding GainText}" FontSize="10" Classes="muted" HorizontalAlignment="Center" />
-                        <Slider Orientation="Vertical" Height="100" Minimum="-12" Maximum="12" TickFrequency="1" Value="{Binding Gain, Mode=TwoWay}" HorizontalAlignment="Center" />
-                        <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center" />
-                      </StackPanel>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </Grid>
-            </Border>
-
-            <!-- Settings -->
-            <Border Classes="panel" Margin="0,0,0,10" IsVisible="{Binding IsSettingsPanelVisible}">
-              <TabControl Padding="0,8,0,0">
-                <TabItem Header="Appearance">
-                  <StackPanel Spacing="8" MaxWidth="560" HorizontalAlignment="Left">
-                    <TextBlock Classes="hint" Text="Pick a preset, then optionally type any accent colour (hex) to match your osu! skin. Changes apply immediately and are saved." />
-                    <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
-                      <TextBlock Grid.Row="0" Grid.Column="0" Text="Theme" Classes="muted" VerticalAlignment="Center" />
-                      <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ThemeNames}" SelectedItem="{Binding SelectedThemeName, Mode=TwoWay}" Width="220" HorizontalAlignment="Left" />
-                      <TextBlock Grid.Row="1" Grid.Column="0" Text="Accent colour" Classes="muted" VerticalAlignment="Center" />
-                      <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                        <TextBox Width="140" Watermark="#FF66AA" Text="{Binding AccentColorText, UpdateSourceTrigger=PropertyChanged}" />
-                        <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource ThemeAccentBrush}" VerticalAlignment="Center" />
-                        <Button Classes="small" Content="Reset" Command="{Binding ResetAccentColorCommand}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding AccentColorStatusText}" Classes="hint" VerticalAlignment="Center" />
-                      </StackPanel>
-                      <TextBlock Grid.Row="2" Grid.Column="0" Text="Preview skin" Classes="muted" VerticalAlignment="Center" ToolTip.Tip="Skin used by the difficulty preview window" />
-                      <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                        <ComboBox ItemsSource="{Binding PreviewSkinNames}" SelectedItem="{Binding SelectedPreviewSkinName, Mode=TwoWay}" Width="220" />
-                        <Button Classes="small" Content="Refresh" Command="{Binding RefreshPreviewSkinsCommand}" VerticalAlignment="Center" ToolTip.Tip="Re-scan the skin folders" />
-                        <Button Classes="small" Content="Open folder" Command="{Binding OpenSkinsFolderCommand}" VerticalAlignment="Center" ToolTip.Tip="{Binding SkinsFolderPath}" />
-                      </StackPanel>
-                      <CheckBox Grid.Row="3" Grid.Column="1" Content="Use the skin's combo colours instead of the beatmap's" IsChecked="{Binding PreferSkinComboColours, Mode=TwoWay}" />
-                    </Grid>
-                    <TextBlock Classes="hint" Text="{Binding SkinsFolderPath, StringFormat='Put skin folders (osu! format: skin.ini + PNG elements) in {0}. Skins installed in osu!stable are listed too.'}" TextWrapping="Wrap" />
-                    <TextBlock Classes="hint" Text="{Binding PreviewSkinStatusText}" IsVisible="{Binding PreviewSkinStatusText.Length}" TextWrapping="Wrap" />
-                  </StackPanel>
-                </TabItem>
-                <TabItem Header="Hit sounds">
-                  <StackPanel Width="360" Spacing="6" HorizontalAlignment="Left">
-                    <Grid ColumnDefinitions="90,*,60" ColumnSpacing="8">
-                      <TextBlock Grid.Column="0" Text="Volume" Classes="muted" VerticalAlignment="Center" />
-                      <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding HitsoundVolume, Mode=TwoWay}" />
-                      <TextBlock Grid.Column="2" Text="{Binding HitsoundVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" />
-                    </Grid>
-                    <Grid ColumnDefinitions="90,*,60" ColumnSpacing="8">
-                      <TextBlock Grid.Column="0" Text="Offset" Classes="muted" VerticalAlignment="Center" ToolTip.Tip="Positive plays hit sounds later" />
-                      <Slider Grid.Column="1" Minimum="-200" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding HitsoundOffsetMs, Mode=TwoWay}" />
-                      <TextBlock Grid.Column="2" Text="{Binding HitsoundOffsetText}" VerticalAlignment="Center" />
-                    </Grid>
-                    <TextBlock Classes="hint" Text="Turn hit sounds on with the headphones toggle in the now-playing pane. The selected difficulty provides the samples." />
-                  </StackPanel>
-                </TabItem>
-                <TabItem Header="Library">
-                  <StackPanel Width="420" Spacing="6" HorizontalAlignment="Left">
-                    <TextBlock Classes="hint" Text="Hide sets by length or by a search query (e.g. mode:mania, tag:tv, artist:x). Applies on Reload too." />
-                    <Grid ColumnDefinitions="110,*" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
-                      <TextBlock Grid.Row="0" Grid.Column="0" Text="Min length (s)" Classes="muted" VerticalAlignment="Center" />
-                      <NumericUpDown Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="36000" Increment="10" FormatString="0" Value="{Binding ExcludeMinLengthSeconds, Mode=TwoWay}" />
-                      <TextBlock Grid.Row="1" Grid.Column="0" Text="Max length (s)" Classes="muted" VerticalAlignment="Center" ToolTip.Tip="0 = no limit" />
-                      <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="36000" Increment="10" FormatString="0" Value="{Binding ExcludeMaxLengthSeconds, Mode=TwoWay}" />
-                      <TextBlock Grid.Row="2" Grid.Column="0" Text="Exclude query" Classes="muted" VerticalAlignment="Center" />
-                      <TextBox Grid.Row="2" Grid.Column="1" Watermark="mode:mania -tag:keep" Text="{Binding ExcludeQueryText, Mode=TwoWay}" />
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="small" Content="Apply exclusions" Command="{Binding ApplyExclusionsCommand}" />
-                      <TextBlock Text="{Binding ExclusionStatusText}" Classes="hint" VerticalAlignment="Center" />
-                    </StackPanel>
-                  </StackPanel>
-                </TabItem>
-                <TabItem Header="Server / OBS">
-                  <StackPanel Width="460" Spacing="6" HorizontalAlignment="Left">
-                    <TextBlock Classes="hint" Text="Serves the library, audio streams, a web remote (/) and an OBS browser-source overlay (/overlay) over HTTP." />
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <CheckBox Content="Enabled" IsChecked="{Binding IsServerEnabled, Mode=TwoWay}" />
-                      <TextBlock Text="Port" Classes="muted" VerticalAlignment="Center" />
-                      <NumericUpDown Minimum="1024" Maximum="65535" Increment="1" FormatString="0" Value="{Binding ServerPort, Mode=TwoWay}" Width="120" />
-                      <CheckBox Content="Allow LAN" IsChecked="{Binding ServerAllowRemote, Mode=TwoWay}" ToolTip.Tip="Off: only this computer can connect" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding ServerStatusText}" Classes="hint" />
-                    <TextBlock Classes="hint" Text="OBS: add a Browser source with the overlay URL above (e.g. 800×160, transparent background)." />
-                  </StackPanel>
-                </TabItem>
-                <TabItem Header="Discord">
-                  <StackPanel Width="420" Spacing="6" HorizontalAlignment="Left">
-                    <TextBlock Classes="hint" Text="Create an application at discord.com/developers and paste its Application ID." />
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <CheckBox Content="Enabled" IsChecked="{Binding IsRichPresenceEnabled, Mode=TwoWay}" />
-                      <TextBox Width="220" Watermark="Application ID" Text="{Binding DiscordApplicationId, Mode=TwoWay}" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding RichPresenceStatusText}" Classes="hint" />
-                  </StackPanel>
-                </TabItem>
-                <TabItem Header="osu! API">
-                  <StackPanel Width="420" Spacing="6" HorizontalAlignment="Left">
-                    <TextBlock Classes="hint" Text="OAuth client from osu.ppy.sh/home/account/edit → OAuth. Used only to read beatmap set genre and language." />
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <TextBox Width="110" Watermark="Client ID" Text="{Binding OsuApiClientId, Mode=TwoWay}" />
-                      <TextBox Width="200" Watermark="Client secret" PasswordChar="•" Text="{Binding OsuApiClientSecret, Mode=TwoWay}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="small" Content="Fetch metadata" Command="{Binding FetchOnlineMetadataCommand}" />
-                      <TextBlock Text="{Binding OnlineMetadataStatusText}" Classes="hint" VerticalAlignment="Center" MaxWidth="260" />
-                    </StackPanel>
-                  </StackPanel>
-                </TabItem>
-                <TabItem Header="Shortcuts">
-                  <ItemsControl ItemsSource="{Binding Shortcuts}" MaxHeight="300">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Vertical" MaxHeight="300" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="input:Shortcut">
-                        <Grid ColumnDefinitions="150,220" Margin="0,1,24,1">
-                          <Border Grid.Column="0" Classes="badge" HorizontalAlignment="Left" Margin="0,0,8,0"><TextBlock Text="{Binding GestureText}" /></Border>
-                          <TextBlock Grid.Column="1" Text="{Binding Description}" FontSize="12" VerticalAlignment="Center" />
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </TabItem>
-              </TabControl>
-            </Border>
-          </StackPanel>
-        </ScrollViewer>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" MaxHeight="400"><controls:PlayerToolsView /></ScrollViewer>
 
         <!-- List header -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="8,2,8,0">
+        <Border Grid.Row="1" Margin="8,2,8,0">
+        <Grid ColumnDefinitions="*,Auto">
           <StackPanel Grid.Column="0" Spacing="2">
             <TextBlock Text="{Binding ViewTitle}" FontSize="26" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
             <StackPanel Orientation="Horizontal" Spacing="4">
@@ -486,8 +285,15 @@
           </StackPanel>
         </Grid>
 
+        </Border>
+
         <!-- Column captions -->
-        <Grid Grid.Row="2" ColumnDefinitions="34,56,*,180,64,64,36,36" ColumnSpacing="10" Margin="8,14,12,6">
+        <Grid Grid.Row="2" ColumnSpacing="10" Margin="8,14,12,6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="34" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" />
+            <ColumnDefinition Width="{Binding ArtistColumnWidth}" />
+            <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" />
+          </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" Classes="column" Text="#" HorizontalAlignment="Center" />
           <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Classes="column" Text="TITLE" />
           <TextBlock Grid.Column="3" Classes="column" Text="ARTIST" />
@@ -503,7 +309,12 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:TrackItemViewModel">
-                <Grid ColumnDefinitions="34,56,*,180,64,64,36,36" Height="56" ColumnSpacing="10" Background="Transparent" ContextFlyout="{StaticResource TrackMenu}">
+                <Grid Height="56" ColumnSpacing="10" Background="Transparent" ContextFlyout="{StaticResource TrackMenu}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="34" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ArtistColumnWidth}" />
+                    <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" />
+                  </Grid.ColumnDefinitions>
                   <TextBlock Grid.Column="0" Text="{Binding Position}" Classes="muted" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   <Border Grid.Column="1" Classes="thumb" Width="46" Height="46">
                     <Grid>
@@ -723,7 +534,7 @@
     </Grid>
 
     <!-- ===== Player bar ===== -->
-    <Border Grid.Row="2" Padding="16,10,16,10" Margin="0,10,0,0" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,1,0,0">
+    <Border Grid.Row="2" Padding="16,10" Margin="0,10,0,0" BorderThickness="0,1,0,0" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}">
       <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="300,*,300" ColumnSpacing="16">
 
         <!-- Current track -->
@@ -791,4 +602,6 @@
       </Grid>
     </Border>
   </Grid>
+    <controls:StudioView x:Name="StudioShell" IsVisible="{Binding IsStudioInterface}" />
+  </Panel>
 </Window>

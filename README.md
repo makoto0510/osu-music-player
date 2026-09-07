@@ -54,13 +54,13 @@ dotnet run --project .\tools\OsuMusicPlayer.IntegrationHarness -- realm       # 
 
 ## 画面構成とテーマ
 
-画面は「上部ヘッダー(ロゴ / 検索 / ゲームモードフィルター / ツールボタン / ウィンドウボタン)」「左サイドバー(ライブラリ / クイックソート / プレイリスト / osu! コレクション)」「中央のトラック表(# / タイトル / アーティスト / BPM / 長さ / ♥ / …メニュー。上部にツールドロワー)」「右の Now Playing ペイン(カバー画像の上に動画とストーリーボードを重ねて描画、曲情報、タグ、操作、Up Next キュー、難易度一覧)」「下部のプレイヤーバー」の 5 つです。Browse / Equalizer / Sources / Settings はヘッダー右のアイコンから開き、中央上部のドロワーに表示されます。キューは右ペインの Up Next に常時表示され、Ctrl+Q で右ペインごと隠せます。各行の「…」(または右クリック)から再生 / プレビュー / キュー追加 / プレイリスト追加 / osu! web を呼び出せます。Settings はタブ(Appearance / Hit sounds / Library / Server・OBS / Discord / osu! API / Shortcuts)に分かれています。
+Classic の画面は「上部ヘッダー(ロゴ / 検索 / ゲームモードフィルター / ツールボタン / ウィンドウボタン)」「左サイドバー(ライブラリ / クイックソート / プレイリスト / osu! コレクション)」「中央のトラック表(# / タイトル / アーティスト / BPM / 長さ / ♥ / …メニュー。上部にツールドロワー)」「右の Now Playing ペイン(カバー画像の上に動画とストーリーボードを重ねて描画、曲情報、タグ、操作、Up Next キュー、難易度一覧)」「下部のプレイヤーバー」の 5 つです。Browse / Equalizer / Sources / Settings はヘッダー右のアイコンから開き、中央上部のドロワーに表示されます。キューは右ペインの Up Next に常時表示され、Ctrl+Q で右ペインごと隠せます。各行の「…」(または右クリック)から再生 / プレビュー / キュー追加 / プレイリスト追加 / osu! web を呼び出せます。Settings はタブ(Appearance / Hit sounds / Library / Server・OBS / Discord / osu! API / Shortcuts)に分かれています。
 
 テーマは Settings → Appearance で切り替えます。プリセット(osu! Pink / Lazer Purple / Midnight Blue / Forest / OLED Black / Daylight)に加えて、アクセント色を `#RRGGBB` で自由に指定できます。変更は即座に反映され、`settings.json` の `Appearance` に保存されます。
 
 ## キーボードショートカット
 
-Settings → Shortcuts に一覧があります。主なもの: Space(再生 / 一時停止)、Enter(選択曲を再生)、Ctrl+← / →(前 / 次)、Shift+← / →(5 秒シーク)、Ctrl+↑ / ↓(音量)、Ctrl+F または /(検索)、Ctrl+D(お気に入り)、Ctrl+E(キューに追加)、Ctrl+S(シャッフル)、Ctrl+R(リピート)、Ctrl+Q(Now Playing ペインの表示切替)、Ctrl+,(設定)、Ctrl+T(Theater)、Ctrl+P(動画 / ストーリーボードを別ウィンドウへ)、F11(全画面)、Ctrl+Shift+P(難易度プレビュー)、Esc(検索クリア / 全画面解除)。検索ボックス入力中は Space や Enter などの単独キーは無効で、Ctrl などの組み合わせとメディアキーだけが効きます。
+Settings → Shortcuts に一覧があります。主なもの: Space(再生 / 一時停止)、Enter(選択曲を再生)、Ctrl+← / →(前 / 次)、Shift+← / →(5 秒シーク)、Ctrl+↑ / ↓(音量)、Ctrl+F または /(検索)、Ctrl+D(お気に入り)、Ctrl+E(キューに追加)、Ctrl+S(シャッフル)、Ctrl+R(リピート)、Ctrl+Q(Studio はキュー、Classic は Now Playing ペインの表示切替)、Ctrl+,(設定)、Ctrl+T(Theater)、Ctrl+P(動画 / ストーリーボードを別ウィンドウへ)、F11(全画面)、Ctrl+Shift+P(難易度プレビュー)、Esc(検索クリア / 全画面解除)。検索ボックス入力中は Space や Enter などの単独キーは無効で、Ctrl などの組み合わせとメディアキーだけが効きます。
 
 ## 動画 / ストーリーボードのポップアップと全画面
 
@@ -133,3 +133,9 @@ dotnet run --project .\src\OsuMusicPlayer.ServerHost -- --port 5150 --lazer /hom
 ```powershell
 dotnet test .\OsuMusicPlayer.sln
 ```
+
+### UIの切り替え
+
+設定（Ctrl+,）→ Appearance → Interface / UI で、独立した画面構成の **Studio** と従来の **Classic** を切り替えられます。初期設定は Studio です。変更は即時反映され、再生状態を保ったまま次回起動時にも引き継がれます。配色テーマとアクセントカラーはどちらの UI でも利用できます。
+
+Studio では Settings / Sources / Equalizer / Browse / Playlists を共通のツール領域に表示し、ツールを選ぶとそれまでのツールを閉じて選択したものだけを開きます。ツール領域を閉じてもキューの表示状態は変わりません。Ctrl+Q は Studio 専用キューの表示を切り替えます。Classic では従来どおり、Up Next キューを含む Now Playing ペイン全体を切り替えます。

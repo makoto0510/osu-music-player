@@ -70,12 +70,19 @@ public sealed partial class MainWindow : Window
         // The storyboard follows the audio engine's clock directly so animation stays
         // smooth; the view model's 100 ms position updates are too coarse for that.
         StoryboardView.Clock = () => audioEngine.CurrentTime;
+        StudioShell.StoryboardSurface.Clock = () => audioEngine.CurrentTime;
 
         // LibVLCSharp.Avalonia only hands the native window handle to libVLC inside the
         // MediaPlayer setter, and the handle does not exist until the view is attached to
         // the visual tree. Assigning here (before the window is shown) would leave libVLC
         // without a handle and it would open its own window, so assign on every attach.
         VideoView.AttachedToVisualTree += (_, _) => attachVideoSurface();
+        StudioShell.VideoSurface.AttachedToVisualTree += (_, _) => attachVideoSurface();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(MainWindowViewModel.IsStudioInterface) or nameof(MainWindowViewModel.IsTheaterMode))
+                Avalonia.Threading.Dispatcher.UIThread.Post(attachVideoSurface);
+        };
 
         // Double-clicking a row plays it; the first click of the pair already selected it.
         TrackList.DoubleTapped += (_, args) =>
@@ -159,7 +166,9 @@ public sealed partial class MainWindow : Window
 
         // Re-assigning forces the view to detach and attach again with the current handle.
         VideoView.MediaPlayer = null;
-        VideoView.MediaPlayer = videoSurface;
+        StudioShell.VideoSurface.MediaPlayer = null;
+        var surface = viewModel?.IsStudioInterface == true ? StudioShell.VideoSurface : VideoView;
+        surface.MediaPlayer = videoSurface;
         viewModel?.RestartVideoSurface(); // no-op unless a video is loaded (i.e. when coming back from the pop-out)
     }
 
@@ -190,6 +199,12 @@ public sealed partial class MainWindow : Window
 
     private bool focusSearch()
     {
+        if (viewModel?.IsStudioInterface == true)
+        {
+            viewModel.CloseStudioToolsCommand.Execute(null);
+            StudioShell.FocusSearch();
+            return true;
+        }
         SearchBox.Focus();
         SearchBox.SelectAll();
         return true;
@@ -233,6 +248,7 @@ public sealed partial class MainWindow : Window
         {
             // Hand the single libVLC surface to the popup; it comes back when the popup closes.
             VideoView.MediaPlayer = null;
+            StudioShell.VideoSurface.MediaPlayer = null;
             var window = new VisualsWindow(viewModel, videoSurface, audioEngine);
             window.Closed += (_, _) =>
             {

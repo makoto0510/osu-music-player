@@ -13,6 +13,196 @@ namespace OsuMusicPlayer.App.Tests;
 
 public sealed class MainWindowViewModelTests
 {
+    [Theory]
+    [InlineData("Classic", "Classic")]
+    [InlineData("studio", "Studio")]
+    [InlineData("unknown", "Studio")]
+    [InlineData(null, "Studio")]
+    public async Task Interface_RestoresAndFallsBackToStudio(string? saved, string expected)
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { InterfaceName = saved! } };
+        await viewModel.InitializeAsync();
+        viewModel.SelectedInterfaceName.Should().Be(expected);
+        viewModel.IsStudioInterface.Should().Be(expected == "Studio");
+    }
+
+    [Fact]
+    public async Task Interface_SwitchesWithoutLosingPlaybackAndPersists()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        await viewModel.InitializeAsync();
+        viewModel.IsStudioInterface.Should().BeTrue();
+        viewModel.ReplaceTracksForTesting([createSet("First", "Artist", "Mapper", "", 100, 100)]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        var current = viewModel.CurrentTrack;
+        viewModel.SelectedInterfaceName = "Classic";
+        await viewModel.PendingSave;
+        environment.Settings.Current.Appearance.InterfaceName.Should().Be("Classic");
+        viewModel.CurrentTrack.Should().BeSameAs(current);
+        viewModel.IsPlaying.Should().BeTrue();
+        viewModel.SidebarColumnWidth.Value.Should().Be(236);
+        viewModel.IsTheaterMode = true;
+        viewModel.SelectedInterfaceName = "Studio";
+        viewModel.SidebarColumnWidth.Value.Should().Be(0);
+        viewModel.IsTheaterMode = false;
+        viewModel.SidebarColumnWidth.Value.Should().Be(200);
+        await viewModel.PendingSave;
+        environment.Settings.Current.Appearance.InterfaceName.Should().Be("Studio");
+    }
+    [Theory]
+    [InlineData("settings")]
+    [InlineData("sources")]
+    [InlineData("equalizer")]
+    [InlineData("browse")]
+    [InlineData("playlists")]
+    public void StudioTools_OpenSelectedToolClosesEveryOtherTool(string tool)
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.IsStudioQueueVisible = true;
+        viewModel.IsSettingsPanelVisible = true;
+        viewModel.IsSourcesPanelVisible = true;
+        viewModel.IsEqualizerPanelVisible = true;
+        viewModel.IsBrowsePanelVisible = true;
+        viewModel.IsPlaylistPanelVisible = true;
+
+        viewModel.OpenStudioToolCommand.Execute(tool);
+
+        assertSelectedTool();
+        viewModel.OpenStudioToolCommand.Execute(tool);
+        assertSelectedTool();
+
+        void assertSelectedTool()
+        {
+            viewModel.IsSettingsPanelVisible.Should().Be(tool == "settings");
+            viewModel.IsSourcesPanelVisible.Should().Be(tool == "sources");
+            viewModel.IsEqualizerPanelVisible.Should().Be(tool == "equalizer");
+            viewModel.IsBrowsePanelVisible.Should().Be(tool == "browse");
+            viewModel.IsPlaylistPanelVisible.Should().Be(tool == "playlists");
+            viewModel.IsStudioToolsVisible.Should().BeTrue();
+            viewModel.IsStudioQueueVisible.Should().BeTrue("tool routing leaves the queue open");
+        }
+    }
+
+    [Theory]
+    [InlineData(nameof(MainWindowViewModel.IsSettingsPanelVisible))]
+    [InlineData(nameof(MainWindowViewModel.IsSourcesPanelVisible))]
+    [InlineData(nameof(MainWindowViewModel.IsEqualizerPanelVisible))]
+    [InlineData(nameof(MainWindowViewModel.IsBrowsePanelVisible))]
+    [InlineData(nameof(MainWindowViewModel.IsPlaylistPanelVisible))]
+    public void StudioTools_IndividualFlagsNotifyAggregateVisibility(string propertyName)
+    {
+        using var viewModel = createViewModel(out _);
+        var property = typeof(MainWindowViewModel).GetProperty(propertyName);
+        property.Should().NotBeNull();
+        var changes = new List<string?>();
+        var observedVisibility = new List<bool>();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            changes.Add(args.PropertyName);
+            if (args.PropertyName == nameof(MainWindowViewModel.IsStudioToolsVisible))
+            {
+                observedVisibility.Add(viewModel.IsStudioToolsVisible);
+            }
+        };
+
+        viewModel.IsStudioToolsVisible.Should().BeFalse();
+        property!.SetValue(viewModel, true);
+        viewModel.IsStudioToolsVisible.Should().BeTrue();
+        changes.Should().Contain(propertyName).And.Contain(nameof(MainWindowViewModel.IsStudioToolsVisible));
+        observedVisibility.Should().NotBeEmpty().And.OnlyContain(visible => visible);
+
+        changes.Clear();
+        observedVisibility.Clear();
+        property.SetValue(viewModel, false);
+        viewModel.IsStudioToolsVisible.Should().BeFalse();
+        changes.Should().Contain(propertyName).And.Contain(nameof(MainWindowViewModel.IsStudioToolsVisible));
+        observedVisibility.Should().NotBeEmpty().And.OnlyContain(visible => !visible);
+    }
+
+    [Fact]
+    public void StudioTools_VisibilityIsOrOfAllToolFlags()
+    {
+        using var viewModel = createViewModel(out _);
+        for (var flags = 0; flags < 32; flags++)
+        {
+            viewModel.IsSettingsPanelVisible = (flags & 1) != 0;
+            viewModel.IsSourcesPanelVisible = (flags & 2) != 0;
+            viewModel.IsEqualizerPanelVisible = (flags & 4) != 0;
+            viewModel.IsBrowsePanelVisible = (flags & 8) != 0;
+            viewModel.IsPlaylistPanelVisible = (flags & 16) != 0;
+
+            viewModel.IsStudioToolsVisible.Should().Be(flags != 0, "tool flag combination {0}", flags);
+        }
+    }
+
+    [Fact]
+    public void StudioTools_CloseClearsAllToolsAndNotifiesWithoutClosingQueue()
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.IsStudioQueueVisible = true;
+        viewModel.IsSettingsPanelVisible = true;
+        viewModel.IsSourcesPanelVisible = true;
+        viewModel.IsEqualizerPanelVisible = true;
+        viewModel.IsBrowsePanelVisible = true;
+        viewModel.IsPlaylistPanelVisible = true;
+        var observedVisibility = new List<bool>();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.IsStudioToolsVisible))
+            {
+                observedVisibility.Add(viewModel.IsStudioToolsVisible);
+            }
+        };
+
+        viewModel.CloseStudioToolsCommand.Execute(null);
+
+        viewModel.IsSettingsPanelVisible.Should().BeFalse();
+        viewModel.IsSourcesPanelVisible.Should().BeFalse();
+        viewModel.IsEqualizerPanelVisible.Should().BeFalse();
+        viewModel.IsBrowsePanelVisible.Should().BeFalse();
+        viewModel.IsPlaylistPanelVisible.Should().BeFalse();
+        viewModel.IsStudioToolsVisible.Should().BeFalse();
+        observedVisibility.Should().NotBeEmpty();
+        observedVisibility.Last().Should().BeFalse("the binding must observe the closed state");
+        viewModel.IsStudioQueueVisible.Should().BeTrue();
+
+        viewModel.CloseStudioToolsCommand.Execute(null);
+        viewModel.IsStudioToolsVisible.Should().BeFalse();
+        viewModel.IsStudioQueueVisible.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("Studio", false)]
+    [InlineData("Studio", true)]
+    [InlineData("Classic", false)]
+    [InlineData("Classic", true)]
+    public void Shortcuts_ToggleQueueRoutesToActiveInterfaceAndNotifies(string interfaceName, bool initiallyVisible)
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.SelectedInterfaceName = interfaceName;
+        viewModel.IsStudioQueueVisible = initiallyVisible;
+        viewModel.IsNowPlayingPaneVisible = initiallyVisible;
+        var studio = interfaceName == "Studio";
+        var activeProperty = studio ? nameof(MainWindowViewModel.IsStudioQueueVisible) : nameof(MainWindowViewModel.IsNowPlayingPaneVisible);
+        var inactiveProperty = studio ? nameof(MainWindowViewModel.IsNowPlayingPaneVisible) : nameof(MainWindowViewModel.IsStudioQueueVisible);
+        var changes = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.ToggleQueue).Should().BeTrue();
+
+        viewModel.IsStudioQueueVisible.Should().Be(studio ? !initiallyVisible : initiallyVisible);
+        viewModel.IsNowPlayingPaneVisible.Should().Be(studio ? initiallyVisible : !initiallyVisible);
+        changes.Should().Contain(activeProperty).And.NotContain(inactiveProperty);
+
+        changes.Clear();
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.ToggleQueue).Should().BeTrue();
+        viewModel.IsStudioQueueVisible.Should().Be(initiallyVisible);
+        viewModel.IsNowPlayingPaneVisible.Should().Be(initiallyVisible);
+        changes.Should().Contain(activeProperty).And.NotContain(inactiveProperty);
+    }
+
     [Fact]
     public void SearchAndSort_FilterAllRequestedMetadata()
     {

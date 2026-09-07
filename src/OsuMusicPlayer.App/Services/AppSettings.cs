@@ -40,6 +40,8 @@ public sealed class ServerSettings
 
 public sealed class AppearanceSettings
 {
+    public string InterfaceName { get; init; } = "Studio";
+
     public string ThemeName { get; init; } = "osu! Pink";
 
     /// <summary>Hex accent override such as "#FF66AA"; empty keeps the preset's accent.</summary>

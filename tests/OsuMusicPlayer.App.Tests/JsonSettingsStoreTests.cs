@@ -5,6 +5,26 @@ namespace OsuMusicPlayer.App.Tests;
 
 public sealed class JsonSettingsStoreTests
 {
+    [Theory]
+    [InlineData("Studio")]
+    [InlineData("Classic")]
+    public async Task Interface_RoundTripsThroughJson(string name)
+    {
+        using var directory = new TestDirectory();
+        var store = new JsonSettingsStore(Path.Combine(directory.Path, "settings.json"));
+        await store.SaveAsync(new AppSettings { Appearance = new AppearanceSettings { InterfaceName = name } });
+        (await store.LoadAsync()).Appearance.InterfaceName.Should().Be(name);
+    }
+
+    [Fact]
+    public async Task Interface_OldSettingsDefaultToStudio()
+    {
+        using var directory = new TestDirectory();
+        var path = directory.CreateFile("settings.json", "{\"Appearance\":{\"ThemeName\":\"Daylight\"}}");
+        var settings = await new JsonSettingsStore(path).LoadAsync();
+        settings.Appearance.InterfaceName.Should().Be("Studio");
+        settings.Appearance.ThemeName.Should().Be("Daylight");
+    }
     [Fact]
     public async Task LoadAsync_ReturnsDefaultsWhenFileIsMissing()
     {

@@ -20,7 +20,7 @@ public sealed partial class MainWindowViewModel
         nameof(HitsoundVolume), nameof(HitsoundOffsetMs), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText),
-        nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
+        nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
     ];
 
     private readonly object saveSync = new();
@@ -34,9 +34,11 @@ public sealed partial class MainWindowViewModel
     private string? selectedEqualizerPreset = "Flat";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
     private bool isEqualizerPanelVisible;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
     private bool isSettingsPanelVisible;
 
     [ObservableProperty]
@@ -230,6 +232,7 @@ public sealed partial class MainWindowViewModel
             OsuApiClientSecret = OsuApiClientSecret,
             Appearance = new AppearanceSettings
             {
+                InterfaceName = SelectedInterfaceName,
                 ThemeName = SelectedThemeName,
                 AccentColor = AccentColorText.Trim(),
                 PreviewSkin = string.Equals(requestedPreviewSkinName, PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase) ? string.Empty : requestedPreviewSkinName,

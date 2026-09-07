@@ -48,6 +48,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private long loadVersion;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStudioSearch))]
     private string searchText = string.Empty;
 
     [ObservableProperty]
@@ -70,6 +71,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private string libraryStatusText = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
     private bool isSourcesPanelVisible;
 
     [ObservableProperty]
@@ -258,7 +260,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool IsDetailsPaneVisible => !IsTheaterMode;
 
-    public Avalonia.Controls.GridLength SidebarColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(236);
+    public Avalonia.Controls.GridLength SidebarColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(IsStudioInterface ? 200 : 236);
 
     public Avalonia.Controls.GridLength ListColumnWidth => IsTheaterMode ? new Avalonia.Controls.GridLength(0) : new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star);
 

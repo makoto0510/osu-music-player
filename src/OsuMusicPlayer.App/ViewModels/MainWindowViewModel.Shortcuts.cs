@@ -55,6 +55,16 @@ public sealed partial class MainWindowViewModel
                 CycleRepeatCommand.Execute(null);
                 return true;
             case ShortcutAction.ClearSearch:
+                if (IsStudioInterface && IsStudioToolsVisible)
+                {
+                    CloseStudioTools();
+                    return true;
+                }
+                if (IsStudioInterface && IsStudioQueueVisible)
+                {
+                    IsStudioQueueVisible = false;
+                    return true;
+                }
                 if (string.IsNullOrEmpty(SearchText))
                 {
                     return false;
@@ -63,7 +73,8 @@ public sealed partial class MainWindowViewModel
                 SearchText = string.Empty;
                 return true;
             case ShortcutAction.ToggleQueue:
-                IsNowPlayingPaneVisible = !IsNowPlayingPaneVisible;
+                if (IsStudioInterface) IsStudioQueueVisible = !IsStudioQueueVisible;
+                else IsNowPlayingPaneVisible = !IsNowPlayingPaneVisible;
                 return true;
             case ShortcutAction.ToggleSettings:
                 IsSettingsPanelVisible = !IsSettingsPanelVisible;

@@ -32,9 +32,11 @@ public sealed partial class MainWindowViewModel
     private string newPlaylistName = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
     private bool isPlaylistPanelVisible;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
     private bool isBrowsePanelVisible;
 
     public ObservableCollection<LibraryView> Views { get; } = [];

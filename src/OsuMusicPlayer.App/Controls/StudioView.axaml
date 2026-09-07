@@ -1,0 +1,304 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
+             xmlns:local="using:OsuMusicPlayer.App"
+             xmlns:controls="using:OsuMusicPlayer.App.Controls"
+             xmlns:audio="using:OsuMusicPlayer.Audio"
+             xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+             x:Class="OsuMusicPlayer.App.Controls.StudioView"
+             x:DataType="vm:MainWindowViewModel"
+             Background="{DynamicResource ThemeBackgroundBrush}">
+  <UserControl.Resources>
+    <MenuFlyout x:Key="StudioTrackMenu" Placement="BottomEdgeAlignedRight">
+      <MenuItem Header="Play" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaySelectedCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconPlay}" /></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Header="Play from preview point" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PreviewSelectedCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconEye}" /></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Header="Add to queue" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).EnqueueSelectedCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconQueue}" /></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Header="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).FavouriteButtonText}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconHeartOutline}" /></MenuItem.Icon>
+      </MenuItem>
+      <Separator />
+      <MenuItem Header="Add to playlist" ItemsSource="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Playlists}"
+                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Playlists.Count}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconPlaylistPlus}" /></MenuItem.Icon>
+        <MenuItem.Styles>
+          <Style Selector="MenuItem > MenuItem" x:DataType="vm:PlaylistViewModel">
+            <Setter Property="Header" Value="{Binding Name}" />
+            <Setter Property="Command" Value="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddSelectedToPlaylistCommand}" />
+            <Setter Property="CommandParameter" Value="{Binding}" />
+          </Style>
+        </MenuItem.Styles>
+      </MenuItem>
+      <MenuItem Header="Remove from this playlist" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveFromPlaylistCommand}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaylistViewSelected}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconTrash}" /></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Header="Move up" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveTrackUpCommand}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaylistViewSelected}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconArrowUp}" /></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Header="Move down" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveTrackDownCommand}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaylistViewSelected}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconArrowDown}" /></MenuItem.Icon>
+      </MenuItem>
+      <Separator />
+      <MenuItem Header="Preview play (difficulty)" Command="{Binding $parent[local:MainWindow].OpenDifficultyPreviewCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconTarget}" /></MenuItem.Icon>
+      </MenuItem>
+      <MenuItem Header="Open on osu! web" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenOnWebCommand}"
+                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CanOpenOnWeb}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconOpenInNew}" /></MenuItem.Icon>
+      </MenuItem>
+    </MenuFlyout>
+    <ControlTheme x:Key="StudioNav" TargetType="RadioButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextMutedBrush}" />
+      <Setter Property="Padding" Value="12,11" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_Background" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Stretch" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSurfaceAltBrush}" /></Style>
+      <Style Selector="^:checked"><Setter Property="Background" Value="{DynamicResource ThemeAccentSoftBrush}" /><Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" /></Style>
+    </ControlTheme>
+    <DataTemplate x:Key="StudioNavigation" x:DataType="vm:LibraryView">
+      <RadioButton Theme="{StaticResource StudioNav}" GroupName="studio-library" IsChecked="{Binding IsSelected, Mode=OneWay}"
+                   Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectViewCommand}" CommandParameter="{Binding}">
+        <Grid ColumnDefinitions="22,*,Auto" ColumnSpacing="8">
+          <PathIcon Data="{Binding IconKey, Converter={x:Static local:IconKeyConverter.Instance}}" Width="17" Height="17" />
+          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="2" Text="{Binding CountText}" FontSize="10" Opacity="0.65" VerticalAlignment="Center" />
+        </Grid>
+      </RadioButton>
+    </DataTemplate>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBlock.overline"><Setter Property="FontSize" Value="10" /><Setter Property="LetterSpacing" Value="2" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Foreground" Value="{DynamicResource ThemeTextFaintBrush}" /></Style>
+    <Style Selector="Button.studioAction"><Setter Property="CornerRadius" Value="6" /><Setter Property="Padding" Value="14,10" /><Setter Property="FontSize" Value="12" /></Style>
+    <Style Selector="Button.railAction"><Setter Property="Background" Value="Transparent" /><Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="HorizontalContentAlignment" Value="Left" /><Setter Property="Padding" Value="12,10" /><Setter Property="FontSize" Value="12" /></Style>
+    <Style Selector="ListBox.studioTracks"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="0" /></Style>
+    <Style Selector="ListBox.studioTracks ListBoxItem"><Setter Property="Padding" Value="8,8" /><Setter Property="Margin" Value="0,1" /><Setter Property="CornerRadius" Value="6" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
+    <Style Selector="ListBox.studioTracks ListBoxItem:pointerover"><Setter Property="Background" Value="{DynamicResource ThemeSurfaceAltBrush}" /></Style>
+    <Style Selector="ListBox.studioTracks ListBoxItem:selected"><Setter Property="Background" Value="{DynamicResource ThemeSelectionBrush}" /></Style>
+    <Style Selector="Border.drawer"><Setter Property="Background" Value="{DynamicResource ThemeSurfaceBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="12" /><Setter Property="Padding" Value="24" /><Setter Property="BoxShadow" Value="0 16 50 0 #60000000" /></Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="54,*,100">
+    <!-- Dedicated, quiet window chrome. Search belongs to the library workspace below. -->
+    <Border x:Name="StudioTitleBar" Grid.Row="0" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1" Padding="{Binding $parent[local:MainWindow].TitleBarPadding}">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+          <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource ThemeAccentBrush}"><Ellipse Width="8" Height="8" Fill="{DynamicResource ThemeBackgroundBrush}" /></Border>
+          <TextBlock Text="osu!" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
+          <TextBlock Text="/  STUDIO" Classes="overline" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="YOUR MUSIC. YOUR SPACE." Classes="overline" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" IsVisible="{Binding $parent[local:MainWindow].ShowWindowButtons}">
+          <Button x:Name="StudioMinimize" Classes="caption" AutomationProperties.Name="Minimize"><PathIcon Data="{StaticResource IconMinimize}" /></Button>
+          <Button x:Name="StudioMaximize" Classes="caption" AutomationProperties.Name="Maximize or restore"><PathIcon Data="{StaticResource IconMaximize}" /></Button>
+          <Button x:Name="StudioClose" Classes="caption close" AutomationProperties.Name="Close"><PathIcon Data="{StaticResource IconClose}" /></Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="190,*">
+      <!-- Navigation is a permanent rail, with playlists and sources in reach. -->
+      <Border Grid.Column="0" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,1,0" Padding="14,24,14,16">
+        <Grid RowDefinitions="*,Auto">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="4">
+              <TextBlock Text="COLLECTION" Classes="overline" Margin="12,0,0,14" />
+              <ItemsControl ItemsSource="{Binding LibraryViews}" ItemTemplate="{StaticResource StudioNavigation}" />
+              <Button Classes="railAction" Command="{Binding OpenStudioToolCommand}" CommandParameter="browse"><StackPanel Orientation="Horizontal" Spacing="12"><PathIcon Data="{StaticResource IconSearch}" /><TextBlock Text="Explore tags" /></StackPanel></Button>
+              <Grid ColumnDefinitions="*,Auto" Margin="12,24,4,8">
+                <TextBlock Text="PLAYLISTS" Classes="overline" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="icon small" Command="{Binding OpenStudioToolCommand}" CommandParameter="playlists" ToolTip.Tip="Create or manage playlists"><PathIcon Data="{StaticResource IconPlus}" /></Button>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding PlaylistViews}" ItemTemplate="{StaticResource StudioNavigation}" />
+              <TextBlock Text="Make room for your favourites." Classes="hint" Margin="12,0,8,10" IsVisible="{Binding !HasPlaylistViews}" />
+              <TextBlock Text="FROM OSU!" Classes="overline" Margin="12,18,0,10" IsVisible="{Binding HasCollectionViews}" />
+              <ItemsControl ItemsSource="{Binding CollectionViews}" ItemTemplate="{StaticResource StudioNavigation}" />
+            </StackPanel>
+          </ScrollViewer>
+          <StackPanel Grid.Row="1" Spacing="2">
+            <Border Height="1" Background="{DynamicResource ThemeBorderBrush}" Margin="10,12" />
+            <Button Classes="railAction" Command="{Binding OpenStudioToolCommand}" CommandParameter="sources"><StackPanel Orientation="Horizontal" Spacing="12"><PathIcon Data="{StaticResource IconFolder}" /><TextBlock Text="Music sources" /></StackPanel></Button>
+            <Button Classes="railAction" Command="{Binding OpenStudioToolCommand}" CommandParameter="settings" AutomationProperties.Name="Studio settings"><StackPanel Orientation="Horizontal" Spacing="12"><PathIcon Data="{StaticResource IconCog}" /><TextBlock Text="Settings" /></StackPanel></Button>
+            <TextBlock Text="{Binding LibraryStatusText}" Classes="hint" Margin="12,10,6,0" MaxLines="2" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" Margin="28,20,28,12">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18" IsVisible="{Binding !IsTheaterMode}">
+          <StackPanel VerticalAlignment="Center" Spacing="4"><TextBlock Text="THE LIBRARY" Classes="overline" /><TextBlock Text="Find your next favourite." FontSize="23" FontWeight="SemiBold" /></StackPanel>
+          <TextBox Grid.Column="1" x:Name="StudioSearchBox" Width="300" VerticalAlignment="Center" Classes="search" Watermark="Search your music…" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip.Tip="{Binding SearchHelpText}">
+            <TextBox.InnerLeftContent><PathIcon Data="{StaticResource IconSearch}" Margin="12,0,6,0" /></TextBox.InnerLeftContent>
+            <TextBox.InnerRightContent><Border Classes="kbd" Margin="0,0,8,0"><TextBlock Text="/" /></Border></TextBox.InnerRightContent>
+          </TextBox>
+        </Grid>
+
+        <!-- The deck: a wide editorial feature instead of a right-hand detail column. -->
+        <Border Grid.Row="1" Background="{DynamicResource ThemeSurfaceBrush}" CornerRadius="12" ClipToBounds="True" Margin="0,0,0,20" IsVisible="{Binding !IsTheaterMode}">
+          <Grid ColumnDefinitions="*,*" Height="210">
+            <Grid Margin="24,22" RowDefinitions="Auto,*,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Width="6" Height="6" Fill="{DynamicResource ThemeAccentBrush}" /><TextBlock Text="{Binding NowPlayingLabel}" Classes="overline" Foreground="{DynamicResource ThemeAccentBrush}" /></StackPanel>
+              <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="5" IsVisible="{Binding HasDetailTrack}">
+                <TextBlock Text="{Binding DetailTrack.Title}" FontSize="28" FontWeight="Bold" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DetailTrack.Title}" />
+                <TextBlock Text="{Binding DetailTrack.Artist}" Classes="muted" FontSize="14" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="6" IsVisible="{Binding !HasDetailTrack}"><TextBlock Text="A place for every beat." FontSize="27" FontWeight="Bold" TextWrapping="Wrap" /><TextBlock Text="Choose a song. Set the mood." Classes="muted" FontSize="13" /></StackPanel>
+              <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+                <Button Classes="studioAction primary" Command="{Binding PlaySelectedCommand}" IsEnabled="{Binding HasDetailTrack}"><StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconPlay}" Width="16" Height="16" /><TextBlock Text="Play selection" /></StackPanel></Button>
+                <Button Classes="studioAction" Command="{Binding EnqueueSelectedCommand}" ToolTip.Tip="Add selection to queue"><PathIcon Data="{StaticResource IconQueue}" Width="16" Height="16" /></Button>
+                <Button Classes="studioAction" Command="{Binding $parent[local:MainWindow].OpenDifficultyPreviewCommand}" ToolTip.Tip="Preview selected difficulty"><PathIcon Data="{StaticResource IconTarget}" Width="16" Height="16" /></Button>
+              </StackPanel>
+            </Grid>
+            <Border Grid.Column="1" Background="{DynamicResource ThemeSurfaceAltBrush}" ClipToBounds="True">
+              <Grid>
+                <Grid Opacity="0.5"><Ellipse Width="300" Height="300" Stroke="{DynamicResource ThemeBorderBrush}" StrokeThickness="1" /><Ellipse Width="240" Height="240" Stroke="{DynamicResource ThemeBorderBrush}" StrokeThickness="1" /><Ellipse Width="170" Height="170" Fill="{DynamicResource ThemeBackgroundBrush}" /><Ellipse Width="68" Height="68" Fill="{DynamicResource ThemeAccentBrush}" /><Ellipse Width="14" Height="14" Fill="{DynamicResource ThemeBackgroundBrush}" /></Grid>
+                <Image Source="{Binding DetailTrack.LargeBackgroundImage^}" Stretch="UniformToFill" />
+                <Border Background="#60000000" HorizontalAlignment="Right" VerticalAlignment="Bottom" CornerRadius="6" Padding="3" Margin="12">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="icon" Command="{Binding $parent[local:MainWindow].ToggleVisualsWindowCommand}" ToolTip.Tip="Open video / storyboard"><PathIcon Data="{StaticResource IconPictureInPicture}" Foreground="White" /></Button>
+                    <ToggleButton Classes="icon" IsChecked="{Binding IsTheaterMode, Mode=TwoWay}" ToolTip.Tip="Theater mode"><PathIcon Data="{StaticResource IconTheater}" Foreground="White" /></ToggleButton>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" IsVisible="{Binding !IsTheaterMode}">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"><TextBlock Text="{Binding ViewTitle}" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="300" /><TextBlock Text="{Binding TrackCountText}" Classes="hint" VerticalAlignment="Center" /></StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+              <ComboBox ItemsSource="{Binding ModeFilters}" SelectedItem="{Binding SelectedModeFilter, Mode=TwoWay}" MinWidth="95" FontSize="11" AutomationProperties.Name="Game mode" />
+              <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort, Mode=TwoWay}" MinWidth="110" FontSize="11" AutomationProperties.Name="Sort tracks" />
+              <ToggleButton Classes="icon" IsChecked="{Binding IsStudioQueueVisible, Mode=TwoWay}" ToolTip.Tip="Queue and track details (Ctrl+Q)"><PathIcon Data="{StaticResource IconQueue}" /></ToggleButton>
+            </StackPanel>
+          </Grid>
+          <Grid Grid.Row="1" ColumnDefinitions="32,50,*,60,34,34" ColumnSpacing="12" Margin="8,0,8,6">
+            <TextBlock Text="#" Classes="overline" HorizontalAlignment="Center" /><TextBlock Grid.Column="2" Text="TRACK / ARTIST" Classes="overline" /><TextBlock Grid.Column="3" Text="TIME" Classes="overline" HorizontalAlignment="Center" />
+          </Grid>
+          <Grid Grid.Row="2">
+            <ListBox x:Name="StudioTrackList" Classes="studioTracks" ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack, Mode=TwoWay}" AutoScrollToSelectedItem="True">
+              <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TrackItemViewModel">
+                  <Grid ColumnDefinitions="32,50,*,60,34,34" ColumnSpacing="12" MinHeight="50" ContextFlyout="{StaticResource StudioTrackMenu}">
+                    <TextBlock Text="{Binding Position}" Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Grid.Column="1" Width="46" Height="46" Classes="thumb" CornerRadius="4"><Grid><PathIcon Data="{StaticResource IconMusicNote}" Classes="faint" /><Image Source="{Binding BackgroundImage^}" Stretch="UniformToFill" /></Grid></Border>
+                    <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center"><TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding Artist}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" /></StackPanel>
+                    <TextBlock Grid.Column="3" Text="{Binding LengthText}" Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Button Grid.Column="4" Classes="icon heart" Classes.on="{Binding IsFavourite}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteForCommand}" CommandParameter="{Binding}" ToolTip.Tip="Favourite"><Panel><PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" /><PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsFavourite}" /></Panel></Button>
+                    <Button Grid.Column="5" Classes="icon" Flyout="{StaticResource StudioTrackMenu}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectTrackCommand}" CommandParameter="{Binding}" ToolTip.Tip="Track actions"><PathIcon Data="{StaticResource IconDots}" /></Button>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel IsVisible="{Binding !HasTracks}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" MaxWidth="420">
+              <TextBlock Text="{Binding EmptyStateText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding !HasStudioSearch}" />
+              <TextBlock Text="No songs match this search." Classes="muted" TextAlignment="Center" IsVisible="{Binding HasStudioSearch}" />
+              <Button Classes="studioAction" Content="Clear search" Command="{Binding ClearStudioSearchCommand}" HorizontalAlignment="Center" IsVisible="{Binding HasStudioSearch}" />
+              <Button Classes="studioAction" Content="Music sources" Command="{Binding OpenStudioToolCommand}" CommandParameter="sources" HorizontalAlignment="Center" IsVisible="{Binding !HasStudioSearch}" />
+            </StackPanel>
+            <ProgressBar IsVisible="{Binding IsLoading}" IsIndeterminate="True" Height="2" VerticalAlignment="Top" />
+          </Grid>
+        </Grid>
+
+        <!-- Native video has a dedicated theater surface, without text over the native window. -->
+        <Grid Grid.RowSpan="3" RowDefinitions="*,Auto" IsVisible="{Binding IsTheaterMode}">
+          <Border Background="Black" CornerRadius="12" ClipToBounds="True">
+            <Grid><Image Source="{Binding DetailTrack.LargeBackgroundImage^}" Stretch="Uniform" /><controls:StoryboardView x:Name="StudioStoryboard" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPane}" /><vlc:VideoView x:Name="StudioVideo" IsVisible="{Binding ShowVideoInPane}" Height="{Binding VideoSurfaceHeight}" /></Grid>
+          </Border>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,12">
+            <ToggleButton Content="Theater" IsChecked="{Binding IsTheaterMode, Mode=TwoWay}" /><ToggleButton Content="Video" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" /><ToggleButton Content="Storyboard" IsChecked="{Binding IsStoryboardEnabled, Mode=TwoWay}" /><ToggleButton Content="Hit sounds" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" />
+            <Button Content="Pop out" Command="{Binding $parent[local:MainWindow].ToggleVisualsWindowCommand}" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+
+      <!-- The inspector floats over the library, leaving the deck and transport independent. -->
+      <Border Grid.Column="1" Classes="drawer" Width="350" HorizontalAlignment="Right" Margin="12" IsVisible="{Binding IsStudioQueueVisible}">
+        <Grid RowDefinitions="Auto,*">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16"><StackPanel Spacing="4"><TextBlock Text="LISTENING ROOM" Classes="overline" /><TextBlock Text="{Binding QueueText}" FontSize="24" FontWeight="SemiBold" /></StackPanel><ToggleButton Grid.Column="1" Classes="icon" IsChecked="{Binding IsStudioQueueVisible, Mode=TwoWay}" ToolTip.Tip="Close queue"><PathIcon Data="{StaticResource IconClose}" /></ToggleButton></Grid>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="16">
+            <TextBlock Text="Your next tracks will appear here. Add a song with its ••• menu." Classes="hint" IsVisible="{Binding !HasQueue}" />
+            <ItemsControl ItemsSource="{Binding Queue}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:TrackItemViewModel">
+              <Grid ColumnDefinitions="*,32" Margin="0,3">
+                <Button Classes="ghost" HorizontalContentAlignment="Stretch" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlayQueuedCommand}" CommandParameter="{Binding}"><StackPanel><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13" /><TextBlock Text="{Binding Artist}" Classes="hint" TextTrimming="CharacterEllipsis" /></StackPanel></Button>
+                <Button Grid.Column="1" Classes="icon small" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveFromQueueCommand}" CommandParameter="{Binding}" ToolTip.Tip="Remove from queue"><PathIcon Data="{StaticResource IconClose}" /></Button>
+              </Grid>
+            </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            <Button Content="Clear queue" Classes="studioAction" Command="{Binding ClearQueueCommand}" IsVisible="{Binding HasQueue}" />
+            <Border Height="1" Background="{DynamicResource ThemeBorderBrush}" />
+            <TextBlock Text="TRACK NOTES" Classes="overline" />
+            <TextBlock Text="{Binding DetailTrack.Title}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding DetailTrack.CreatorText}" Classes="hint" /><TextBlock Text="{Binding DetailTrack.BpmText}" Classes="hint" />
+            <ListBox Classes="compact" ItemsSource="{Binding DetailTrack.Difficulties}" SelectedItem="{Binding DetailTrack.SelectedDifficulty, Mode=TwoWay}" MaxHeight="200" AutoScrollToSelectedItem="False"><ListBox.ItemTemplate><DataTemplate x:DataType="vm:DifficultyItemViewModel"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" Text="{Binding StarText}" Foreground="{Binding StarColor}" FontSize="12" /></Grid></DataTemplate></ListBox.ItemTemplate></ListBox>
+            <Button Content="Preview difficulty" Classes="studioAction" Command="{Binding $parent[local:MainWindow].OpenDifficultyPreviewCommand}" />
+            <Button Content="Open on osu! web" Classes="studioAction" Command="{Binding OpenOnWebCommand}" IsEnabled="{Binding CanOpenOnWeb}" />
+          </StackPanel></ScrollViewer>
+        </Grid>
+      </Border>
+
+      <Border Grid.ColumnSpan="2" Background="#99000000" IsVisible="{Binding IsStudioToolsVisible}" />
+      <Border Grid.ColumnSpan="2" Classes="drawer" Margin="40,20" MaxWidth="1040" IsVisible="{Binding IsStudioToolsVisible}">
+        <Grid RowDefinitions="Auto,*">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16"><StackPanel Spacing="5"><TextBlock Text="MAKE IT YOURS" Classes="overline" /><TextBlock Text="Studio settings &amp; tools" FontSize="24" FontWeight="SemiBold" /></StackPanel><Button Grid.Column="1" Classes="icon" Command="{Binding CloseStudioToolsCommand}" ToolTip.Tip="Close tools"><PathIcon Data="{StaticResource IconClose}" /></Button></Grid>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel><controls:PlayerToolsView />
+            <StackPanel IsVisible="{Binding IsPlaylistPanelVisible}" MaxWidth="560" HorizontalAlignment="Left" Spacing="12">
+              <TextBlock Text="Your playlists" FontSize="22" FontWeight="SemiBold" />
+              <TextBox Watermark="Playlist name" Text="{Binding NewPlaylistName, UpdateSourceTrigger=PropertyChanged}" Width="400" />
+              <WrapPanel><Button Content="Create playlist" Command="{Binding CreatePlaylistCommand}" Classes="studioAction primary" /><Button Content="Save search as smart playlist" Command="{Binding CreateSmartPlaylistCommand}" Classes="studioAction" Margin="8,0,0,0" /></WrapPanel>
+              <ComboBox ItemsSource="{Binding Playlists}" SelectedItem="{Binding SelectedPlaylist, Mode=TwoWay}" PlaceholderText="Choose a playlist to edit" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="vm:PlaylistViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+              <WrapPanel><Button Content="Rename" Command="{Binding RenamePlaylistCommand}" Classes="studioAction" /><Button Content="Delete playlist" Command="{Binding DeletePlaylistCommand}" Classes="studioAction" Margin="8,0,0,0" /></WrapPanel>
+              <Button Content="Delete this smart playlist" Command="{Binding DeleteSmartPlaylistCommand}" IsVisible="{Binding IsSmartPlaylistViewSelected}" Classes="studioAction" />
+              <Button Content="Export view as collection.db…" Command="{Binding ExportViewAsCollectionCommand}" Classes="studioAction" />
+            </StackPanel>
+          </StackPanel></ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- A single-line mixing desk: controls, track identity, time and volume. -->
+    <Border Grid.Row="2" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,1,0,0">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <Slider Grid.Row="0" Classes="slim" Minimum="0" Maximum="1" Value="{Binding Progress, Mode=TwoWay}" Margin="0,-8,0,-8" AutomationProperties.Name="Seek" />
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="24" Margin="24,8,24,6">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Classes="icon" Command="{Binding PreviousCommand}" ToolTip.Tip="Previous"><PathIcon Data="{StaticResource IconSkipPrevious}" /></Button>
+            <Button Classes="play" Command="{Binding TogglePlayCommand}" AutomationProperties.Name="Studio play / pause"><Panel><PathIcon Data="{StaticResource IconPlay}" IsVisible="{Binding !IsPlaying}" /><PathIcon Data="{StaticResource IconPause}" IsVisible="{Binding IsPlaying}" /></Panel></Button>
+            <Button Classes="icon" Command="{Binding NextCommand}" ToolTip.Tip="Next"><PathIcon Data="{StaticResource IconSkipNext}" /></Button>
+            <ToggleButton Classes="icon" IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" ToolTip.Tip="Shuffle"><PathIcon Data="{StaticResource IconShuffle}" /></ToggleButton>
+            <ToggleButton Classes="icon" IsChecked="{Binding IsRepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatText}"><Panel><PathIcon Data="{StaticResource IconRepeat}" IsVisible="{Binding !IsRepeatOne}" /><PathIcon Data="{StaticResource IconRepeatOnce}" IsVisible="{Binding IsRepeatOne}" /></Panel></ToggleButton>
+          </StackPanel>
+          <Grid Grid.Column="1" ColumnDefinitions="44,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+            <Border Classes="thumb" Width="44" Height="44" CornerRadius="4"><Image Source="{Binding CurrentTrack.BackgroundImage^}" Stretch="UniformToFill" /></Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3"><TextBlock Text="{Binding CurrentTrack.Title, TargetNullValue='Nothing playing'}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding CurrentTrack.Artist}" Classes="hint" TextTrimming="CharacterEllipsis" /></StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Text="{Binding CurrentTimeText}" FontSize="11" /><TextBlock Text="/" Classes="hint" /><TextBlock Text="{Binding TotalTimeText}" Classes="hint" /></StackPanel>
+          </Grid>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <Button Classes="icon" Command="{Binding OpenStudioToolCommand}" CommandParameter="equalizer" ToolTip.Tip="Equalizer"><PathIcon Data="{StaticResource IconTune}" /></Button>
+            <ComboBox ItemsSource="{Binding StudioMods}" SelectedItem="{Binding Mod, Mode=TwoWay}" Width="72" FontSize="11" AutomationProperties.Name="Playback mod" />
+            <PathIcon Data="{StaticResource IconVolume}" Classes="muted" Margin="8,0,2,0" />
+            <Slider Classes="slim" Width="85" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" AutomationProperties.Name="Volume" />
+            <ToggleButton Classes="icon" IsChecked="{Binding IsStudioQueueVisible, Mode=TwoWay}" ToolTip.Tip="Queue and track details"><PathIcon Data="{StaticResource IconQueue}" /></ToggleButton>
+          </StackPanel>
+        </Grid>
+        <TextBlock Grid.Row="2" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="{DynamicResource ThemeAccentBrush}" FontSize="11" Margin="24,0,24,8" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ErrorMessage}" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>
