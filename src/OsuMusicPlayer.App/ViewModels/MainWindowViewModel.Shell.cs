@@ -89,7 +89,7 @@ public sealed partial class MainWindowViewModel
 
     public bool IsRepeatOne => RepeatMode == RepeatMode.One;
 
-    public bool IsMuted => Volume <= 0;
+    public bool IsMuted => MasterVolume <= 0;
 
     public string VideoToggleTip => videoPlayer.IsAvailable ? "Video" : (videoPlayer.UnavailableReason ?? "Video is unavailable");
 

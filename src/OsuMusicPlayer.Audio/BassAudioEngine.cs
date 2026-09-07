@@ -237,9 +237,17 @@ public sealed class BassAudioEngine : IAudioEngine
         lock (syncRoot)
         {
             throwIfDisposed();
-            if (stream != 0 && !bass.Play(stream, restart: false))
+            if (stream != 0)
             {
-                logger.LogWarning("Could not start BASS playback: {BassError}.", bass.LastError);
+                if (getCurrentTimeLocked() < getTotalTimeLocked() || getTotalTimeLocked() == TimeSpan.Zero)
+                {
+                    endedGeneration = -1;
+                }
+
+                if (!bass.Play(stream, restart: false))
+                {
+                    logger.LogWarning("Could not start BASS playback: {BassError}.", bass.LastError);
+                }
             }
         }
     }
@@ -265,6 +273,8 @@ public sealed class BassAudioEngine : IAudioEngine
             {
                 logger.LogWarning("Could not stop BASS playback: {BassError}.", bass.LastError);
             }
+
+            endedGeneration = -1;
         }
 
         publishPosition(null);
@@ -298,6 +308,10 @@ public sealed class BassAudioEngine : IAudioEngine
             if (bytePosition < 0 || !bass.SetPosition(stream, bytePosition))
             {
                 logger.LogWarning("Could not seek BASS stream: {BassError}.", bass.LastError);
+            }
+            else
+            {
+                endedGeneration = -1;
             }
         }
 

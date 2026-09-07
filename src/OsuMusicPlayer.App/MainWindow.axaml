@@ -606,7 +606,7 @@
           <Border Classes="badge accent" Margin="0,0,6,0" Padding="7,2" VerticalAlignment="Center" ToolTip.Tip="Active mod"><TextBlock Text="{Binding ModText}" FontSize="10" FontWeight="Bold" /></Border>
           <PathIcon Data="{StaticResource IconVolume}" Classes="muted" IsVisible="{Binding !IsMuted}" Margin="0,0,4,0" />
           <PathIcon Data="{StaticResource IconVolumeOff}" Classes="muted" IsVisible="{Binding IsMuted}" Margin="0,0,4,0" />
-          <Slider Classes="slim" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" ToolTip.Tip="Volume (Ctrl+↑ / Ctrl+↓)" />
+          <Slider Classes="slim" Width="110" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" ToolTip.Tip="Master volume (Ctrl+↑ / Ctrl+↓)" AutomationProperties.Name="Master volume" />
           <Button Classes="icon" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="Video / storyboard in its own window (Ctrl+P)" Margin="6,0,0,0"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
           <ToggleButton Classes="icon" IsChecked="{Binding IsNowPlayingPaneVisible, Mode=TwoWay}" ToolTip.Tip="Now playing / queue pane (Ctrl+Q)"><PathIcon Data="{StaticResource IconPlaylist}" /></ToggleButton>
         </StackPanel>

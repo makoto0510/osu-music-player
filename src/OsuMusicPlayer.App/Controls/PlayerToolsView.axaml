@@ -128,13 +128,24 @@
                     <TextBlock Classes="hint" Text="{Binding PreviewSkinStatusText}" IsVisible="{Binding PreviewSkinStatusText.Length}" TextWrapping="Wrap" />
                   </StackPanel>
                 </TabItem>
-                <TabItem Header="Hit sounds">
+                <TabItem Header="Audio">
                   <StackPanel Width="360" Spacing="6" HorizontalAlignment="Left">
                     <Grid ColumnDefinitions="90,*,60" ColumnSpacing="8">
-                      <TextBlock Grid.Column="0" Text="Volume" Classes="muted" VerticalAlignment="Center" />
-                      <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding HitsoundVolume, Mode=TwoWay}" />
-                      <TextBlock Grid.Column="2" Text="{Binding HitsoundVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="0" Text="Master" Classes="muted" VerticalAlignment="Center" />
+                      <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" AutomationProperties.Name="Master volume" />
+                      <TextBlock Grid.Column="2" Text="{Binding MasterVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" />
                     </Grid>
+                    <Grid ColumnDefinitions="90,*,60" ColumnSpacing="8">
+                      <TextBlock Grid.Column="0" Text="Music" Classes="muted" VerticalAlignment="Center" />
+                      <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding MusicVolume, Mode=TwoWay}" AutomationProperties.Name="Music volume" />
+                      <TextBlock Grid.Column="2" Text="{Binding MusicVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="90,*,60" ColumnSpacing="8">
+                      <TextBlock Grid.Column="0" Text="Effect" Classes="muted" VerticalAlignment="Center" />
+                      <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding EffectVolume, Mode=TwoWay}" AutomationProperties.Name="Effect volume" />
+                      <TextBlock Grid.Column="2" Text="{Binding EffectVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock Text="Hit sounds" Classes="title" Margin="0,8,0,0" />
                     <Grid ColumnDefinitions="90,*,60" ColumnSpacing="8">
                       <TextBlock Grid.Column="0" Text="Offset" Classes="muted" VerticalAlignment="Center" ToolTip.Tip="Positive plays hit sounds later" />
                       <Slider Grid.Column="1" Minimum="-200" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding HitsoundOffsetMs, Mode=TwoWay}" />

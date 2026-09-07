@@ -92,6 +92,44 @@ public sealed class BassAudioEngineTests
     }
 
     [Fact]
+    public async Task RepeatTrack_RaisesPlaybackEndedEachTimeTrackReachesEnd()
+    {
+        var bass = new FakeBassNative();
+        using var engine = new BassAudioEngine(bass, startTimer: false);
+        var path = createAudioPlaceholder();
+        try
+        {
+            await engine.LoadAsync(path);
+            var ended = 0;
+            engine.PlaybackEnded += (_, _) => ended++;
+
+            // First track end
+            bass.RaiseEnded();
+            bass.RaiseEnded(); // Duplicate should be debounced
+            ended.Should().Be(1);
+
+            // Repeat: rewind and play again
+            engine.Seek(TimeSpan.Zero);
+            engine.Play();
+
+            // Second track end
+            bass.RaiseEnded();
+            bass.RaiseEnded(); // Duplicate should be debounced
+            ended.Should().Be(2);
+
+            // Third repeat
+            engine.Seek(TimeSpan.Zero);
+            engine.Play();
+            bass.RaiseEnded();
+            ended.Should().Be(3);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task PlaybackControlsAndPositionEvent_ReflectNativeState()
     {
         var bass = new FakeBassNative();

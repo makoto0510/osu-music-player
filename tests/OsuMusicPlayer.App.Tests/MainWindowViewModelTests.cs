@@ -244,7 +244,7 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task PlaybackCommands_LoadNavigateSeekAndApplySettings()
     {
-        using var viewModel = createViewModel(out var audio);
+        using var viewModel = createViewModel(out var audio, out var environment);
         viewModel.ReplaceTracksForTesting([
             createSet("First", "Artist", "Mapper", "", 100, 100),
             createSet("Second", "Artist", "Mapper", "", 120, 200),
@@ -252,7 +252,9 @@ public sealed class MainWindowViewModelTests
         viewModel.SelectedTrack = viewModel.Tracks[0];
 
         await viewModel.PlaySelectedCommand.ExecuteAsync(null);
-        viewModel.Volume = 0.35;
+        viewModel.MasterVolume = 0.5;
+        viewModel.MusicVolume = 0.7;
+        viewModel.EffectVolume = 0.4;
         viewModel.SetModCommand.Execute(OsuAudioMod.NC);
         viewModel.Progress = 0.5;
         await viewModel.NextCommand.ExecuteAsync(null);
@@ -260,6 +262,7 @@ public sealed class MainWindowViewModelTests
         audio.LoadedPaths.Should().HaveCount(2);
         viewModel.CurrentTrack?.Title.Should().Be("Second");
         audio.Volume.Should().BeApproximately(0.35f, 0.001f);
+        environment.Hitsounds.Volume.Should().BeApproximately(0.2f, 0.001f);
         audio.Mod.Should().Be(OsuAudioMod.NC);
         audio.LastSeek.Should().Be(TimeSpan.FromSeconds(60));
     }
@@ -484,6 +487,15 @@ public sealed class MainWindowViewModelTests
         viewModel.RepeatText.Should().Be("Repeat: One");
         audio.Seek(TimeSpan.FromSeconds(30));
         var loadsBefore = audio.LoadedPaths.Count;
+        audio.RaiseEnded();
+
+        viewModel.CurrentTrack?.Title.Should().Be("A");
+        audio.LastSeek.Should().Be(TimeSpan.Zero);
+        audio.LoadedPaths.Should().HaveCount(loadsBefore);
+        viewModel.IsPlaying.Should().BeTrue();
+
+        // Second track end should also repeat the same track
+        audio.Seek(TimeSpan.FromSeconds(60));
         audio.RaiseEnded();
 
         viewModel.CurrentTrack?.Title.Should().Be("A");
@@ -908,10 +920,12 @@ public sealed class MainWindowViewModelTests
         environment.Settings.Current = new AppSettings
         {
             Volume = 0.3,
+            MusicVolume = 0.4,
             Mod = OsuAudioMod.NC,
             Shuffle = true,
             Repeat = RepeatMode.All,
             HitsoundsEnabled = true,
+            HitsoundVolume = 0.6,
             HitsoundOffsetMs = 25,
             PreferSkinHitsounds = true,
             EqualizerGains = Equalizer.Presets["Rock"],
@@ -922,7 +936,11 @@ public sealed class MainWindowViewModelTests
 
         await viewModel.InitializeAsync();
 
-        viewModel.Volume.Should().Be(0.3);
+        viewModel.MasterVolume.Should().Be(0.3);
+        viewModel.MusicVolume.Should().Be(0.4);
+        viewModel.EffectVolume.Should().Be(0.6);
+        audio.Volume.Should().BeApproximately(0.12f, 0.001f);
+        environment.Hitsounds.Volume.Should().BeApproximately(0.18f, 0.001f);
         audio.Mod.Should().Be(OsuAudioMod.NC);
         viewModel.IsShuffleEnabled.Should().BeTrue();
         viewModel.RepeatMode.Should().Be(RepeatMode.All);
@@ -1253,13 +1271,13 @@ public sealed class MainWindowViewModelTests
         viewModel.ReplaceTracksForTesting([createSet("First", "Artist", "Mapper", "", 100, 100)]);
         viewModel.SelectedTrack = viewModel.Tracks[0];
         await viewModel.PlaySelectedCommand.ExecuteAsync(null);
-        viewModel.Volume = 0.5;
+        viewModel.MasterVolume = 0.5;
 
         viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.VolumeUp).Should().BeTrue();
-        viewModel.Volume.Should().BeApproximately(0.55, 0.0001);
+        viewModel.MasterVolume.Should().BeApproximately(0.55, 0.0001);
         viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.VolumeDown);
         viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.VolumeDown);
-        viewModel.Volume.Should().BeApproximately(0.45, 0.0001);
+        viewModel.MasterVolume.Should().BeApproximately(0.45, 0.0001);
 
         audio.Seek(TimeSpan.FromSeconds(10));
         viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.SeekForward).Should().BeTrue();

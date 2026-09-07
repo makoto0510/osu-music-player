@@ -14,7 +14,7 @@ public interface IHitsoundPlayer : IDisposable
 
     bool IsEnabled { get; set; }
 
-    /// <summary>Master hit sound volume from 0 to 1, applied on top of the engine volume.</summary>
+    /// <summary>Effective hit sound volume from 0 to 1. The caller applies any master-volume scaling.</summary>
     float Volume { get; set; }
 
     /// <summary>Manual timing correction in milliseconds; positive plays samples later.</summary>

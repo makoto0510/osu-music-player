@@ -46,8 +46,8 @@ public sealed class HitsoundPlayerTests
     public async Task Player_LoadsDistinctSamplesPlaysDueOnesAndFreesOnClear()
     {
         var native = new FakeSampleNative();
-        var engine = new FakeEngine { Volume = 0.5f };
-        using var player = new BassHitsoundPlayer(native, engine, startWorker: false) { IsEnabled = true };
+        var engine = new FakeEngine { Volume = 0.2f };
+        using var player = new BassHitsoundPlayer(native, engine, startWorker: false) { IsEnabled = true, Volume = 0.5f };
         var resolver = new HitsoundSampleResolver(new FakeSource(("soft-hitnormal.wav", [1, 2]), ("soft-hitclap.wav", [3])), []);
 
         await player.LoadAsync(
@@ -62,7 +62,7 @@ public sealed class HitsoundPlayerTests
 
         player.TickForTesting(TimeSpan.FromMilliseconds(120)).Should().Be(2);
         native.Played.Should().HaveCount(2);
-        native.Played[0].Volume.Should().BeApproximately(0.25f, 0.001f, "sample volume 0.5 times engine volume 0.5");
+        native.Played[0].Volume.Should().BeApproximately(0.25f, 0.001f, "sample volume is scaled by the independent effect volume");
         native.Played[1].Volume.Should().BeApproximately(0.5f, 0.001f);
 
         player.TickForTesting(TimeSpan.FromMilliseconds(450)).Should().Be(1, "the missing sample is skipped silently");

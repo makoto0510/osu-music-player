@@ -158,7 +158,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsMuted))]
-    private double volume;
+    private double masterVolume;
+
+    [ObservableProperty]
+    private double musicVolume = 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDtActive))]
@@ -208,11 +211,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.durationProbe = durationProbe;
         this.themeApplier = themeApplier;
         this.skinCatalog = skinCatalog ?? PreviewSkinCatalog.CreateDefault();
-        volume = audioEngine.Volume;
+        masterVolume = audioEngine.Volume;
         mod = audioEngine.Mod;
         audioEngine.PositionChanged += onPositionChanged;
         audioEngine.PlaybackEnded += onPlaybackEnded;
         hitsoundPlayer.HitPlayed += onHitPlayed;
+        applyMixerVolumes();
         initializePersistence();
     }
 
@@ -627,16 +631,34 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void Seek(double requestedProgress) => seek(requestedProgress);
 
-    partial void OnVolumeChanged(double value)
+    partial void OnMasterVolumeChanged(double value)
     {
         var clamped = Math.Clamp(value, 0, 1);
         if (clamped != value)
         {
-            Volume = clamped;
+            MasterVolume = clamped;
             return;
         }
 
-        audioEngine.Volume = (float)clamped;
+        applyMixerVolumes();
+    }
+
+    partial void OnMusicVolumeChanged(double value)
+    {
+        var clamped = Math.Clamp(value, 0, 1);
+        if (clamped != value)
+        {
+            MusicVolume = clamped;
+            return;
+        }
+
+        applyMixerVolumes();
+    }
+
+    private void applyMixerVolumes()
+    {
+        audioEngine.Volume = (float)(MasterVolume * MusicVolume);
+        hitsoundPlayer.Volume = (float)(MasterVolume * EffectVolume);
     }
 
     partial void OnModChanged(OsuAudioMod value)
@@ -1328,6 +1350,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 audioEngine.Seek(TimeSpan.Zero);
                 audioEngine.Play();
+                updatePosition(TimeSpan.Zero, audioEngine.TotalTime);
                 IsPlaying = audioEngine.State == AudioPlaybackState.Playing;
                 if (videoPlayer.CurrentPath is not null)
                 {

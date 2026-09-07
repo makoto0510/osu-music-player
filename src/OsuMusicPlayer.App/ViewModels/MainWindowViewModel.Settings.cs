@@ -15,9 +15,9 @@ public sealed partial class MainWindowViewModel
 
     private static readonly HashSet<string> persisted_properties =
     [
-        nameof(Volume), nameof(Mod), nameof(IsShuffleEnabled), nameof(RepeatMode), nameof(SelectedSort),
+        nameof(MasterVolume), nameof(MusicVolume), nameof(Mod), nameof(IsShuffleEnabled), nameof(RepeatMode), nameof(SelectedSort),
         nameof(IsHitsoundEnabled), nameof(IsStoryboardEnabled), nameof(IsVideoEnabled),
-        nameof(HitsoundVolume), nameof(HitsoundOffsetMs), nameof(PreferSkinHitsounds), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
+        nameof(EffectVolume), nameof(HitsoundOffsetMs), nameof(PreferSkinHitsounds), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText),
         nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
@@ -42,7 +42,7 @@ public sealed partial class MainWindowViewModel
     private bool isSettingsPanelVisible;
 
     [ObservableProperty]
-    private double hitsoundVolume = 1;
+    private double effectVolume = 1;
 
     [ObservableProperty]
     private int hitsoundOffsetMs;
@@ -126,7 +126,17 @@ public sealed partial class MainWindowViewModel
         RequestSettingsSave();
     }
 
-    partial void OnHitsoundVolumeChanged(double value) => hitsoundPlayer.Volume = (float)Math.Clamp(value, 0, 1);
+    partial void OnEffectVolumeChanged(double value)
+    {
+        var clamped = Math.Clamp(value, 0, 1);
+        if (clamped != value)
+        {
+            EffectVolume = clamped;
+            return;
+        }
+
+        applyMixerVolumes();
+    }
 
     partial void OnHitsoundOffsetMsChanged(int value)
     {
@@ -239,13 +249,14 @@ public sealed partial class MainWindowViewModel
             Playlists = Playlists.Select(static playlist => new PlaylistSetting(playlist.Id, playlist.Name, playlist.TrackIds.ToArray())).ToArray(),
             SmartPlaylists = SmartPlaylists.ToArray(),
             Favourites = favouriteIds.ToArray(),
-            Volume = Volume,
+            Volume = MasterVolume,
+            MusicVolume = MusicVolume,
             Mod = Mod,
             Shuffle = IsShuffleEnabled,
             Repeat = RepeatMode,
             Sort = SelectedSort,
             HitsoundsEnabled = IsHitsoundEnabled,
-            HitsoundVolume = HitsoundVolume,
+            HitsoundVolume = EffectVolume,
             HitsoundOffsetMs = HitsoundOffsetMs,
             PreferSkinHitsounds = PreferSkinHitsounds,
             StoryboardEnabled = IsStoryboardEnabled,
@@ -300,12 +311,13 @@ public sealed partial class MainWindowViewModel
         restoringSettings = true;
         try
         {
-            Volume = Math.Clamp(settings.Volume, 0, 1);
+            MasterVolume = Math.Clamp(settings.Volume, 0, 1);
+            MusicVolume = Math.Clamp(settings.MusicVolume, 0, 1);
             Mod = Enum.IsDefined(settings.Mod) ? settings.Mod : OsuAudioMod.None;
             IsShuffleEnabled = settings.Shuffle;
             RepeatMode = Enum.IsDefined(settings.Repeat) ? settings.Repeat : RepeatMode.Off;
             SelectedSort = Enum.IsDefined(settings.Sort) ? settings.Sort : TrackSortOption.Title;
-            HitsoundVolume = Math.Clamp(settings.HitsoundVolume, 0, 1);
+            EffectVolume = Math.Clamp(settings.HitsoundVolume, 0, 1);
             HitsoundOffsetMs = Math.Clamp(settings.HitsoundOffsetMs, -500, 500);
             PreferSkinHitsounds = settings.PreferSkinHitsounds;
             IsHitsoundEnabled = settings.HitsoundsEnabled;

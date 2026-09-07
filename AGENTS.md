@@ -68,6 +68,7 @@ A multi-platform osu! music player and audio server that extracts, parses, and p
 ## 7. 絶対守るべきこと
 - osuディレクトリは編集しない。読み取りだけ。
 - トークン節約のため、単純作業で誰がやっても成果が変わらない作業は他のモデルにさせること。
+- gitは基本操作しないこと。操作する場合はコマンドを提示してユーザーに承認を得てから操作を実行すること。
 
 ## 8. テスト
 ```

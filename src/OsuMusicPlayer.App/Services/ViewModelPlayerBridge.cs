@@ -22,7 +22,7 @@ public sealed class ViewModelPlayerBridge(MainWindowViewModel viewModel, IUiDisp
             viewModel.IsPlaying,
             viewModel.CurrentTime.TotalSeconds,
             viewModel.TotalTime.TotalSeconds,
-            viewModel.Volume,
+            viewModel.MasterVolume,
             viewModel.Mod.ToString(),
             viewModel.IsShuffleEnabled,
             viewModel.RepeatMode.ToString(),
@@ -77,7 +77,7 @@ public sealed class ViewModelPlayerBridge(MainWindowViewModel viewModel, IUiDisp
 
     public Task SeekAsync(double seconds, CancellationToken cancellationToken) => dispatcher.InvokeAsync(() => viewModel.SeekSecondsFromRemote(seconds));
 
-    public Task SetVolumeAsync(double volume, CancellationToken cancellationToken) => dispatcher.InvokeAsync(() => viewModel.Volume = Math.Clamp(volume, 0, 1));
+    public Task SetVolumeAsync(double volume, CancellationToken cancellationToken) => dispatcher.InvokeAsync(() => viewModel.MasterVolume = Math.Clamp(volume, 0, 1));
 
     public Task<bool> EnqueueAsync(Guid id, CancellationToken cancellationToken) => onUi(() => viewModel.EnqueueById(id));
 

@@ -5,6 +5,27 @@ namespace OsuMusicPlayer.App.Tests;
 
 public sealed class JsonSettingsStoreTests
 {
+    [Fact]
+    public async Task MixerVolumes_RoundTripAndOldSettingsKeepCompatibleDefaults()
+    {
+        using var directory = new TestDirectory();
+        var path = Path.Combine(directory.Path, "settings.json");
+        var store = new JsonSettingsStore(path);
+
+        await store.SaveAsync(new AppSettings { Volume = 0.5, MusicVolume = 0.4, HitsoundVolume = 0.6 });
+        var loaded = await store.LoadAsync();
+
+        loaded.Volume.Should().Be(0.5);
+        loaded.MusicVolume.Should().Be(0.4);
+        loaded.HitsoundVolume.Should().Be(0.6);
+
+        await File.WriteAllTextAsync(path, "{\"Volume\":0.3,\"HitsoundVolume\":0.7}");
+        var migrated = await store.LoadAsync();
+        migrated.Volume.Should().Be(0.3);
+        migrated.MusicVolume.Should().Be(1);
+        migrated.HitsoundVolume.Should().Be(0.7);
+    }
+
     [Theory]
     [InlineData("Studio")]
     [InlineData("Classic")]

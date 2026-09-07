@@ -37,10 +37,10 @@ public sealed partial class MainWindowViewModel
                 SeekBy(-seek_step);
                 return true;
             case ShortcutAction.VolumeUp:
-                Volume = Math.Clamp(Math.Round(Volume + volume_step, 2), 0, 1);
+                MasterVolume = Math.Clamp(Math.Round(MasterVolume + volume_step, 2), 0, 1);
                 return true;
             case ShortcutAction.VolumeDown:
-                Volume = Math.Clamp(Math.Round(Volume - volume_step, 2), 0, 1);
+                MasterVolume = Math.Clamp(Math.Round(MasterVolume - volume_step, 2), 0, 1);
                 return true;
             case ShortcutAction.ToggleFavourite:
                 ToggleFavouriteCommand.Execute(null);

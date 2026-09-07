@@ -293,7 +293,7 @@
             <Button Classes="icon" Command="{Binding OpenStudioToolCommand}" CommandParameter="equalizer" ToolTip.Tip="Equalizer"><PathIcon Data="{StaticResource IconTune}" /></Button>
             <ComboBox ItemsSource="{Binding StudioMods}" SelectedItem="{Binding Mod, Mode=TwoWay}" Width="72" FontSize="11" AutomationProperties.Name="Playback mod" />
             <PathIcon Data="{StaticResource IconVolume}" Classes="muted" Margin="8,0,2,0" />
-            <Slider Classes="slim" Width="85" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}" AutomationProperties.Name="Volume" />
+            <Slider Classes="slim" Width="85" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" ToolTip.Tip="Master volume" AutomationProperties.Name="Master volume" />
             <ToggleButton Classes="icon" IsChecked="{Binding IsStudioQueueVisible, Mode=TwoWay}" ToolTip.Tip="Queue and track details"><PathIcon Data="{StaticResource IconQueue}" /></ToggleButton>
           </StackPanel>
         </Grid>

@@ -66,6 +66,8 @@ public sealed class AppSettings
 
     public double Volume { get; init; } = 1;
 
+    public double MusicVolume { get; init; } = 1;
+
     public OsuAudioMod Mod { get; init; }
 
     public bool Shuffle { get; init; }

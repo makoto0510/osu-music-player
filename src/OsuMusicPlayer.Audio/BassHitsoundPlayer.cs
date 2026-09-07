@@ -247,7 +247,6 @@ public sealed class BassHitsoundPlayer : IHitsoundPlayer
         }
 
         var played = 0;
-        var masterVolume = volume * engine.Volume;
         foreach (var hit in due)
         {
             HitPlayed?.Invoke(this, hit);
@@ -264,7 +263,7 @@ public sealed class BassHitsoundPlayer : IHitsoundPlayer
                     continue;
                 }
 
-                native.SetVolume(channel, (float)Math.Clamp(sample.Volume * masterVolume, 0, 1));
+                native.SetVolume(channel, (float)Math.Clamp(sample.Volume * volume, 0, 1));
                 if (native.Play(channel))
                 {
                     played++;
