@@ -1321,6 +1321,88 @@ public sealed class MainWindowViewModelTests
         viewModel.DifficultyPreviewStatusText.Should().Contain(".osu");
     }
 
+    [Fact]
+    public async Task DifficultyPreview_WhenPreviewOpenAndNextTrackPlays_UpdatesPreviewDataAndTitle()
+    {
+        using var directory = new TestDirectory();
+        var songHard = directory.CreateFile("song_hard.osu", beatmapText(3));
+        var nextHard = directory.CreateFile("next_hard.osu", beatmapText(5));
+        using var viewModel = createViewModel(out var audio);
+
+        var set1 = createSet("FirstSong", "Artist 1", "Mapper", "", 100, 100) with
+        {
+            Beatmaps =
+            [
+                new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Hard", Tags = "", StarRating = 5, BeatmapFilePath = songHard },
+            ],
+        };
+        var set2 = createSet("SecondSong", "Artist 2", "Mapper", "", 120, 120) with
+        {
+            Beatmaps =
+            [
+                new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Hard", Tags = "", StarRating = 5.2, BeatmapFilePath = nextHard },
+            ],
+        };
+
+        viewModel.ReplaceTracksForTesting([set1, set2]);
+        var firstTrack = viewModel.Tracks[0];
+        var secondTrack = viewModel.Tracks[1];
+
+        viewModel.SelectedTrack = firstTrack;
+        (await viewModel.OpenDifficultyPreviewAsync()).Should().BeTrue();
+
+        viewModel.DifficultyPreview.Should().NotBeNull();
+        viewModel.DifficultyPreview!.Objects.Should().HaveCount(3);
+        viewModel.DifficultyPreviewTitle.Should().Be("Artist 1 - FirstSong [Hard]");
+        viewModel.CurrentTrack.Should().BeSameAs(firstTrack);
+
+        // Advance to the next track while the preview window is open
+        await viewModel.NextCommand.ExecuteAsync(null);
+
+        viewModel.CurrentTrack.Should().BeSameAs(secondTrack);
+        viewModel.DifficultyPreview.Should().NotBeNull();
+        viewModel.DifficultyPreview!.Objects.Should().HaveCount(5, "the preview must follow the newly playing track");
+        viewModel.DifficultyPreviewTitle.Should().Be("Artist 2 - SecondSong [Hard]");
+    }
+
+    [Fact]
+    public async Task DifficultyPreview_WhenPreviewOpenAndDifficultyChanges_UpdatesPreviewDataAndTitle()
+    {
+        using var directory = new TestDirectory();
+        var normalPath = directory.CreateFile("normal.osu", beatmapText(2));
+        var hardPath = directory.CreateFile("hard.osu", beatmapText(4));
+        using var viewModel = createViewModel(out var audio);
+
+        var normal = new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Normal", Tags = "", StarRating = 2.0, BeatmapFilePath = normalPath };
+        var hard = new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Hard", Tags = "", StarRating = 5.0, BeatmapFilePath = hardPath };
+        var set = createSet("Song", "Artist", "Mapper", "", 100, 100) with
+        {
+            Beatmaps = [normal, hard],
+        };
+
+        viewModel.ReplaceTracksForTesting([set]);
+        var track = viewModel.Tracks[0];
+        track.SelectedDifficulty = track.Difficulties.Single(d => d.Name == "Normal");
+        viewModel.SelectedTrack = track;
+
+        (await viewModel.OpenDifficultyPreviewAsync()).Should().BeTrue();
+        viewModel.DifficultyPreview!.Objects.Should().HaveCount(2);
+        viewModel.DifficultyPreviewTitle.Should().Be("Artist - Song [Normal]");
+
+        // Change the difficulty of the currently playing track
+        track.SelectedDifficulty = track.Difficulties.Single(d => d.Name == "Hard");
+
+        // Wait a small moment for async property change handler
+        for (var i = 0; i < 20 && viewModel.DifficultyPreview.Objects.Count != 4; i++)
+        {
+            await Task.Delay(25);
+        }
+
+        viewModel.DifficultyPreview.Should().NotBeNull();
+        viewModel.DifficultyPreview!.Objects.Should().HaveCount(4);
+        viewModel.DifficultyPreviewTitle.Should().Be("Artist - Song [Hard]");
+    }
+
     private sealed class FakeThemeApplier : OsuMusicPlayer.App.Themes.IThemeApplier
     {
         public OsuMusicPlayer.App.Themes.PlayerTheme? Applied { get; private set; }

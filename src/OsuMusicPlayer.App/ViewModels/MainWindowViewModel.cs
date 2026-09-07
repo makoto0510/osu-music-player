@@ -9,6 +9,7 @@ using OsuMusicPlayer.Core.Skins;
 using OsuMusicPlayer.Core.Hitsounds;
 using OsuMusicPlayer.Core.Loaders;
 using OsuMusicPlayer.Core.Models;
+using OsuMusicPlayer.Core.Preview;
 using OsuMusicPlayer.Core.Search;
 
 namespace OsuMusicPlayer.App.ViewModels;
@@ -592,6 +593,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         if (args.PropertyName == nameof(TrackItemViewModel.SelectedDifficulty) && sender is TrackItemViewModel track && track == CurrentTrack)
         {
             LastVisualsLoad = loadVisualsAsync(track, Volatile.Read(ref loadVersion));
+            if (IsDifficultyPreviewOpen && track.SelectedDifficulty != previewDifficulty)
+            {
+                _ = UpdateDifficultyPreviewForDifficultyChangeAsync(track);
+            }
         }
     }
 
@@ -1106,10 +1111,30 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             hitsoundPlayer.Clear();
             clearStoryboard();
             VisualsStatusText = string.Empty;
+
+            Task<PlayfieldPreviewData?>? previewLoadTask = null;
+            if (IsDifficultyPreviewOpen && (track != previewTrack || track.SelectedDifficulty != previewDifficulty))
+            {
+                previewLoadTask = LoadDifficultyPreviewDataAsync(track);
+            }
+
             await audioEngine.LoadAsync(audioPath).ConfigureAwait(false);
             if (version != Volatile.Read(ref loadVersion) || disposed)
             {
                 return;
+            }
+
+            PlayfieldPreviewData? previewData = null;
+            var shouldUpdatePreview = false;
+            if (previewLoadTask is not null)
+            {
+                previewData = await previewLoadTask.ConfigureAwait(false);
+                if (version != Volatile.Read(ref loadVersion) || disposed)
+                {
+                    return;
+                }
+
+                shouldUpdatePreview = true;
             }
 
             if (startAt is { } start && start > TimeSpan.Zero)
@@ -1118,15 +1143,26 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 audioEngine.Seek(total > TimeSpan.Zero && start >= total ? TimeSpan.Zero : start);
             }
 
-            audioEngine.Play();
             await dispatcher.InvokeAsync(() =>
             {
                 CurrentTrack = track;
                 SelectedTrack = track;
-                IsPlaying = audioEngine.State == AudioPlaybackState.Playing;
                 CurrentMedia = BeatmapMedia.None;
                 updatePosition(audioEngine.CurrentTime, audioEngine.TotalTime);
+
+                if (shouldUpdatePreview && IsDifficultyPreviewOpen)
+                {
+                    ApplyDifficultyPreview(track, previewData);
+                }
             }).ConfigureAwait(false);
+
+            audioEngine.Play();
+
+            await dispatcher.InvokeAsync(() =>
+            {
+                IsPlaying = audioEngine.State == AudioPlaybackState.Playing;
+            }).ConfigureAwait(false);
+
             _ = resolveMediaAsync(track, version);
             recordPlay(track);
             RequestSettingsSave();

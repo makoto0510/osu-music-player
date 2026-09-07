@@ -68,3 +68,9 @@ A multi-platform osu! music player and audio server that extracts, parses, and p
 ## 7. 絶対守るべきこと
 - osuディレクトリは編集しない。読み取りだけ。
 - トークン節約のため、単純作業で誰がやっても成果が変わらない作業は他のモデルにさせること。
+
+## 8. テスト
+```
+dotnet restore .\OsuMusicPlayer.sln --configfile .\NuGet.Config
+dotnet run --project .\src\OsuMusicPlayer.App\OsuMusicPlayer.App.csproj
+```

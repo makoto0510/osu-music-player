@@ -86,6 +86,26 @@ public sealed class HitsoundPlayerTests
         native.FreedCount.Should().Be(1);
     }
 
+    [Theory]
+    [InlineData(OsuAudioMod.NC)]
+    [InlineData(OsuAudioMod.DC)]
+    [InlineData(OsuAudioMod.DT)]
+    [InlineData(OsuAudioMod.HT)]
+    [InlineData(OsuAudioMod.None)]
+    public async Task Player_DoesNotPitchSamplesOnMods(OsuAudioMod mod)
+    {
+        var native = new FakeSampleNative();
+        var engine = new FakeEngine { Mod = mod };
+        using var player = new BassHitsoundPlayer(native, engine, startWorker: false) { IsEnabled = true };
+        var resolver = new HitsoundSampleResolver(new FakeSource(("soft-hitnormal.wav", [1])), []);
+
+        await player.LoadAsync([new HitsoundEvent(TimeSpan.FromMilliseconds(100), [normal])], resolver);
+        player.TickForTesting(TimeSpan.FromMilliseconds(120));
+
+        native.Played.Should().HaveCount(1);
+        native.Ratios.Should().BeEmpty("hitsound samples must not change pitch even when NC/DC mods are active");
+    }
+
     private sealed class FakeSampleNative : IBassSampleNative
     {
         private int nextHandle = 100;
