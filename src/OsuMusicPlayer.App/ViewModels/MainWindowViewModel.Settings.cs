@@ -17,7 +17,7 @@ public sealed partial class MainWindowViewModel
     [
         nameof(Volume), nameof(Mod), nameof(IsShuffleEnabled), nameof(RepeatMode), nameof(SelectedSort),
         nameof(IsHitsoundEnabled), nameof(IsStoryboardEnabled), nameof(IsVideoEnabled),
-        nameof(HitsoundVolume), nameof(HitsoundOffsetMs), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
+        nameof(HitsoundVolume), nameof(HitsoundOffsetMs), nameof(PreferSkinHitsounds), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText),
         nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
@@ -48,6 +48,11 @@ public sealed partial class MainWindowViewModel
     private int hitsoundOffsetMs;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HitsoundToggleTip))]
+    [NotifyPropertyChangedFor(nameof(HitsoundSourceIndex))]
+    private bool preferSkinHitsounds;
+
+    [ObservableProperty]
     private bool isServerEnabled;
 
     [ObservableProperty]
@@ -72,6 +77,22 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<string> EqualizerPresetNames => Equalizer.PresetNames;
     public string EqualizerPresetText => SelectedEqualizerPreset ?? "Custom";
     public string HitsoundOffsetText => $"{HitsoundOffsetMs:+0;-0;0} ms";
+
+    public int HitsoundSourceIndex
+    {
+        get => PreferSkinHitsounds ? 1 : 0;
+        set => PreferSkinHitsounds = value == 1;
+    }
+
+    public string HitsoundToggleTip => PreferSkinHitsounds
+        ? "Hit sounds: Skin (Right-click to change)"
+        : "Hit sounds: Beatmap (Right-click to change)";
+
+    [RelayCommand]
+    private void SetHitsoundSourceBeatmap() => PreferSkinHitsounds = false;
+
+    [RelayCommand]
+    private void SetHitsoundSourceSkin() => PreferSkinHitsounds = true;
 
     /// <summary>Waits for a pending debounced save; used by tests.</summary>
     internal Task PendingSave { get; private set; } = Task.CompletedTask;
@@ -111,6 +132,14 @@ public sealed partial class MainWindowViewModel
     {
         hitsoundPlayer.OffsetMs = value;
         OnPropertyChanged(nameof(HitsoundOffsetText));
+    }
+
+    partial void OnPreferSkinHitsoundsChanged(bool value)
+    {
+        if (IsHitsoundEnabled && CurrentTrack is { } track)
+        {
+            LastVisualsLoad = loadHitsoundsAsync(track, Volatile.Read(ref loadVersion));
+        }
     }
 
     private void initializePersistence()
@@ -218,6 +247,7 @@ public sealed partial class MainWindowViewModel
             HitsoundsEnabled = IsHitsoundEnabled,
             HitsoundVolume = HitsoundVolume,
             HitsoundOffsetMs = HitsoundOffsetMs,
+            PreferSkinHitsounds = PreferSkinHitsounds,
             StoryboardEnabled = IsStoryboardEnabled,
             VideoEnabled = IsVideoEnabled,
             EqualizerGains = currentGains(),
@@ -277,6 +307,7 @@ public sealed partial class MainWindowViewModel
             SelectedSort = Enum.IsDefined(settings.Sort) ? settings.Sort : TrackSortOption.Title;
             HitsoundVolume = Math.Clamp(settings.HitsoundVolume, 0, 1);
             HitsoundOffsetMs = Math.Clamp(settings.HitsoundOffsetMs, -500, 500);
+            PreferSkinHitsounds = settings.PreferSkinHitsounds;
             IsHitsoundEnabled = settings.HitsoundsEnabled;
             IsStoryboardEnabled = settings.StoryboardEnabled;
             if (videoPlayer.IsAvailable)

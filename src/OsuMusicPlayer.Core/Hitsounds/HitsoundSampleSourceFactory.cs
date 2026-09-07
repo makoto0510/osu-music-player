@@ -8,6 +8,13 @@ public interface IHitsoundSampleSourceFactory
 {
     /// <summary>Builds the sample lookup chain for one beatmap set using the known installations.</summary>
     HitsoundSampleResolver Create(UnifiedBeatmapSet set, IEnumerable<OsuInstallation> installations);
+
+    /// <summary>Builds the sample lookup chain for one beatmap set with optional skin directory and hit sound source preference.</summary>
+    HitsoundSampleResolver Create(
+        UnifiedBeatmapSet set,
+        IEnumerable<OsuInstallation> installations,
+        string? skinDirectory,
+        bool preferSkinHitsounds);
 }
 
 /// <summary>
@@ -43,12 +50,23 @@ public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceF
         this.skinReader = skinReader ?? throw new ArgumentNullException(nameof(skinReader));
     }
 
-    public HitsoundSampleResolver Create(UnifiedBeatmapSet set, IEnumerable<OsuInstallation> installations)
+    public HitsoundSampleResolver Create(UnifiedBeatmapSet set, IEnumerable<OsuInstallation> installations) =>
+        Create(set, installations, null, false);
+
+    public HitsoundSampleResolver Create(
+        UnifiedBeatmapSet set,
+        IEnumerable<OsuInstallation> installations,
+        string? skinDirectory,
+        bool preferSkinHitsounds)
     {
         ArgumentNullException.ThrowIfNull(set);
         ArgumentNullException.ThrowIfNull(installations);
 
         var fallbacks = new List<ISampleFileSource>();
+        if (!string.IsNullOrWhiteSpace(skinDirectory) && Directory.Exists(skinDirectory))
+        {
+            fallbacks.Add(shared(skinDirectory, static path => new DirectorySampleFileSource(path)));
+        }
         var resourcePrefix = classic_prefix;
         foreach (var installation in installations)
         {
@@ -88,7 +106,7 @@ public sealed partial class HitsoundSampleSourceFactory : IHitsoundSampleSourceF
             }
         }
 
-        return new HitsoundSampleResolver(set.Files is null ? null : new BeatmapSampleFileSource(set.Files), fallbacks);
+        return new HitsoundSampleResolver(set.Files is null ? null : new BeatmapSampleFileSource(set.Files), fallbacks, preferSkinHitsounds);
     }
 
     /// <summary>Reads <c>Skin = name</c> from the user's osu!stable config and returns that skin folder.</summary>

@@ -145,6 +145,45 @@ public sealed class HitsoundTimelineBuilderTests
     }
 
     [Fact]
+    public void SampleResolver_PreferSkinHitsounds_IgnoresBeatmapAndUsesSkin()
+    {
+        var beatmap = new FakeSource(("soft-hitnormal2.wav", [1]), ("soft-hitnormal.wav", [2]), ("custom.wav", [3]));
+        var skin = new FakeSource(("soft-hitnormal.wav", [4]), ("soft-hitclap.wav", [5]));
+        var defaults = new FakeSource(("soft-hitnormal.wav", [6]), ("soft-hitclap.wav", [7]), ("soft-hitfinish.wav", [8]));
+        var resolver = new HitsoundSampleResolver(beatmap, [skin, defaults], preferSkinHitsounds: true);
+
+        resolver.PreferSkinHitsounds.Should().BeTrue();
+        resolver.Resolve(new HitsoundSample("soft", "hitnormal", 2, 1, null)).Should().Equal(new byte[] { 4 }, "custom index in beatmap is ignored when preferring skin");
+        resolver.Resolve(new HitsoundSample("soft", "hitnormal", 1, 1, null)).Should().Equal(new byte[] { 4 }, "unsuffixed beatmap sample is ignored");
+        resolver.Resolve(new HitsoundSample("soft", "hitnormal", 0, 1, null)).Should().Equal(new byte[] { 4 });
+        resolver.Resolve(new HitsoundSample("soft", "hitclap", 1, 1, null)).Should().Equal(5);
+        resolver.Resolve(new HitsoundSample("soft", "hitfinish", 1, 1, null)).Should().Equal(8);
+        resolver.Resolve(new HitsoundSample("soft", "custom", 1, 1, "custom.wav")).Should().Equal(new byte[] { 4 }, "explicit beatmap files fall back to skin hitnormal");
+    }
+
+    [Fact]
+    public void SampleSourceFactory_UsesCustomSkinDirectoryWhenProvided()
+    {
+        using var directory = new TestDirectory();
+        directory.CreateFile("soft-hitnormal.wav");
+        var set = new UnifiedBeatmapSet
+        {
+            Id = Guid.NewGuid(),
+            Title = "Test",
+            TitleUnicode = "Test",
+            Artist = "Artist",
+            ArtistUnicode = "Artist",
+            Creator = "Creator",
+            Beatmaps = [],
+        };
+        var factory = new HitsoundSampleSourceFactory(static () => null);
+        var resolver = factory.Create(set, Array.Empty<OsuInstallation>(), directory.Path, preferSkinHitsounds: true);
+
+        var data = resolver.Resolve(new HitsoundSample("soft", "hitnormal", 0, 1, null));
+        data.Should().NotBeNull();
+    }
+
+    [Fact]
     public void DirectorySource_FindsSamplesCaseInsensitivelyWithAnyAudioExtension()
     {
         using var directory = new TestDirectory();

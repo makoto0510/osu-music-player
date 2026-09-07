@@ -372,7 +372,23 @@
                 <StackPanel Orientation="Horizontal" Spacing="0">
                   <ToggleButton Classes="icon small" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" ToolTip.Tip="{Binding VideoToggleTip}"><PathIcon Data="{StaticResource IconVideo}" /></ToggleButton>
                   <ToggleButton Classes="icon small" IsChecked="{Binding IsStoryboardEnabled, Mode=TwoWay}" ToolTip.Tip="Storyboard"><PathIcon Data="{StaticResource IconStoryboard}" /></ToggleButton>
-                  <ToggleButton Classes="icon small" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" ToolTip.Tip="Hit sounds from the selected difficulty"><PathIcon Data="{StaticResource IconHeadphones}" /></ToggleButton>
+                  <ToggleButton Classes="icon small" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" ToolTip.Tip="{Binding HitsoundToggleTip}">
+                    <ToggleButton.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Beatmap hit sounds" Command="{Binding SetHitsoundSourceBeatmapCommand}">
+                          <MenuItem.Icon>
+                            <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding !PreferSkinHitsounds}" />
+                          </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Skin hit sounds" Command="{Binding SetHitsoundSourceSkinCommand}">
+                          <MenuItem.Icon>
+                            <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding PreferSkinHitsounds}" />
+                          </MenuItem.Icon>
+                        </MenuItem>
+                      </ContextMenu>
+                    </ToggleButton.ContextMenu>
+                    <PathIcon Data="{StaticResource IconHeadphones}" />
+                  </ToggleButton>
                   <Button Classes="icon small" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="{Binding VisualsWindowButtonText}"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
                   <Button Classes="icon small" Command="{Binding #Root.FullscreenVisualsCommand}" ToolTip.Tip="Fullscreen (F11)"><PathIcon Data="{StaticResource IconFullscreen}" /></Button>
                   <ToggleButton Classes="icon small" IsChecked="{Binding IsTheaterMode, Mode=TwoWay}" ToolTip.Tip="Theater mode (Ctrl+T)" AutomationProperties.Name="Theater mode" AutomationProperties.AutomationId="TheaterToggle"><PathIcon Data="{StaticResource IconTheater}" /></ToggleButton>

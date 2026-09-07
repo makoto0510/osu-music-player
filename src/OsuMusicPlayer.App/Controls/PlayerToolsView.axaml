@@ -140,7 +140,14 @@
                       <Slider Grid.Column="1" Minimum="-200" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding HitsoundOffsetMs, Mode=TwoWay}" />
                       <TextBlock Grid.Column="2" Text="{Binding HitsoundOffsetText}" VerticalAlignment="Center" />
                     </Grid>
-                    <TextBlock Classes="hint" Text="Turn hit sounds on with the headphones toggle in the now-playing pane. The selected difficulty provides the samples." />
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="8">
+                      <TextBlock Grid.Column="0" Text="Source" Classes="muted" VerticalAlignment="Center" />
+                      <ComboBox Grid.Column="1" SelectedIndex="{Binding HitsoundSourceIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="Beatmap (fall back to skin)" />
+                        <ComboBoxItem Content="Skin (ignore beatmap)" />
+                      </ComboBox>
+                    </Grid>
+                    <TextBlock Classes="hint" Text="Turn hit sounds on with the headphones toggle in the now-playing pane. Right-click the headphones icon to switch between beatmap and skin sounds." TextWrapping="Wrap" />
                   </StackPanel>
                 </TabItem>
                 <TabItem Header="Library">

@@ -718,6 +718,54 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task Hitsounds_SourceCanBeSwitchedBetweenBeatmapAndSkin()
+    {
+        using var directory = new TestDirectory();
+        var mapPath = directory.CreateFile("diff.osu", beatmapText(2));
+        using var viewModel = createViewModel(out _, out var environment);
+        var set = createSet("Song", "Artist", "Mapper", "", 100, 100) with
+        {
+            Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Normal", Tags = "", StarRating = 2, BeatmapFilePath = mapPath }],
+        };
+        viewModel.ReplaceTracksForTesting([set]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+
+        // Defaults to Beatmap
+        viewModel.PreferSkinHitsounds.Should().BeFalse();
+        viewModel.HitsoundSourceIndex.Should().Be(0);
+        viewModel.HitsoundToggleTip.Should().Contain("Beatmap");
+
+        viewModel.IsHitsoundEnabled = true;
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        await viewModel.LastVisualsLoad;
+
+        environment.Hitsounds.LastResolver.Should().NotBeNull();
+        environment.Hitsounds.LastResolver!.PreferSkinHitsounds.Should().BeFalse();
+
+        // Switch to Skin via index
+        viewModel.HitsoundSourceIndex = 1;
+        viewModel.PreferSkinHitsounds.Should().BeTrue();
+        viewModel.HitsoundToggleTip.Should().Contain("Skin");
+        await viewModel.LastVisualsLoad;
+
+        environment.Hitsounds.LastResolver.PreferSkinHitsounds.Should().BeTrue();
+        viewModel.VisualsStatusText.Should().Contain("(skin)");
+
+        // Switch back to Beatmap via command
+        viewModel.SetHitsoundSourceBeatmapCommand.Execute(null);
+        viewModel.PreferSkinHitsounds.Should().BeFalse();
+        viewModel.HitsoundSourceIndex.Should().Be(0);
+        await viewModel.LastVisualsLoad;
+
+        environment.Hitsounds.LastResolver.PreferSkinHitsounds.Should().BeFalse();
+
+        // Switch to Skin via command
+        viewModel.SetHitsoundSourceSkinCommand.Execute(null);
+        viewModel.PreferSkinHitsounds.Should().BeTrue();
+        viewModel.HitsoundSourceIndex.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Storyboard_LoadsWhenTheMediaHasOneAndIsClearedForTheNextTrack()
     {
         using var directory = new TestDirectory();
@@ -865,6 +913,7 @@ public sealed class MainWindowViewModelTests
             Repeat = RepeatMode.All,
             HitsoundsEnabled = true,
             HitsoundOffsetMs = 25,
+            PreferSkinHitsounds = true,
             EqualizerGains = Equalizer.Presets["Rock"],
             Favourites = [set.Id],
             Playlists = [new PlaylistSetting(Guid.NewGuid(), "Saved", [set.Id])],
@@ -877,6 +926,8 @@ public sealed class MainWindowViewModelTests
         audio.Mod.Should().Be(OsuAudioMod.NC);
         viewModel.IsShuffleEnabled.Should().BeTrue();
         viewModel.RepeatMode.Should().Be(RepeatMode.All);
+        viewModel.PreferSkinHitsounds.Should().BeTrue();
+        viewModel.HitsoundSourceIndex.Should().Be(1);
         environment.Hitsounds.IsEnabled.Should().BeTrue();
         environment.Hitsounds.OffsetMs.Should().Be(25);
         viewModel.SelectedEqualizerPreset.Should().Be("Rock");
@@ -1351,11 +1402,13 @@ public sealed class MainWindowViewModelTests
         public int OffsetMs { get; set; }
         public int MissingSampleCount => 0;
         public List<int> Loads { get; } = [];
+        public HitsoundSampleResolver? LastResolver { get; private set; }
         public int Clears { get; private set; }
 
         public Task LoadAsync(IReadOnlyList<HitsoundEvent> events, HitsoundSampleResolver resolver, CancellationToken cancellationToken = default)
         {
             Loads.Add(events.Count);
+            LastResolver = resolver;
             return Task.CompletedTask;
         }
 

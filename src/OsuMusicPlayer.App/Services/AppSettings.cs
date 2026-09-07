@@ -79,6 +79,8 @@ public sealed class AppSettings
     public double HitsoundVolume { get; init; } = 1;
 
     public int HitsoundOffsetMs { get; init; }
+ 
+    public bool PreferSkinHitsounds { get; init; }
 
     public bool StoryboardEnabled { get; init; } = true;
 

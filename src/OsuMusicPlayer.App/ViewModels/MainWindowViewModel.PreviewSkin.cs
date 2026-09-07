@@ -135,5 +135,10 @@ public sealed partial class MainWindowViewModel
             ActivePreviewSkin = PreviewSkin.Default;
             PreviewSkinStatusText = $"Skin folder \"{entry.Directory}\" disappeared; using the default look.";
         }
+
+        if (PreferSkinHitsounds && IsHitsoundEnabled && CurrentTrack is { } track)
+        {
+            LastVisualsLoad = loadHitsoundsAsync(track, Volatile.Read(ref loadVersion));
+        }
     }
 }

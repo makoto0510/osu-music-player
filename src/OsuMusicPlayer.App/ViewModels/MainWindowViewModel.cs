@@ -1196,7 +1196,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            var resolver = sampleSourceFactory.Create(track.Model, installations);
+            var skinDir = ActivePreviewSkin.IsDefault ? null : ActivePreviewSkin.Directory;
+            var resolver = sampleSourceFactory.Create(track.Model, installations, skinDir, PreferSkinHitsounds);
             await hitsoundPlayer.LoadAsync(events, resolver, token).ConfigureAwait(false);
             if (version != Volatile.Read(ref loadVersion) || disposed)
             {
@@ -1204,7 +1205,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             }
 
             var missing = hitsoundPlayer.MissingSampleCount;
-            var status = missing > 0 ? $"{events.Count:N0} hit sounds ({missing} samples missing)" : $"{events.Count:N0} hit sounds";
+            var sourceInfo = PreferSkinHitsounds ? " (skin)" : string.Empty;
+            var status = missing > 0 ? $"{events.Count:N0} hit sounds{sourceInfo} ({missing} samples missing)" : $"{events.Count:N0} hit sounds{sourceInfo}";
             await dispatcher.InvokeAsync(() => VisualsStatusText = appendStatus(VisualsStatusText, status)).ConfigureAwait(false);
         }
         catch (OperationCanceledException)

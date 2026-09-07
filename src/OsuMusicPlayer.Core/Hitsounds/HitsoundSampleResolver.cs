@@ -14,10 +14,13 @@ public sealed class HitsoundSampleResolver
     private readonly IReadOnlyList<ISampleFileSource> fallbackSources;
     private readonly ConcurrentDictionary<string, byte[]?> cache = new(StringComparer.OrdinalIgnoreCase);
 
-    public HitsoundSampleResolver(ISampleFileSource? beatmapSource, IEnumerable<ISampleFileSource> fallbackSources)
+    public bool PreferSkinHitsounds { get; }
+
+    public HitsoundSampleResolver(ISampleFileSource? beatmapSource, IEnumerable<ISampleFileSource> fallbackSources, bool preferSkinHitsounds = false)
     {
         this.beatmapSource = beatmapSource;
         this.fallbackSources = fallbackSources?.ToArray() ?? throw new ArgumentNullException(nameof(fallbackSources));
+        PreferSkinHitsounds = preferSkinHitsounds;
     }
 
     /// <summary>
@@ -48,20 +51,24 @@ public sealed class HitsoundSampleResolver
 
     private byte[]? resolveUncached(HitsoundSample sample)
     {
-        if (sample.FileName is not null)
+        if (!PreferSkinHitsounds)
         {
-            return beatmapSource?.Read(sample.FileName);
+            if (sample.FileName is not null)
+            {
+                return beatmapSource?.Read(sample.FileName);
+            }
+
+            // Custom index 1 means "the beatmap's unsuffixed samples", 2+ adds the suffix.
+            if (sample.CustomIndex >= 1 && beatmapSource?.Read(sample.BeatmapName) is { } custom)
+            {
+                return custom;
+            }
         }
 
-        // Custom index 1 means "the beatmap's unsuffixed samples", 2+ adds the suffix.
-        if (sample.CustomIndex >= 1 && beatmapSource?.Read(sample.BeatmapName) is { } custom)
-        {
-            return custom;
-        }
-
+        var soundToFind = sample.SoundName == "custom" ? $"{sample.SampleSetName}-hitnormal" : sample.BaseName;
         foreach (var source in fallbackSources)
         {
-            if (source.Read(sample.BaseName) is { } bytes)
+            if (source.Read(soundToFind) is { } bytes)
             {
                 return bytes;
             }
