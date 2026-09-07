@@ -45,6 +45,9 @@ public sealed partial class MainWindowViewModel
             case ShortcutAction.ToggleFavourite:
                 ToggleFavouriteCommand.Execute(null);
                 return true;
+            case ShortcutAction.HideSelected:
+                HideSelectedCommand.Execute(null);
+                return true;
             case ShortcutAction.EnqueueSelected:
                 EnqueueSelectedCommand.Execute(null);
                 return true;

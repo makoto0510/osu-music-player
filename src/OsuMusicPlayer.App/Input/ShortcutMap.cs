@@ -13,6 +13,7 @@ public enum ShortcutAction
     VolumeUp,
     VolumeDown,
     ToggleFavourite,
+    HideSelected,
     EnqueueSelected,
     ToggleShuffle,
     CycleRepeat,
@@ -65,6 +66,7 @@ public sealed record Shortcut(ShortcutAction Action, Key Key, KeyModifiers Modif
                 Key.MediaPreviousTrack => "Media Previous",
                 _ => Key.ToString(),
             });
+
             return string.Join("+", parts);
         }
     }
@@ -90,6 +92,7 @@ public static class ShortcutMap
         new(ShortcutAction.VolumeUp, Key.Up, KeyModifiers.Control, "Master volume +5 %"),
         new(ShortcutAction.VolumeDown, Key.Down, KeyModifiers.Control, "Master volume −5 %"),
         new(ShortcutAction.ToggleFavourite, Key.D, KeyModifiers.Control, "Favourite / unfavourite"),
+        new(ShortcutAction.HideSelected, Key.H, KeyModifiers.Control, "Hide the selected track"),
         new(ShortcutAction.EnqueueSelected, Key.E, KeyModifiers.Control, "Add the selected track to the queue"),
         new(ShortcutAction.ToggleShuffle, Key.S, KeyModifiers.Control, "Shuffle on / off"),
         new(ShortcutAction.CycleRepeat, Key.R, KeyModifiers.Control, "Repeat off / all / one"),

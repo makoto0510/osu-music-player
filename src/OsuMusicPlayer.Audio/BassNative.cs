@@ -83,7 +83,7 @@ internal sealed class BassNative : IBassNative
     public bool SetPosition(int stream, long position) => Bass.ChannelSetPosition(stream, position, PositionFlags.Bytes);
 
     public int SetEndSync(int stream, SyncProcedure procedure, nint user) =>
-        Bass.ChannelSetSync(stream, SyncFlags.End | SyncFlags.Onetime, 0, procedure, user);
+        Bass.ChannelSetSync(stream, SyncFlags.End, 0, procedure, user);
 
     public int AddPeakEq(int stream) => Bass.ChannelSetFX(stream, EffectType.PeakEQ, 0);
 

@@ -249,6 +249,7 @@ public sealed partial class MainWindowViewModel
             Playlists = Playlists.Select(static playlist => new PlaylistSetting(playlist.Id, playlist.Name, playlist.TrackIds.ToArray())).ToArray(),
             SmartPlaylists = SmartPlaylists.ToArray(),
             Favourites = favouriteIds.ToArray(),
+            HiddenTracks = hiddenTrackIds.ToArray(),
             Volume = MasterVolume,
             MusicVolume = MusicVolume,
             Mod = Mod,
@@ -416,7 +417,7 @@ public sealed partial class MainWindowViewModel
                 notifyQueueChanged();
                 updatePosition(audioEngine.CurrentTime, audioEngine.TotalTime);
             }).ConfigureAwait(false);
-            _ = resolveMediaAsync(track, version);
+            _ = applyResolvedMediaAsync(track, version, resolveMediaAsync(track));
         }
         catch (Exception exception) when (exception is AudioEngineException or IOException or UnauthorizedAccessException or NotSupportedException)
         {

@@ -176,6 +176,10 @@
                       <Button Classes="small" Content="Apply exclusions" Command="{Binding ApplyExclusionsCommand}" />
                       <TextBlock Text="{Binding ExclusionStatusText}" Classes="hint" VerticalAlignment="Center" />
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                      <TextBlock Text="{Binding HiddenTracksStatusText}" Classes="hint" VerticalAlignment="Center" />
+                      <Button Classes="small" Content="Unhide all tracks" Command="{Binding UnhideAllTracksCommand}" IsVisible="{Binding HasHiddenTracks}" />
+                    </StackPanel>
                   </StackPanel>
                 </TabItem>
                 <TabItem Header="Server / OBS">

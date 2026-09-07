@@ -32,6 +32,9 @@
       <MenuItem Header="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).FavouriteButtonText}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteCommand}">
         <MenuItem.Icon><PathIcon Data="{StaticResource IconHeartOutline}" /></MenuItem.Icon>
       </MenuItem>
+      <MenuItem Header="Hide track" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HideSelectedCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconEyeOff}" /></MenuItem.Icon>
+      </MenuItem>
       <Separator />
       <MenuItem Header="Add to playlist" ItemsSource="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Playlists}"
                 IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Playlists.Count}">
@@ -313,7 +316,7 @@
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="34" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ArtistColumnWidth}" />
-                    <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" />
+                    <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" />
                   </Grid.ColumnDefinitions>
                   <TextBlock Grid.Column="0" Text="{Binding Position}" Classes="muted" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   <Border Grid.Column="1" Classes="thumb" Width="46" Height="46">
@@ -336,7 +339,11 @@
                       <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" />
                     </Panel>
                   </Button>
-                  <Button Grid.Column="7" Classes="icon small" VerticalAlignment="Center" Flyout="{StaticResource TrackMenu}" AutomationProperties.Name="More" AutomationProperties.AutomationId="RowMenuButton"
+                  <Button Grid.Column="7" Classes="icon small" VerticalAlignment="Center"
+                          Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).HideTrackForCommand}" CommandParameter="{Binding}" ToolTip.Tip="Hide track (Ctrl+H)">
+                    <PathIcon Data="{StaticResource IconEyeOff}" />
+                  </Button>
+                  <Button Grid.Column="8" Classes="icon small" VerticalAlignment="Center" Flyout="{StaticResource TrackMenu}" AutomationProperties.Name="More" AutomationProperties.AutomationId="RowMenuButton"
                           Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).SelectTrackCommand}" CommandParameter="{Binding}" ToolTip.Tip="More">
                     <PathIcon Data="{StaticResource IconDots}" />
                   </Button>
@@ -411,13 +418,18 @@
                         <TextBlock Classes="eyebrow" Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NowPlayingLabel}" />
                         <Grid ColumnDefinitions="*,Auto">
                           <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
-                          <Button Grid.Column="1" Classes="icon heart" Classes.on="{Binding IsFavourite}" VerticalAlignment="Top" Margin="6,-4,-6,0"
-                                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteCommand}" ToolTip.Tip="Favourite (Ctrl+D)">
-                            <Panel>
-                              <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsFavourite}" Width="20" Height="20" />
-                              <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" Width="20" Height="20" />
-                            </Panel>
-                          </Button>
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="6,-4,-6,0">
+                            <Button Classes="icon heart" Classes.on="{Binding IsFavourite}"
+                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteCommand}" ToolTip.Tip="Favourite (Ctrl+D)">
+                              <Panel>
+                                <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsFavourite}" Width="20" Height="20" />
+                                <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" Width="20" Height="20" />
+                              </Panel>
+                            </Button>
+                            <Button Classes="icon" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HideSelectedCommand}" ToolTip.Tip="Hide track (Ctrl+H)">
+                              <PathIcon Data="{StaticResource IconEyeOff}" Width="18" Height="18" />
+                            </Button>
+                          </StackPanel>
                         </Grid>
                         <TextBlock Text="{Binding Artist}" Classes="muted" FontSize="13.5" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding CreatorText}" Classes="hint" FontSize="12" TextWrapping="Wrap" />
@@ -569,12 +581,17 @@
               <Border IsVisible="{Binding HasStoryboard}" Classes="badge accent" Margin="0" Padding="5,1"><TextBlock Text="STORYBOARD" FontSize="9" /></Border>
             </StackPanel>
           </StackPanel>
-          <Button Grid.Column="2" Classes="icon heart" Classes.on="{Binding IsDetailFavourite}" VerticalAlignment="Center" Command="{Binding ToggleFavouriteCommand}" ToolTip.Tip="Favourite (Ctrl+D)">
-            <Panel>
-              <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsDetailFavourite}" Width="18" Height="18" />
-              <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsDetailFavourite}" Width="18" Height="18" />
-            </Panel>
-          </Button>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <Button Classes="icon heart" Classes.on="{Binding IsDetailFavourite}" Command="{Binding ToggleFavouriteCommand}" ToolTip.Tip="Favourite (Ctrl+D)">
+              <Panel>
+                <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsDetailFavourite}" Width="18" Height="18" />
+                <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsDetailFavourite}" Width="18" Height="18" />
+              </Panel>
+            </Button>
+            <Button Classes="icon" Command="{Binding HideCurrentTrackCommand}" ToolTip.Tip="Hide track" IsVisible="{Binding HasCurrentTrack}">
+              <PathIcon Data="{StaticResource IconEyeOff}" Width="16" Height="16" />
+            </Button>
+          </StackPanel>
         </Grid>
 
         <!-- Transport -->

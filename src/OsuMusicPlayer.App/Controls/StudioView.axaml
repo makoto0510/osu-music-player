@@ -22,6 +22,9 @@
       <MenuItem Header="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).FavouriteButtonText}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteCommand}">
         <MenuItem.Icon><PathIcon Data="{StaticResource IconHeartOutline}" /></MenuItem.Icon>
       </MenuItem>
+      <MenuItem Header="Hide track" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HideSelectedCommand}">
+        <MenuItem.Icon><PathIcon Data="{StaticResource IconEyeOff}" /></MenuItem.Icon>
+      </MenuItem>
       <Separator />
       <MenuItem Header="Add to playlist" ItemsSource="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Playlists}"
                 IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Playlists.Count}">
@@ -196,13 +199,14 @@
               <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:TrackItemViewModel">
-                  <Grid ColumnDefinitions="32,50,*,60,34,34" ColumnSpacing="12" MinHeight="50" ContextFlyout="{StaticResource StudioTrackMenu}">
+                  <Grid ColumnDefinitions="32,50,*,60,34,34,34" ColumnSpacing="12" MinHeight="50" ContextFlyout="{StaticResource StudioTrackMenu}">
                     <TextBlock Text="{Binding Position}" Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     <Border Grid.Column="1" Width="46" Height="46" Classes="thumb" CornerRadius="4"><Grid><PathIcon Data="{StaticResource IconMusicNote}" Classes="faint" /><Image Source="{Binding BackgroundImage^}" Stretch="UniformToFill" /></Grid></Border>
                     <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center"><TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding Artist}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" /></StackPanel>
                     <TextBlock Grid.Column="3" Text="{Binding LengthText}" Classes="hint" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     <Button Grid.Column="4" Classes="icon heart" Classes.on="{Binding IsFavourite}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleFavouriteForCommand}" CommandParameter="{Binding}" ToolTip.Tip="Favourite"><Panel><PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" /><PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsFavourite}" /></Panel></Button>
-                    <Button Grid.Column="5" Classes="icon" Flyout="{StaticResource StudioTrackMenu}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectTrackCommand}" CommandParameter="{Binding}" ToolTip.Tip="Track actions"><PathIcon Data="{StaticResource IconDots}" /></Button>
+                    <Button Grid.Column="5" Classes="icon" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HideTrackForCommand}" CommandParameter="{Binding}" ToolTip.Tip="Hide track (Ctrl+H)"><PathIcon Data="{StaticResource IconEyeOff}" /></Button>
+                    <Button Grid.Column="6" Classes="icon" Flyout="{StaticResource StudioTrackMenu}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectTrackCommand}" CommandParameter="{Binding}" ToolTip.Tip="Track actions"><PathIcon Data="{StaticResource IconDots}" /></Button>
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>

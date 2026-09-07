@@ -64,6 +64,8 @@ public sealed class AppSettings
 
     public IReadOnlyList<Guid> Favourites { get; init; } = [];
 
+    public IReadOnlyList<Guid> HiddenTracks { get; init; } = [];
+
     public double Volume { get; init; } = 1;
 
     public double MusicVolume { get; init; } = 1;

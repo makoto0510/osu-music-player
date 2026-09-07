@@ -159,12 +159,12 @@ if (mode is "audio" or "all")
             await engine.LoadAsync(pick.AudioFilePath!);
             engine.Play();
             await Task.Delay(1500);
-            log.LogInformation("  state={State} pos={Position} total={Total}", engine.State, engine.CurrentTime, engine.TotalTime);
-            engine.Mod = OsuAudioMod.DT;
-            await Task.Delay(1000);
-            log.LogInformation("  DT pos={Position}", engine.CurrentTime);
-            engine.Mod = OsuAudioMod.None;
+            engine.Pause();
+            log.LogInformation("  paused at {Pos} / {Total}", engine.CurrentTime, engine.TotalTime);
+            engine.Play();
+            await Task.Delay(500);
             engine.Stop();
+            break;
         }
         catch (AudioEngineException exception)
         {

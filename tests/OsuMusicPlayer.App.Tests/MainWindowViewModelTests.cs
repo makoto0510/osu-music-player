@@ -505,6 +505,55 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task HideTrack_RemovesTrackFromListAndAdvancesIfPlaying()
+    {
+        using var viewModel = createViewModel(out var audio);
+        var trackA = createSet("Track A", "Artist", "Mapper", "", 100, 100);
+        var trackB = createSet("Track B", "Artist", "Mapper", "", 100, 100);
+        viewModel.ReplaceTracksForTesting([trackA, trackB]);
+
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        viewModel.CurrentTrack?.Title.Should().Be("Track A");
+
+        // Hide currently playing track
+        viewModel.HideTrackCommand.Execute(viewModel.Tracks[0]);
+
+        viewModel.Tracks.Should().HaveCount(1);
+        viewModel.Tracks[0].Title.Should().Be("Track B");
+        viewModel.CurrentTrack?.Title.Should().Be("Track B");
+        viewModel.HasHiddenTracks.Should().BeTrue();
+        viewModel.HiddenTrackCount.Should().Be(1);
+
+        // Hide remaining track: playback should stop
+        viewModel.HideTrackCommand.Execute(viewModel.Tracks[0]);
+        viewModel.Tracks.Should().BeEmpty();
+        viewModel.CurrentTrack.Should().BeNull();
+        viewModel.IsPlaying.Should().BeFalse();
+        viewModel.HiddenTrackCount.Should().Be(2);
+
+        // Unhide all tracks restores them
+        viewModel.UnhideAllTracksCommand.Execute(null);
+        viewModel.Tracks.Should().HaveCount(2);
+        viewModel.HasHiddenTracks.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HideSelected_Shortcut_HidesSelectedTrack()
+    {
+        using var viewModel = createViewModel(out _);
+        var trackA = createSet("Track A", "Artist", "Mapper", "", 100, 100);
+        var trackB = createSet("Track B", "Artist", "Mapper", "", 100, 100);
+        viewModel.ReplaceTracksForTesting([trackA, trackB]);
+
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        viewModel.TryHandleShortcut(OsuMusicPlayer.App.Input.ShortcutAction.HideSelected).Should().BeTrue();
+
+        viewModel.Tracks.Should().HaveCount(1);
+        viewModel.Tracks[0].Title.Should().Be("Track B");
+    }
+
+    [Fact]
     public async Task Shuffle_AvoidsRepeatsUntilAllPlayedAndPreviousWalksHistory()
     {
         using var viewModel = createViewModel(out _);
@@ -674,6 +723,45 @@ public sealed class MainWindowViewModelTests
         viewModel.SelectedTrack = viewModel.Tracks[0];
         await viewModel.PlaySelectedCommand.ExecuteAsync(null);
         environment.Video.Loads.Should().Be(2, "an unavailable player is never asked to load");
+    }
+
+    [Fact]
+    public async Task Video_WithPositiveOffset_WaitsAtStartInsteadOfRunningAhead()
+    {
+        using var viewModel = createViewModel(out var audio, out var environment);
+        viewModel.ReplaceTracksForTesting([createSet("DelayedVideo", "Artist", "Mapper", "", 100, 100)]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        environment.Media.Next = new BeatmapMedia(@"C:\clip.mp4", TimeSpan.FromSeconds(2), null);
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+
+        environment.Video.LoadedStart.Should().Be(TimeSpan.Zero);
+        environment.Video.IsPaused.Should().BeTrue("the video event starts two seconds after the audio");
+
+        audio.AdvanceTo(TimeSpan.FromSeconds(1.9));
+        environment.Video.IsPaused.Should().BeTrue();
+
+        audio.AdvanceTo(TimeSpan.FromSeconds(2.1));
+        environment.Video.IsPaused.Should().BeFalse();
+        environment.Video.LastSeek.Should().Be(TimeSpan.FromMilliseconds(100));
+    }
+
+    [Fact]
+    public async Task Video_ModChange_RealignsImmediatelyBeforeContinuingAtNewRate()
+    {
+        using var viewModel = createViewModel(out var audio, out var environment);
+        viewModel.ReplaceTracksForTesting([createSet("ModVideo", "Artist", "Mapper", "", 100, 100)]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        environment.Media.Next = new BeatmapMedia(@"C:\clip.mp4", TimeSpan.FromSeconds(2), null);
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        audio.AdvanceTo(TimeSpan.FromSeconds(12));
+        var seeksBeforeMod = environment.Video.Seeks;
+
+        viewModel.SetModCommand.Execute(OsuAudioMod.DT);
+
+        environment.Video.Rate.Should().Be(1.5);
+        environment.Video.Seeks.Should().Be(seeksBeforeMod + 1);
+        environment.Video.LastSeek.Should().Be(TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -1542,13 +1630,14 @@ public sealed class MainWindowViewModelTests
         public double Rate { get; private set; } = 1;
         public int Loads { get; private set; }
         public int Stops { get; private set; }
+        public int Seeks { get; private set; }
         public bool IsPaused { get; private set; }
 
         public void Load(string path, TimeSpan startAt) { CurrentPath = path; LoadedStart = startAt; Loads++; IsPaused = false; Position = startAt; }
         public void Play() => IsPaused = false;
         public void Pause() => IsPaused = true;
         public void Stop() { if (CurrentPath is not null) { Stops++; } CurrentPath = null; }
-        public void Seek(TimeSpan position) { LastSeek = position; Position = position; }
+        public void Seek(TimeSpan position) { LastSeek = position; Position = position; Seeks++; }
         public void SetRate(double rate) => Rate = rate;
         public void Dispose() { }
     }
@@ -1653,6 +1742,7 @@ public sealed class MainWindowViewModelTests
         public void Stop() { State = AudioPlaybackState.Stopped; CurrentTime = TimeSpan.Zero; }
         public void TogglePlay() { if (State == AudioPlaybackState.Playing) Pause(); else Play(); }
         public void Seek(TimeSpan position) { LastSeek = position; CurrentTime = position; PositionChanged?.Invoke(this, new(position, TotalTime)); }
+        public void AdvanceTo(TimeSpan position) { CurrentTime = position; PositionChanged?.Invoke(this, new(position, TotalTime)); }
         public void Dispose() { }
         public void RaiseEnded() => PlaybackEnded?.Invoke(this, EventArgs.Empty);
     }

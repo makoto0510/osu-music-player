@@ -33,9 +33,15 @@ public sealed partial class VisualsWindow : Window
         {
             if (videoSurface is not null)
             {
+                if (ReferenceEquals(VideoView.MediaPlayer, videoSurface))
+                {
+                    return;
+                }
+
                 VideoView.MediaPlayer = null;
                 VideoView.MediaPlayer = videoSurface;
-                viewModel.RestartVideoSurface(); // libVLC needs a restart to draw into the new handle
+                // Avoid re-entering libVLC while NativeControlHost is still attaching.
+                Avalonia.Threading.Dispatcher.UIThread.Post(viewModel.RestartVideoSurface);
             }
         };
 

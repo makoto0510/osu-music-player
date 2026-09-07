@@ -53,6 +53,7 @@
 
 ### C. 改善候補(優先度低)
 
+- [ ] 背景動画の再生基盤を将来見直す。現状は libVLC を維持するが、`NativeControlHost` / `VideoView` の airspace 制約と描画 surface 付け替え時の不安定性を避けるため、第一候補は FFmpeg でデコードして Avalonia / Skia へ直接描画する方式。低リスクな移行案として libVLC のデコードコールバック描画、別候補として libmpv Render API も検討する
 - [ ] lazer で 1 セット内に複数の音声ファイルがある場合、最後に走査した難易度の音声しか拾わない
 - [ ] ストーリーボードの Fail レイヤー(意図的に非対応)と、Theater モードでの動画 + ストーリーボード合成表示
 - [ ] サーバーの認証(現状は LAN 内無認証)と HTTPS

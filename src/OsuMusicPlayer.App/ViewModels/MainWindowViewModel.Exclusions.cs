@@ -8,10 +8,12 @@ namespace OsuMusicPlayer.App.ViewModels;
 
 /// <summary>
 /// Library exclusions: sets that are too short or too long, or that match an exclusion
-/// query, are dropped when the library is built. Nothing in the osu! folders changes.
+/// query, or individual tracks hidden by the user, are dropped when the library is built.
+/// Nothing in the osu! folders changes.
 /// </summary>
 public sealed partial class MainWindowViewModel
 {
+    private readonly HashSet<Guid> hiddenTrackIds = [];
     private IReadOnlyList<UnifiedBeatmapSet> loadedModels = [];
     private int lastExcludedCount;
 
@@ -26,6 +28,93 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     private string exclusionStatusText = string.Empty;
+
+    public int HiddenTrackCount => hiddenTrackIds.Count;
+
+    public bool HasHiddenTracks => hiddenTrackIds.Count > 0;
+
+    public string HiddenTracksStatusText => hiddenTrackIds.Count == 0
+        ? "No tracks are individually hidden."
+        : $"{hiddenTrackIds.Count:N0} track{(hiddenTrackIds.Count == 1 ? string.Empty : "s")} hidden.";
+
+    /// <summary>Hides a track from the library. If it is currently playing, playback advances to the next track.</summary>
+    [RelayCommand]
+    private void HideTrack(TrackItemViewModel? track)
+    {
+        if (track is null)
+        {
+            return;
+        }
+
+        hiddenTrackIds.Add(track.Model.Id);
+        var isCurrent = CurrentTrack == track;
+
+        allTracks.Remove(track);
+        Queue.Remove(track);
+        notifyQueueChanged();
+        shuffleHistory.Remove(track);
+        applyFilterAndSort();
+
+        if (isCurrent)
+        {
+            if (Tracks.Count > 0 || allTracks.Count > 0)
+            {
+                _ = NextCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                audioEngine.Stop();
+                CurrentTrack = null;
+                IsPlaying = false;
+            }
+        }
+
+        if (SelectedTrack == track)
+        {
+            SelectedTrack = Tracks.FirstOrDefault();
+        }
+
+        rebuildLibraryIndexes();
+        OnPropertyChanged(nameof(HiddenTrackCount));
+        OnPropertyChanged(nameof(HasHiddenTracks));
+        OnPropertyChanged(nameof(HiddenTracksStatusText));
+        track.Dispose();
+        RequestSettingsSave();
+    }
+
+    [RelayCommand]
+    private void HideTrackFor(TrackItemViewModel? track) => HideTrack(track);
+
+    [RelayCommand]
+    private void HideSelected() => HideTrack(SelectedTrack ?? CurrentTrack);
+
+    [RelayCommand]
+    private void HideCurrentTrack() => HideTrack(CurrentTrack);
+
+    /// <summary>Unhides all individually hidden tracks and restores them to the library.</summary>
+    [RelayCommand]
+    private void UnhideAllTracks()
+    {
+        if (hiddenTrackIds.Count == 0)
+        {
+            return;
+        }
+
+        hiddenTrackIds.Clear();
+        OnPropertyChanged(nameof(HiddenTrackCount));
+        OnPropertyChanged(nameof(HasHiddenTracks));
+        OnPropertyChanged(nameof(HiddenTracksStatusText));
+
+        if (loadedModels.Count > 0)
+        {
+            var previousQuery = SearchText;
+            replaceTracks(buildTrackItems(loadedModels));
+            LibraryStatusText = $"{allTracks.Count:N0} tracks ({lastExcludedCount:N0} excluded)";
+            SearchText = previousQuery;
+        }
+
+        RequestSettingsSave();
+    }
 
     /// <summary>Re-filters the already loaded library with the current exclusion settings.</summary>
     [RelayCommand]
@@ -60,7 +149,8 @@ public sealed partial class MainWindowViewModel
             var length = model.Beatmaps.Count == 0 ? TimeSpan.Zero : model.Beatmaps.Max(static beatmap => beatmap.Length);
             if ((minimum is { } min && length < min) ||
                 (maximum is { } max && length > max) ||
-                (!exclusion.IsEmpty && exclusion.Matches(model)))
+                (!exclusion.IsEmpty && exclusion.Matches(model)) ||
+                hiddenTrackIds.Contains(model.Id))
             {
                 excluded++;
                 continue;
@@ -76,6 +166,11 @@ public sealed partial class MainWindowViewModel
 
     private void applyRestoredExclusions(AppSettings settings)
     {
+        hiddenTrackIds.Clear();
+        hiddenTrackIds.UnionWith(settings.HiddenTracks);
+        OnPropertyChanged(nameof(HiddenTrackCount));
+        OnPropertyChanged(nameof(HasHiddenTracks));
+        OnPropertyChanged(nameof(HiddenTracksStatusText));
         ExcludeMinLengthSeconds = Math.Max(0, settings.Exclusions.MinimumLengthSeconds);
         ExcludeMaxLengthSeconds = Math.Max(0, settings.Exclusions.MaximumLengthSeconds);
         ExcludeQueryText = settings.Exclusions.ExcludeQuery ?? string.Empty;

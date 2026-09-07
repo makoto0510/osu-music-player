@@ -34,7 +34,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IFileSaver? fileSaver;
     private readonly IAudioDurationProbe? durationProbe;
     private TrackItemViewModel? observedTrack;
-    private DateTime lastVideoResync = DateTime.MinValue;
+    private long lastVideoResyncTick;
+    private double appliedVideoRate = 1;
+    private bool videoWaitingForStart;
     private readonly List<TrackItemViewModel> allTracks = [];
     private readonly List<OsuInstallation> manualInstallations = [];
     private readonly List<TrackItemViewModel> shuffleHistory = [];
@@ -226,6 +228,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     public bool HasQueue => Queue.Count > 0;
     public TrackItemViewModel? DetailTrack => SelectedTrack ?? CurrentTrack;
     public bool HasDetailTrack => DetailTrack is not null;
+    public bool HasCurrentTrack => CurrentTrack is not null;
     public bool HasVideo => CurrentMedia.HasVideo;
     public bool HasStoryboard => CurrentMedia.HasStoryboard;
     public bool IsVideoAvailable => videoPlayer.IsAvailable;
@@ -419,6 +422,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private TimeSpan toVideoTime(TimeSpan audioTime) => audioTime - CurrentMedia.VideoOffset;
 
+    private const int video_resync_interval_ms = 500;
+    private const double video_soft_sync_threshold_ms = 80;
+    private const double video_hard_sync_threshold_ms = 750;
+
     /// <summary>
     /// libVLC only picks up a new window handle when the media is (re)started, so after the
     /// video surface moves to the pop-out window (or back) the current video is reloaded at
@@ -446,9 +453,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             var start = toVideoTime(audioEngine.CurrentTime);
             videoPlayer.Load(videoPath, start < TimeSpan.Zero ? TimeSpan.Zero : start);
-            videoPlayer.SetRate(modToRate(Mod));
-            syncVideoPlayState();
-            lastVideoResync = DateTime.UtcNow;
+            videoWaitingForStart = start < TimeSpan.Zero;
+            applyVideoRate(modToRate(Mod));
+            if (videoWaitingForStart)
+            {
+                videoPlayer.Pause();
+            }
+            else
+            {
+                syncVideoPlayState();
+            }
+
+            // Allow the first position notification to correct decoder startup latency.
+            lastVideoResyncTick = 0;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
         {
@@ -465,6 +482,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
         if (audioEngine.State == AudioPlaybackState.Playing)
         {
+            var expected = toVideoTime(audioEngine.CurrentTime);
+            if (expected < TimeSpan.Zero)
+            {
+                videoWaitingForStart = true;
+                videoPlayer.Pause();
+                return;
+            }
+
+            videoWaitingForStart = false;
             videoPlayer.Play();
         }
         else
@@ -473,7 +499,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Nudges the video back onto the audio clock when it drifts, at most once per second.</summary>
+    /// <summary>
+    /// Keeps video on the audio clock. Small drift is recovered with a temporary rate nudge;
+    /// only a large discontinuity uses a decoder-expensive seek.
+    /// </summary>
     private void resyncVideo(TimeSpan audioTime)
     {
         if (videoPlayer.CurrentPath is null || !IsPlaying)
@@ -481,24 +510,61 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var now = DateTime.UtcNow;
-        if (now - lastVideoResync < TimeSpan.FromSeconds(1))
-        {
-            return;
-        }
-
         var expected = toVideoTime(audioTime);
         if (expected < TimeSpan.Zero)
         {
+            videoWaitingForStart = true;
+            videoPlayer.Pause();
             return;
         }
 
+        if (videoWaitingForStart)
+        {
+            videoWaitingForStart = false;
+            videoPlayer.Seek(expected);
+            applyVideoRate(modToRate(Mod));
+            videoPlayer.Play();
+            lastVideoResyncTick = Environment.TickCount64;
+            return;
+        }
+
+        var now = Environment.TickCount64;
+        if (now - lastVideoResyncTick < video_resync_interval_ms)
+        {
+            return;
+        }
+
+        lastVideoResyncTick = now;
         var drift = videoPlayer.Position - expected;
-        if (drift > TimeSpan.FromMilliseconds(250) || drift < TimeSpan.FromMilliseconds(-250))
+        var absoluteDriftMs = Math.Abs(drift.TotalMilliseconds);
+        var baseRate = modToRate(Mod);
+        if (absoluteDriftMs >= video_hard_sync_threshold_ms)
         {
             videoPlayer.Seek(expected);
-            lastVideoResync = now;
+            applyVideoRate(baseRate);
         }
+        else if (absoluteDriftMs >= video_soft_sync_threshold_ms)
+        {
+            // Positive drift means video is ahead and must slow down. Keep the correction
+            // deliberately small so decoding remains smooth, including at DT/HT rates.
+            var correction = Math.Clamp(1 - (drift.TotalSeconds * 0.1), 0.95, 1.05);
+            applyVideoRate(baseRate * correction);
+        }
+        else
+        {
+            applyVideoRate(baseRate);
+        }
+    }
+
+    private void applyVideoRate(double rate)
+    {
+        if (Math.Abs(appliedVideoRate - rate) < 0.001)
+        {
+            return;
+        }
+
+        videoPlayer.SetRate(rate);
+        appliedVideoRate = rate;
     }
 
     [RelayCommand]
@@ -608,6 +674,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(DetailTrack));
         OnPropertyChanged(nameof(HasDetailTrack));
+        OnPropertyChanged(nameof(HasCurrentTrack));
         OnPropertyChanged(nameof(CanOpenOnWeb));
         notifyFavouriteChanged();
         notifyDetailCurrentChanged();
@@ -666,7 +733,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         audioEngine.Mod = value;
         if (videoPlayer.CurrentPath is not null)
         {
-            videoPlayer.SetRate(modToRate(value));
+            applyVideoRate(modToRate(value));
+            var expected = toVideoTime(audioEngine.CurrentTime);
+            if (expected >= TimeSpan.Zero)
+            {
+                videoPlayer.Seek(expected);
+                lastVideoResyncTick = Environment.TickCount64;
+            }
         }
     }
 
@@ -735,8 +808,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         libraryGate.Dispose();
     }
 
-    internal void ReplaceTracksForTesting(IEnumerable<UnifiedBeatmapSet> models) =>
-        replaceTracks(models.Select(model => new TrackItemViewModel(model, imageLoader)).ToArray());
+    internal void ReplaceTracksForTesting(IEnumerable<UnifiedBeatmapSet> models)
+    {
+        var array = models.ToArray();
+        loadedModels = array;
+        replaceTracks(buildTrackItems(array));
+    }
 
     private async Task addFolderAsync(OsuInstallationKind kind)
     {
@@ -1134,6 +1211,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             clearStoryboard();
             VisualsStatusText = string.Empty;
 
+            // Media lookup is independent of audio decoding. Starting both together avoids
+            // adding the complete audio-load time to background-video startup latency.
+            var mediaLoadTask = resolveMediaAsync(track);
+
             Task<PlayfieldPreviewData?>? previewLoadTask = null;
             if (IsDifficultyPreviewOpen && (track != previewTrack || track.SelectedDifficulty != previewDifficulty))
             {
@@ -1185,7 +1266,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 IsPlaying = audioEngine.State == AudioPlaybackState.Playing;
             }).ConfigureAwait(false);
 
-            _ = resolveMediaAsync(track, version);
+            _ = applyResolvedMediaAsync(track, version, mediaLoadTask);
             recordPlay(track);
             RequestSettingsSave();
         }
@@ -1199,22 +1280,25 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task resolveMediaAsync(TrackItemViewModel track, long version)
+    private async Task<BeatmapMedia> resolveMediaAsync(TrackItemViewModel track)
     {
-        BeatmapMedia media;
         try
         {
-            media = await mediaResolver.ResolveAsync(track.Model, lifetimeCancellation.Token).ConfigureAwait(false);
+            return await mediaResolver.ResolveAsync(track.Model, lifetimeCancellation.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            return;
+            return BeatmapMedia.None;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            media = BeatmapMedia.None;
+            return BeatmapMedia.None;
         }
+    }
 
+    private async Task applyResolvedMediaAsync(TrackItemViewModel track, long version, Task<BeatmapMedia> mediaLoadTask)
+    {
+        var media = await mediaLoadTask.ConfigureAwait(false);
         if (version != Volatile.Read(ref loadVersion) || disposed)
         {
             return;
@@ -1332,7 +1416,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private void onHitPlayed(object? sender, HitsoundEvent hit) => StoryboardSession?.Trigger(hit);
 
     private void onPositionChanged(object? sender, PlaybackPositionChangedEventArgs args) =>
-        _ = dispatcher.InvokeAsync(() => updatePosition(args.CurrentTime, args.TotalTime));
+        // Read the clock again on the UI thread. If rendering briefly stalls the dispatcher,
+        // queued callbacks otherwise compare video against stale audio timestamps and seek back.
+        _ = dispatcher.InvokeAsync(() => updatePosition(audioEngine.CurrentTime, audioEngine.TotalTime));
 
     private void onPlaybackEnded(object? sender, EventArgs args) =>
         _ = dispatcher.InvokeAsync(() => _ = onTrackEndedAsync());
@@ -1408,7 +1494,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 var videoTime = toVideoTime(target);
                 videoPlayer.Seek(videoTime < TimeSpan.Zero ? TimeSpan.Zero : videoTime);
-                lastVideoResync = DateTime.UtcNow;
+                videoWaitingForStart = videoTime < TimeSpan.Zero;
+                if (videoWaitingForStart)
+                {
+                    videoPlayer.Pause();
+                }
+
+                applyVideoRate(modToRate(Mod));
+                lastVideoResyncTick = Environment.TickCount64;
             }
 
             ErrorMessage = null;

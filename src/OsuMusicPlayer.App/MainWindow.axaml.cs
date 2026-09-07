@@ -164,12 +164,22 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var surface = viewModel?.IsStudioInterface == true ? StudioShell.VideoSurface : VideoView;
+        var inactiveSurface = ReferenceEquals(surface, VideoView) ? StudioShell.VideoSurface : VideoView;
+        if (ReferenceEquals(surface.MediaPlayer, videoSurface) && inactiveSurface.MediaPlayer is null)
+        {
+            return;
+        }
+
         // Re-assigning forces the view to detach and attach again with the current handle.
         VideoView.MediaPlayer = null;
         StudioShell.VideoSurface.MediaPlayer = null;
-        var surface = viewModel?.IsStudioInterface == true ? StudioShell.VideoSurface : VideoView;
         surface.MediaPlayer = videoSurface;
-        viewModel?.RestartVideoSurface(); // no-op unless a video is loaded (i.e. when coming back from the pop-out)
+        if (viewModel is { } currentViewModel)
+        {
+            // Restart only after NativeControlHost has finished attaching its window handle.
+            Avalonia.Threading.Dispatcher.UIThread.Post(currentViewModel.RestartVideoSurface);
+        }
     }
 
     private void onKeyDown(object? sender, KeyEventArgs args)
