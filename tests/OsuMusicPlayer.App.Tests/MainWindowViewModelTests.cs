@@ -14,6 +14,41 @@ namespace OsuMusicPlayer.App.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Theory]
+    [InlineData("settings", "Settings")]
+    [InlineData("sources", "Music sources")]
+    [InlineData("equalizer", "Equalizer")]
+    [InlineData("browse", "Explore tags, artists & mappers")]
+    [InlineData("playlists", "Playlists")]
+    public void StudioTools_TitleMatchesSelectedTool(string tool, string title)
+    {
+        using var viewModel = createViewModel(out _);
+        var changes = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+        viewModel.OpenStudioToolCommand.Execute(tool);
+        viewModel.StudioToolsTitle.Should().Be(title);
+        changes.Should().Contain(nameof(MainWindowViewModel.StudioToolsTitle));
+        viewModel.StudioToolsHorizontalScrollBarVisibility.Should().Be(tool == "browse"
+            ? Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled
+            : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
+        viewModel.CloseStudioToolsCommand.Execute(null);
+        viewModel.StudioToolsTitle.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("Studio", false)]
+    [InlineData("Classic", true)]
+    public void BrowseSelection_RevealsStudioSearchResults(string interfaceName, bool remainsOpen)
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.SelectedInterfaceName = interfaceName;
+        viewModel.IsTheaterMode = true;
+        viewModel.OpenStudioToolCommand.Execute("browse");
+        viewModel.SelectBrowseCommand.Execute(new BrowseEntry("日本語", "tag:日本語", 3));
+        viewModel.SearchText.Should().Be("tag:日本語");
+        viewModel.IsBrowsePanelVisible.Should().Be(remainsOpen);
+        viewModel.IsTheaterMode.Should().Be(remainsOpen);
+    }
+    [Theory]
     [InlineData("Classic", "Classic")]
     [InlineData("studio", "Studio")]
     [InlineData("unknown", "Studio")]

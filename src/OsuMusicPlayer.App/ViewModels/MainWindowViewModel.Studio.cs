@@ -15,6 +15,16 @@ public sealed partial class MainWindowViewModel
     [ObservableProperty]
     private bool isStudioQueueVisible;
 
+    public string StudioToolsTitle => IsSettingsPanelVisible ? "Settings"
+        : IsSourcesPanelVisible ? "Music sources"
+        : IsEqualizerPanelVisible ? "Equalizer"
+        : IsBrowsePanelVisible ? "Explore tags, artists & mappers"
+        : IsPlaylistPanelVisible ? "Playlists" : string.Empty;
+
+    public Avalonia.Controls.Primitives.ScrollBarVisibility StudioToolsHorizontalScrollBarVisibility =>
+        IsBrowsePanelVisible ? Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled
+            : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
+
     public bool IsStudioToolsVisible => IsSettingsPanelVisible || IsSourcesPanelVisible
         || IsEqualizerPanelVisible || IsBrowsePanelVisible || IsPlaylistPanelVisible;
 

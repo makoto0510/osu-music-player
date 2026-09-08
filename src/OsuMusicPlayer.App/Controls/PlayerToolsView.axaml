@@ -41,12 +41,13 @@
             <Border Classes="panel" Margin="0,0,0,10" IsVisible="{Binding IsBrowsePanelVisible}">
               <StackPanel Spacing="6">
                 <TextBlock Text="Browse" Classes="title" />
+                <TextBlock Text="Choose a tag, artist or mapper to show matching songs." TextWrapping="Wrap" Classes="muted" Margin="0,0,0,8" />
                 <TextBlock Text="Artists" FontWeight="SemiBold" Classes="muted" />
                 <ItemsControl ItemsSource="{Binding TopArtists}">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:BrowseEntry">
-                      <Button Classes="chip" Content="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="chip" Padding="12,8" Margin="0,0,8,8" MaxWidth="320" ToolTip.Tip="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}"><TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="13" /></Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -55,7 +56,7 @@
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:BrowseEntry">
-                      <Button Classes="chip" Content="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="chip" Padding="12,8" Margin="0,0,8,8" MaxWidth="320" ToolTip.Tip="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}"><TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="13" /></Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -64,7 +65,7 @@
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:BrowseEntry">
-                      <Button Classes="chip" Content="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}" />
+                      <Button Classes="chip" Padding="12,8" Margin="0,0,8,8" MaxWidth="320" ToolTip.Tip="{Binding DisplayName}" Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectBrowseCommand}" CommandParameter="{Binding}"><TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="13" /></Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

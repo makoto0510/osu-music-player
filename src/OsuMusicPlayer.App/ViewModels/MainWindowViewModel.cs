@@ -75,6 +75,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsTitle))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsHorizontalScrollBarVisibility))]
     private bool isSourcesPanelVisible;
 
     [ObservableProperty]

@@ -35,10 +35,14 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsTitle))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsHorizontalScrollBarVisibility))]
     private bool isEqualizerPanelVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsTitle))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsHorizontalScrollBarVisibility))]
     [NotifyPropertyChangedFor(nameof(IsClassicSettingsVisible))]
     private bool isSettingsPanelVisible;
 

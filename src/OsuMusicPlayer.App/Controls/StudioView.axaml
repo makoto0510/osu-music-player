@@ -7,6 +7,7 @@
              xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
              x:Class="OsuMusicPlayer.App.Controls.StudioView"
              x:DataType="vm:MainWindowViewModel"
+             FontFamily="Segoe UI, Yu Gothic UI, Meiryo, Hiragino Sans, Noto Sans CJK JP, Noto Sans JP"
              Background="{DynamicResource ThemeBackgroundBrush}">
   <UserControl.Resources>
     <MenuFlyout x:Key="StudioTrackMenu" Placement="BottomEdgeAlignedRight">
@@ -260,8 +261,8 @@
       <Border Grid.ColumnSpan="2" Background="#99000000" IsVisible="{Binding IsStudioToolsVisible}" />
       <Border Grid.ColumnSpan="2" Classes="drawer" Margin="40,20" MaxWidth="1040" IsVisible="{Binding IsStudioToolsVisible}">
         <Grid RowDefinitions="Auto,*">
-          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16"><StackPanel Spacing="5"><TextBlock Text="MAKE IT YOURS" Classes="overline" /><TextBlock Text="Studio settings &amp; tools" FontSize="24" FontWeight="SemiBold" /></StackPanel><Button Grid.Column="1" Classes="icon" Command="{Binding CloseStudioToolsCommand}" ToolTip.Tip="Close tools"><PathIcon Data="{StaticResource IconClose}" /></Button></Grid>
-          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel><controls:PlayerToolsView />
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16"><StackPanel Spacing="5"><TextBlock Text="MAKE IT YOURS" Classes="overline" /><TextBlock Text="{Binding StudioToolsTitle}" FontSize="24" FontWeight="SemiBold" /></StackPanel><Button Grid.Column="1" Classes="icon" Command="{Binding CloseStudioToolsCommand}" ToolTip.Tip="Close tools"><PathIcon Data="{StaticResource IconClose}" /></Button></Grid>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="{Binding StudioToolsHorizontalScrollBarVisibility}"><StackPanel><controls:PlayerToolsView />
             <StackPanel IsVisible="{Binding IsPlaylistPanelVisible}" MaxWidth="560" HorizontalAlignment="Left" Spacing="12">
               <TextBlock Text="Your playlists" FontSize="22" FontWeight="SemiBold" />
               <TextBox Watermark="Playlist name" Text="{Binding NewPlaylistName, UpdateSourceTrigger=PropertyChanged}" Width="400" />
@@ -294,6 +295,23 @@
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Text="{Binding CurrentTimeText}" FontSize="11" /><TextBlock Text="/" Classes="hint" /><TextBlock Text="{Binding TotalTimeText}" Classes="hint" /></StackPanel>
           </Grid>
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+<ToggleButton Classes="icon" AutomationProperties.Name="Hit sounds" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" ToolTip.Tip="{Binding HitsoundToggleTip}">
+                    <ToggleButton.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Beatmap hit sounds" Command="{Binding SetHitsoundSourceBeatmapCommand}">
+                          <MenuItem.Icon>
+                            <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding !PreferSkinHitsounds}" />
+                          </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Skin hit sounds" Command="{Binding SetHitsoundSourceSkinCommand}">
+                          <MenuItem.Icon>
+                            <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding PreferSkinHitsounds}" />
+                          </MenuItem.Icon>
+                        </MenuItem>
+                      </ContextMenu>
+                    </ToggleButton.ContextMenu>
+                    <PathIcon Data="{StaticResource IconHeadphones}" />
+                  </ToggleButton>
             <Button Classes="icon" Command="{Binding OpenStudioToolCommand}" CommandParameter="equalizer" ToolTip.Tip="Equalizer"><PathIcon Data="{StaticResource IconTune}" /></Button>
             <ComboBox ItemsSource="{Binding StudioMods}" SelectedItem="{Binding Mod, Mode=TwoWay}" Width="72" FontSize="11" AutomationProperties.Name="Playback mod" />
             <PathIcon Data="{StaticResource IconVolume}" Classes="muted" Margin="8,0,2,0" />

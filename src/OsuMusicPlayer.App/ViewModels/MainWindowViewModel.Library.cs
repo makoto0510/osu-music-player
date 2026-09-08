@@ -33,10 +33,14 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsTitle))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsHorizontalScrollBarVisibility))]
     private bool isPlaylistPanelVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsTitle))]
+    [NotifyPropertyChangedFor(nameof(StudioToolsHorizontalScrollBarVisibility))]
     private bool isBrowsePanelVisible;
 
     public ObservableCollection<LibraryView> Views { get; } = [];
@@ -179,6 +183,11 @@ public sealed partial class MainWindowViewModel
         if (entry is not null)
         {
             SearchText = entry.Query;
+            if (IsStudioInterface)
+            {
+                CloseStudioTools();
+                IsTheaterMode = false;
+            }
         }
     }
 
