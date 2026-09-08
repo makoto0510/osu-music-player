@@ -18,7 +18,7 @@
         Background="{DynamicResource ThemeBackgroundBrush}">
 
   <Window.Resources>
-    <!-- Row menu ("…" button and right-click). Every item acts on the selected track, which the row selects first. -->
+    <!-- Track actions live in the row's right-click menu. -->
     <MenuFlyout x:Key="TrackMenu" Placement="BottomEdgeAlignedRight">
       <MenuItem Header="Play" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaySelectedCommand}">
         <MenuItem.Icon><PathIcon Data="{StaticResource IconPlay}" /></MenuItem.Icon>
@@ -75,9 +75,6 @@
       <MenuItem Header="Artist" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Artist}" />
       <MenuItem Header="BPM" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.BPM}" />
       <MenuItem Header="Length" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Length}" />
-      <MenuItem Header="Star rating" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Stars}" />
-      <MenuItem Header="Recently played" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.RecentlyPlayed}" />
-      <MenuItem Header="Most played" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.MostPlayed}" />
     </MenuFlyout>
 
     <!-- Ruleset filter -->
@@ -150,9 +147,6 @@
           <ToggleButton Classes="icon" IsChecked="{Binding IsEqualizerPanelVisible, Mode=TwoWay}" ToolTip.Tip="Equalizer">
             <PathIcon Data="{StaticResource IconTune}" />
           </ToggleButton>
-          <ToggleButton Classes="icon" IsChecked="{Binding IsSourcesPanelVisible, Mode=TwoWay}" ToolTip.Tip="Library sources (osu! folders)">
-            <PathIcon Data="{StaticResource IconFolder}" />
-          </ToggleButton>
           <ToggleButton Classes="icon" IsChecked="{Binding IsSettingsPanelVisible, Mode=TwoWay}" ToolTip.Tip="Settings (Ctrl+,)">
             <PathIcon Data="{StaticResource IconCog}" />
           </ToggleButton>
@@ -184,7 +178,7 @@
 
               <Border Height="1" Background="{DynamicResource ThemeBorderBrush}" Margin="20,10" />
 
-              <!-- Quick sorts -->
+              <!-- Library shortcuts keep the three listening-history views out of All Songs' sort menu. -->
               <RadioButton Theme="{StaticResource NavItem}" GroupName="quick-sort" IsChecked="{Binding IsSortRecentlyPlayed, Mode=OneWay}" Command="{Binding SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.RecentlyPlayed}" ToolTip.Tip="Sort by last played">
                 <Grid ColumnDefinitions="26,*"><PathIcon Data="{StaticResource IconHistory}" Classes="muted" Width="15" Height="15" HorizontalAlignment="Left" /><TextBlock Grid.Column="1" Text="Recently Played" FontSize="13" /></Grid>
               </RadioButton>
@@ -266,7 +260,7 @@
 
         <!-- List header -->
         <Border Grid.Row="1" Margin="8,2,8,0">
-        <Grid ColumnDefinitions="*,Auto">
+        <Grid ColumnDefinitions="*">
           <StackPanel Grid.Column="0" Spacing="2">
             <TextBlock Text="{Binding ViewTitle}" FontSize="26" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
             <StackPanel Orientation="Horizontal" Spacing="4">
@@ -280,12 +274,6 @@
               </Button>
             </StackPanel>
           </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Bottom">
-            <ToggleButton Classes="small" Content="DT" IsChecked="{Binding IsDtActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DT}" ToolTip.Tip="Double Time" />
-            <ToggleButton Classes="small" Content="NC" IsChecked="{Binding IsNcActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.NC}" ToolTip.Tip="Nightcore" />
-            <ToggleButton Classes="small" Content="HT" IsChecked="{Binding IsHtActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.HT}" ToolTip.Tip="Half Time" />
-            <ToggleButton Classes="small" Content="DC" IsChecked="{Binding IsDcActive}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DC}" ToolTip.Tip="Daycore" />
-          </StackPanel>
         </Grid>
 
         </Border>
@@ -295,7 +283,7 @@
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="34" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" />
             <ColumnDefinition Width="{Binding ArtistColumnWidth}" />
-            <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" />
+            <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" />
           </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" Classes="column" Text="#" HorizontalAlignment="Center" />
           <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Classes="column" Text="TITLE" />
@@ -316,7 +304,7 @@
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="34" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ArtistColumnWidth}" />
-                    <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" /><ColumnDefinition Width="36" />
+                    <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" />
                   </Grid.ColumnDefinitions>
                   <TextBlock Grid.Column="0" Text="{Binding Position}" Classes="muted" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   <Border Grid.Column="1" Classes="thumb" Width="46" Height="46">
@@ -338,14 +326,6 @@
                       <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsFavourite}" />
                       <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" />
                     </Panel>
-                  </Button>
-                  <Button Grid.Column="7" Classes="icon small" VerticalAlignment="Center"
-                          Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).HideTrackForCommand}" CommandParameter="{Binding}" ToolTip.Tip="Hide track (Ctrl+H)">
-                    <PathIcon Data="{StaticResource IconEyeOff}" />
-                  </Button>
-                  <Button Grid.Column="8" Classes="icon small" VerticalAlignment="Center" Flyout="{StaticResource TrackMenu}" AutomationProperties.Name="More" AutomationProperties.AutomationId="RowMenuButton"
-                          Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).SelectTrackCommand}" CommandParameter="{Binding}" ToolTip.Tip="More">
-                    <PathIcon Data="{StaticResource IconDots}" />
                   </Button>
                 </Grid>
               </DataTemplate>
@@ -426,9 +406,6 @@
                                 <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsFavourite}" Width="20" Height="20" />
                               </Panel>
                             </Button>
-                            <Button Classes="icon" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).HideSelectedCommand}" ToolTip.Tip="Hide track (Ctrl+H)">
-                              <PathIcon Data="{StaticResource IconEyeOff}" Width="18" Height="18" />
-                            </Button>
                           </StackPanel>
                         </Grid>
                         <TextBlock Text="{Binding Artist}" Classes="muted" FontSize="13.5" TextWrapping="Wrap" />
@@ -437,15 +414,6 @@
                     </DataTemplate>
                   </ContentControl.ContentTemplate>
                 </ContentControl>
-
-                <!-- Position (only for the playing track) -->
-                <StackPanel Spacing="2" IsVisible="{Binding IsDetailCurrent}">
-                  <Slider Classes="slim" Minimum="0" Maximum="1" Value="{Binding Progress, Mode=TwoWay}" Margin="-6,0" />
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Text="{Binding CurrentTimeText}" Classes="hint" />
-                    <TextBlock Grid.Column="1" Text="{Binding TotalTimeText}" Classes="hint" />
-                  </Grid>
-                </StackPanel>
 
                 <!-- Badges / tags -->
                 <ContentControl Content="{Binding DetailTrack}">
@@ -463,7 +431,7 @@
                           <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="x:String">
-                              <Border Classes="chip"><TextBlock Text="{Binding}" Foreground="{DynamicResource ThemeAccentBrush}" /></Border>
+                              <Button Classes="chip" Content="{Binding}" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SearchTagCommand}" CommandParameter="{Binding}" ToolTip.Tip="Search this tag" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -562,8 +530,8 @@
     </Grid>
 
     <!-- ===== Player bar ===== -->
-    <Border Grid.Row="2" Padding="16,10" Margin="0,10,0,0" BorderThickness="0,1,0,0" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}">
-      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="300,*,300" ColumnSpacing="16">
+    <Border Grid.Row="2" Padding="16,10,16,18" Margin="0,10,0,0" BorderThickness="0,1,0,0" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}">
+      <Grid RowDefinitions="Auto,40" ColumnDefinitions="300,*,300" ColumnSpacing="16">
 
         <!-- Current track -->
         <Grid Grid.Row="0" Grid.Column="0" ColumnDefinitions="56,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
@@ -587,9 +555,6 @@
                 <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsDetailFavourite}" Width="18" Height="18" />
                 <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsDetailFavourite}" Width="18" Height="18" />
               </Panel>
-            </Button>
-            <Button Classes="icon" Command="{Binding HideCurrentTrackCommand}" ToolTip.Tip="Hide track" IsVisible="{Binding HasCurrentTrack}">
-              <PathIcon Data="{StaticResource IconEyeOff}" Width="16" Height="16" />
             </Button>
           </StackPanel>
         </Grid>
@@ -620,10 +585,24 @@
 
         <!-- Volume / panes -->
         <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="2">
-          <Border Classes="badge accent" Margin="0,0,6,0" Padding="7,2" VerticalAlignment="Center" ToolTip.Tip="Active mod"><TextBlock Text="{Binding ModText}" FontSize="10" FontWeight="Bold" /></Border>
-          <PathIcon Data="{StaticResource IconVolume}" Classes="muted" IsVisible="{Binding !IsMuted}" Margin="0,0,4,0" />
-          <PathIcon Data="{StaticResource IconVolumeOff}" Classes="muted" IsVisible="{Binding IsMuted}" Margin="0,0,4,0" />
-          <Slider Classes="slim" Width="110" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" ToolTip.Tip="Master volume (Ctrl+↑ / Ctrl+↓)" AutomationProperties.Name="Master volume" />
+          <ComboBox ItemsSource="{Binding ModOptions}" SelectedItem="{Binding Mod, Mode=TwoWay}" Width="72" MinHeight="30" Margin="0,0,6,0" VerticalAlignment="Center" AutomationProperties.Name="Playback mod" ToolTip.Tip="Playback speed / pitch mod" />
+          <Button Classes="icon" ToolTip.Tip="Volume mixer">
+            <Panel><PathIcon Data="{StaticResource IconVolume}" IsVisible="{Binding !IsMuted}" /><PathIcon Data="{StaticResource IconVolumeOff}" IsVisible="{Binding IsMuted}" /></Panel>
+            <Button.Flyout>
+              <Flyout Placement="TopEdgeAlignedRight">
+                <StackPanel Width="300" Spacing="8">
+                  <TextBlock Text="Volume mixer" Classes="title" />
+                  <Grid ColumnDefinitions="65,*,48" ColumnSpacing="8"><TextBlock Text="Master" Classes="muted" VerticalAlignment="Center" /><Slider Grid.Column="1" Classes="slim" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" /><TextBlock Grid.Column="2" Text="{Binding MasterVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" /></Grid>
+                  <Grid ColumnDefinitions="65,*,48" ColumnSpacing="8"><TextBlock Text="Music" Classes="muted" VerticalAlignment="Center" /><Slider Grid.Column="1" Classes="slim" Minimum="0" Maximum="1" Value="{Binding MusicVolume, Mode=TwoWay}" /><TextBlock Grid.Column="2" Text="{Binding MusicVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" /></Grid>
+                  <Grid ColumnDefinitions="65,*,48" ColumnSpacing="8"><TextBlock Text="Effects" Classes="muted" VerticalAlignment="Center" /><Slider Grid.Column="1" Classes="slim" Minimum="0" Maximum="1" Value="{Binding EffectVolume, Mode=TwoWay}" /><TextBlock Grid.Column="2" Text="{Binding EffectVolume, StringFormat='{}{0:P0}'}" VerticalAlignment="Center" /></Grid>
+                  <Border Height="1" Background="{DynamicResource ThemeBorderBrush}" />
+                  <Grid ColumnDefinitions="65,*,60" ColumnSpacing="8"><TextBlock Text="Offset" Classes="muted" VerticalAlignment="Center" /><Slider Grid.Column="1" Classes="slim" Minimum="-200" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding HitsoundOffsetMs, Mode=TwoWay}" /><TextBlock Grid.Column="2" Text="{Binding HitsoundOffsetText}" VerticalAlignment="Center" /></Grid>
+                  <ComboBox SelectedIndex="{Binding HitsoundSourceIndex, Mode=TwoWay}"><ComboBoxItem Content="Beatmap hit sounds (fall back to skin)" /><ComboBoxItem Content="Skin hit sounds" /></ComboBox>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Slider Classes="slim" Width="110" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" Margin="0,4" ToolTip.Tip="Master volume (Ctrl+↑ / Ctrl+↓)" AutomationProperties.Name="Master volume" />
           <Button Classes="icon" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="Video / storyboard in its own window (Ctrl+P)" Margin="6,0,0,0"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
           <ToggleButton Classes="icon" IsChecked="{Binding IsNowPlayingPaneVisible, Mode=TwoWay}" ToolTip.Tip="Now playing / queue pane (Ctrl+Q)"><PathIcon Data="{StaticResource IconPlaylist}" /></ToggleButton>
         </StackPanel>
@@ -636,5 +615,16 @@
     </Border>
   </Grid>
     <controls:StudioView x:Name="StudioShell" IsVisible="{Binding IsStudioInterface}" />
+    <Border IsVisible="{Binding IsClassicSettingsVisible}" Background="#99000000">
+      <Border Width="720" MaxHeight="700" Margin="32,76,32,32" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="panel" Padding="0" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="24,18,16,12">
+            <StackPanel><TextBlock Text="Settings" FontSize="24" FontWeight="Bold" /><TextBlock Text="Changes are applied and saved automatically." Classes="hint" /></StackPanel>
+            <Button Grid.Column="1" Classes="icon" Command="{Binding CloseSettingsCommand}" ToolTip.Tip="Close settings"><PathIcon Data="{StaticResource IconClose}" /></Button>
+          </Grid>
+          <controls:ClassicSettingsView Grid.Row="1" />
+        </Grid>
+      </Border>
+    </Border>
   </Panel>
 </Window>

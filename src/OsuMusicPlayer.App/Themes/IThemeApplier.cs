@@ -46,6 +46,9 @@ public sealed class ApplicationThemeApplier : IThemeApplier
         setBrush(resources, "ThemeAccentTextBrush", theme.AccentText);
         setBrush(resources, "ThemeAccentSoftBrush", Color.FromArgb(0x33, theme.Accent.R, theme.Accent.G, theme.Accent.B));
         setBrush(resources, "ThemeSelectionBrush", Color.FromArgb(theme.IsDark ? (byte)0x40 : (byte)0x30, theme.Accent.R, theme.Accent.G, theme.Accent.B));
+        setBrush(resources, "ThemeButtonBrush", theme.IsDark ? Colors.White : theme.SurfaceAlt);
+        setBrush(resources, "ThemeButtonHoverBrush", theme.IsDark ? Color.FromRgb(0xE8, 0xE8, 0xEC) : PlayerThemes.Shade(theme.SurfaceAlt, -0.06));
+        setBrush(resources, "ThemeButtonTextBrush", theme.IsDark ? Color.FromRgb(0x14, 0x14, 0x1A) : theme.Text);
 
         // Fluent's accent palette (buttons, sliders, checkboxes, list selection).
         resources["SystemAccentColor"] = theme.Accent;

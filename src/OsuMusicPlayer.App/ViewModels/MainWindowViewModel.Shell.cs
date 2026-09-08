@@ -95,6 +95,8 @@ public sealed partial class MainWindowViewModel
 
     public string ModText => Mod == Audio.OsuAudioMod.None ? "NM" : Mod.ToString();
 
+    public IReadOnlyList<Audio.OsuAudioMod> ModOptions { get; } = Enum.GetValues<Audio.OsuAudioMod>();
+
     [RelayCommand]
     private void SelectView(LibraryView? view)
     {
@@ -110,6 +112,19 @@ public sealed partial class MainWindowViewModel
     [RelayCommand]
     private void SetModeFilter(OsuRuleset? ruleset) =>
         SelectedModeFilter = ModeFilters.FirstOrDefault(filter => filter.Ruleset == ruleset) ?? ModeFilters[0];
+
+    [RelayCommand]
+    private void SearchTag(string? tag)
+    {
+        var normalized = tag?.Trim().TrimStart('#');
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            SearchText = $"tag:\"{normalized.Replace("\"", "\\\"")}\"";
+        }
+    }
+
+    [RelayCommand]
+    private void CloseSettings() => IsSettingsPanelVisible = false;
 
     /// <summary>Row buttons (heart, "…") swallow the click, so they select their row explicitly.</summary>
     [RelayCommand]

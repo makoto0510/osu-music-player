@@ -15,6 +15,7 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioInterface))]
+    [NotifyPropertyChangedFor(nameof(IsClassicSettingsVisible))]
     [NotifyPropertyChangedFor(nameof(ArtistColumnWidth))]
     [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
     private string selectedInterfaceName = "Studio";

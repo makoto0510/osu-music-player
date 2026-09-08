@@ -39,7 +39,10 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioToolsVisible))]
+    [NotifyPropertyChangedFor(nameof(IsClassicSettingsVisible))]
     private bool isSettingsPanelVisible;
+
+    public bool IsClassicSettingsVisible => IsSettingsPanelVisible && !IsStudioInterface;
 
     [ObservableProperty]
     private double effectVolume = 1;

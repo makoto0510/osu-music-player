@@ -346,7 +346,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             if (!HasInstallations)
             {
-                IsSourcesPanelVisible = true;
+                if (IsStudioInterface)
+                {
+                    IsSourcesPanelVisible = true;
+                }
+                else
+                {
+                    IsSettingsPanelVisible = true;
+                }
             }
         }).ConfigureAwait(false);
     }

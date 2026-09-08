@@ -1107,6 +1107,10 @@ public sealed class MainWindowViewModelTests
         viewModel.SelectBrowseCommand.Execute(viewModel.TopTags.Single(static tag => tag.Label == "electronic"));
         viewModel.SearchText.Should().Be("tag:\"electronic\"");
         viewModel.Tracks.Should().HaveCount(2);
+
+        viewModel.SearchTagCommand.Execute("#anime");
+        viewModel.SearchText.Should().Be("tag:\"anime\"");
+        viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("Song B");
     }
 
     [Fact]

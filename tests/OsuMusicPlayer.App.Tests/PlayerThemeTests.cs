@@ -62,6 +62,8 @@ public sealed class PlayerThemeTests
         resources["SystemAccentColor"].Should().Be(Color.FromRgb(0x5C, 0xD6, 0x8A));
         resources.ContainsKey("SystemAccentColorLight1").Should().BeTrue();
         resources.ContainsKey("ThemeSelectionBrush").Should().BeTrue();
+        resources["ThemeButtonBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(Colors.White);
+        resources["ThemeButtonTextBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(Color.FromRgb(0x14, 0x14, 0x1A));
 
         var brush = (SolidColorBrush)resources["ThemeAccentBrush"]!;
         ApplicationThemeApplier.Apply(resources, PlayerThemes.Resolve("Forest", "#112233"));

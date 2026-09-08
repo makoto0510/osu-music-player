@@ -20,6 +20,9 @@
       <SolidColorBrush x:Key="ThemeAccentTextBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="ThemeAccentSoftBrush" Color="#33FF66AA" />
       <SolidColorBrush x:Key="ThemeSelectionBrush" Color="#40FF66AA" />
+      <SolidColorBrush x:Key="ThemeButtonBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ThemeButtonHoverBrush" Color="#E8E8EC" />
+      <SolidColorBrush x:Key="ThemeButtonTextBrush" Color="#14141A" />
 
       <!-- Sidebar navigation entry: a flat, rounded row that lights up when checked. -->
       <ControlTheme x:Key="NavItem" TargetType="RadioButton">
@@ -153,6 +156,15 @@
     </Style>
 
     <!-- Buttons -->
+    <Style Selector="Button, ToggleButton">
+      <Setter Property="Background" Value="{DynamicResource ThemeButtonBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeButtonTextBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderBrush}" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter, ToggleButton:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ThemeButtonHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeButtonTextBrush}" />
+    </Style>
     <Style Selector="Button.chip">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Padding" Value="9,3" />
@@ -391,9 +403,10 @@
 
     <!-- Slim sliders (seek, volume) -->
     <Style Selector="Slider.slim">
-      <Setter Property="MinHeight" Value="20" />
-      <Setter Property="Height" Value="20" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Height" Value="28" />
       <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,4" />
     </Style>
     <Style Selector="Slider.slim /template/ Thumb">
       <Setter Property="Width" Value="12" />
