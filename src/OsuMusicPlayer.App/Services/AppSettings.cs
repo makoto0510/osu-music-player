@@ -18,6 +18,8 @@ public sealed record PlayHistoryEntry(Guid TrackId, int PlayCount, DateTime Last
 /// <summary>Rules that hide sets from the library without touching any osu! files.</summary>
 public sealed class LibraryExclusionSettings
 {
+    public bool HideDuplicateSongs { get; init; }
+
     /// <summary>Sets shorter than this are hidden; 0 disables the rule.</summary>
     public int MinimumLengthSeconds { get; init; }
 

@@ -74,7 +74,7 @@
       <MenuItem Header="Title" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Title}" />
       <MenuItem Header="Artist" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Artist}" />
       <MenuItem Header="BPM" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.BPM}" />
-      <MenuItem Header="Length" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Length}" />
+      <MenuItem Header="Track length (longest first)" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetSortCommand}" CommandParameter="{x:Static vm:TrackSortOption.Length}" />
     </MenuFlyout>
 
     <!-- Ruleset filter -->

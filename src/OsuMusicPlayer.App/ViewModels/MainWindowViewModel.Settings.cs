@@ -19,7 +19,7 @@ public sealed partial class MainWindowViewModel
         nameof(IsHitsoundEnabled), nameof(IsStoryboardEnabled), nameof(IsVideoEnabled),
         nameof(EffectVolume), nameof(HitsoundOffsetMs), nameof(PreferSkinHitsounds), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
-        nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText),
+        nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText), nameof(HideDuplicateSongs),
         nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
     ];
 
@@ -292,6 +292,7 @@ public sealed partial class MainWindowViewModel
                 MinimumLengthSeconds = Math.Max(0, ExcludeMinLengthSeconds),
                 MaximumLengthSeconds = Math.Max(0, ExcludeMaxLengthSeconds),
                 ExcludeQuery = ExcludeQueryText.Trim(),
+                HideDuplicateSongs = HideDuplicateSongs,
             },
         };
     }

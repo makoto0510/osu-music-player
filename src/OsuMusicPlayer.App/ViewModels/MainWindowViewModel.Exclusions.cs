@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OsuMusicPlayer.App.Services;
+using OsuMusicPlayer.Core;
 using OsuMusicPlayer.Core.Models;
 using OsuMusicPlayer.Core.Search;
 
@@ -22,6 +23,9 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     private int excludeMaxLengthSeconds;
+
+    [ObservableProperty]
+    private bool hideDuplicateSongs;
 
     [ObservableProperty]
     private string excludeQueryText = string.Empty;
@@ -137,7 +141,7 @@ public sealed partial class MainWindowViewModel
         var minimum = ExcludeMinLengthSeconds > 0 ? TimeSpan.FromSeconds(ExcludeMinLengthSeconds) : (TimeSpan?)null;
         var maximum = ExcludeMaxLengthSeconds > 0 ? TimeSpan.FromSeconds(ExcludeMaxLengthSeconds) : (TimeSpan?)null;
         var exclusion = TrackSearchQuery.Parse(ExcludeQueryText);
-        var kept = new List<TrackItemViewModel>(models.Count);
+        var candidates = new List<UnifiedBeatmapSet>(models.Count);
         var excluded = 0;
         foreach (var model in models)
         {
@@ -156,12 +160,14 @@ public sealed partial class MainWindowViewModel
                 continue;
             }
 
-            kept.Add(new TrackItemViewModel(model, imageLoader));
+            candidates.Add(model);
         }
 
+        var kept = HideDuplicateSongs ? SongDuplicateFilter.Apply(candidates) : candidates;
+        excluded += candidates.Count - kept.Count;
         lastExcludedCount = excluded;
         ExclusionStatusText = excluded == 0 ? "No tracks are excluded." : $"{excluded:N0} tracks are hidden by these rules.";
-        return kept.ToArray();
+        return kept.Select(model => new TrackItemViewModel(model, imageLoader)).ToArray();
     }
 
     private void applyRestoredExclusions(AppSettings settings)
@@ -174,5 +180,6 @@ public sealed partial class MainWindowViewModel
         ExcludeMinLengthSeconds = Math.Max(0, settings.Exclusions.MinimumLengthSeconds);
         ExcludeMaxLengthSeconds = Math.Max(0, settings.Exclusions.MaximumLengthSeconds);
         ExcludeQueryText = settings.Exclusions.ExcludeQuery ?? string.Empty;
+        HideDuplicateSongs = settings.Exclusions.HideDuplicateSongs;
     }
 }

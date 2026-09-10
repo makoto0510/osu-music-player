@@ -1244,6 +1244,39 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task DuplicateSongs_RestoreApplyPersistAndRespectOtherFilters()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Loader.Sets =
+        [
+            createSet("Song", "Artist", "Mapper A", "", 100, 120),
+            createSet("Song", "Artist", "Mapper B", "keep", 100, 121),
+            createSet("Song", "Artist", "Mapper C", "", 100, 240),
+        ];
+        environment.Settings.Current = new AppSettings
+        {
+            Exclusions = new LibraryExclusionSettings { HideDuplicateSongs = true },
+        };
+
+        await viewModel.InitializeAsync();
+        viewModel.HideDuplicateSongs.Should().BeTrue();
+        viewModel.Tracks.Should().HaveCount(2);
+        viewModel.ExclusionStatusText.Should().Contain("1 tracks");
+        viewModel.BuildSettings().Exclusions.HideDuplicateSongs.Should().BeTrue();
+
+        viewModel.HideDuplicateSongs = false;
+        viewModel.ApplyExclusionsCommand.Execute(null);
+        viewModel.Tracks.Should().HaveCount(3);
+        viewModel.BuildSettings().Exclusions.HideDuplicateSongs.Should().BeFalse();
+
+        viewModel.HideDuplicateSongs = true;
+        viewModel.ExcludeQueryText = "-tag:keep";
+        viewModel.ApplyExclusionsCommand.Execute(null);
+        viewModel.Tracks.Should().ContainSingle().Which.Model.Creator.Should().Be("Mapper B");
+    }
+
+    [Fact]
     public async Task ZeroLengthSets_GetTheirDurationFromTheAudioFile()
     {
         var probe = new FakeDurationProbe();

@@ -18,7 +18,7 @@ public static class TrackSortOptionExtensions
     {
         TrackSortOption.Artist => "artist",
         TrackSortOption.BPM => "BPM",
-        TrackSortOption.Length => "length",
+        TrackSortOption.Length => "track length (longest first)",
         TrackSortOption.RecentlyPlayed => "recently played",
         TrackSortOption.MostPlayed => "most played",
         TrackSortOption.Stars => "star rating",
