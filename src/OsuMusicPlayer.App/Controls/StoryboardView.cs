@@ -47,7 +47,7 @@ public sealed class StoryboardView : Control
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == SessionProperty)
+        if (change.Property == SessionProperty || change.Property == IsVisibleProperty)
         {
             requestFrame();
         }
@@ -56,6 +56,9 @@ public sealed class StoryboardView : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
+        // Hiding this view (or an ancestor) stops the animation callback. Rendering
+        // it again must restart the loop even when the session has not changed.
+        requestFrame();
         var session = Session;
         if (session is null || Bounds.Width <= 0 || Bounds.Height <= 0)
         {
