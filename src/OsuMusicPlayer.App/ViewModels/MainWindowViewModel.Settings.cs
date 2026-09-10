@@ -18,7 +18,7 @@ public sealed partial class MainWindowViewModel
         nameof(MasterVolume), nameof(MusicVolume), nameof(Mod), nameof(IsShuffleEnabled), nameof(RepeatMode), nameof(SelectedSort),
         nameof(IsHitsoundEnabled), nameof(IsStoryboardEnabled), nameof(IsVideoEnabled),
         nameof(EffectVolume), nameof(HitsoundOffsetMs), nameof(PreferSkinHitsounds), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
-        nameof(IsRichPresenceEnabled), nameof(DiscordApplicationId), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
+        nameof(IsRichPresenceEnabled), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText), nameof(HideDuplicateSongs),
         nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
     ];
@@ -70,9 +70,6 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     private bool isRichPresenceEnabled;
-
-    [ObservableProperty]
-    private string discordApplicationId = string.Empty;
 
     [ObservableProperty]
     private string osuApiClientId = string.Empty;
@@ -276,7 +273,6 @@ public sealed partial class MainWindowViewModel
             PlayHistory = playHistory.Values.ToArray(),
             Server = new ServerSettings { Enabled = IsServerEnabled, Port = ServerPort, AllowRemoteConnections = ServerAllowRemote },
             RichPresenceEnabled = IsRichPresenceEnabled,
-            DiscordApplicationId = DiscordApplicationId,
             OsuApiClientId = OsuApiClientId,
             OsuApiClientSecret = OsuApiClientSecret,
             Appearance = new AppearanceSettings
@@ -340,7 +336,6 @@ public sealed partial class MainWindowViewModel
             ServerPort = settings.Server.Port is > 0 and < 65536 ? settings.Server.Port : 5150;
             ServerAllowRemote = settings.Server.AllowRemoteConnections;
             IsRichPresenceEnabled = settings.RichPresenceEnabled;
-            DiscordApplicationId = settings.DiscordApplicationId ?? string.Empty;
             OsuApiClientId = settings.OsuApiClientId ?? string.Empty;
             OsuApiClientSecret = settings.OsuApiClientSecret ?? string.Empty;
             applyRestoredExclusions(settings);

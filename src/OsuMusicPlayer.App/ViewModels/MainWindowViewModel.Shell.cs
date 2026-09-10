@@ -102,6 +102,11 @@ public sealed partial class MainWindowViewModel
     {
         if (view is not null)
         {
+            if (isLibraryNavigationView(view) && isQuickSortSelected)
+            {
+                SelectedSort = TrackSortOption.Title;
+            }
+
             SelectedView = view;
         }
     }
@@ -251,11 +256,17 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private bool isQuickSortSelected => IsSortRecentlyPlayed || IsSortMostPlayed || IsSortStars;
+
+    private static bool isLibraryNavigationView(LibraryView view) =>
+        view.Kind is LibraryViewKind.All or LibraryViewKind.Favourites or LibraryViewKind.Recommended;
+
     private void syncViewSelection()
     {
         foreach (var view in Views)
         {
-            view.IsSelected = view.SameAs(SelectedView);
+            view.IsSelected = view.SameAs(SelectedView)
+                && !(isLibraryNavigationView(view) && isQuickSortSelected);
         }
     }
 }

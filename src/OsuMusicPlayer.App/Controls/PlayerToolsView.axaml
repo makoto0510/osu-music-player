@@ -198,10 +198,10 @@
                 </TabItem>
                 <TabItem Header="Discord">
                   <StackPanel Width="420" Spacing="6" HorizontalAlignment="Left">
-                    <TextBlock Classes="hint" Text="Create an application at discord.com/developers and paste its Application ID." />
+                    <TextBlock Classes="hint" Text="Show the current track in Discord." />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                       <CheckBox Content="Enabled" IsChecked="{Binding IsRichPresenceEnabled, Mode=TwoWay}" />
-                      <TextBox Width="220" Watermark="Application ID" Text="{Binding DiscordApplicationId, Mode=TwoWay}" />
+                      
                     </StackPanel>
                     <TextBlock Text="{Binding RichPresenceStatusText}" Classes="hint" />
                   </StackPanel>

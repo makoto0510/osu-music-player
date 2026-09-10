@@ -105,9 +105,6 @@ public sealed class AppSettings
 
     public bool RichPresenceEnabled { get; init; }
 
-    /// <summary>Discord application id created by the user at discord.com/developers; empty disables presence.</summary>
-    public string DiscordApplicationId { get; init; } = string.Empty;
-
     public string OsuApiClientId { get; init; } = string.Empty;
 
     public string OsuApiClientSecret { get; init; } = string.Empty;

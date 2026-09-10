@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace OsuMusicPlayer.App.Services;
 
 /// <summary>What Discord shows for the player.</summary>
-public sealed record RichPresenceActivity(string Details, string State, DateTimeOffset? StartedAt, string? LargeText);
+public sealed record RichPresenceActivity(string Details, string State, DateTimeOffset? StartedAt, string? LargeText, DateTimeOffset? EndsAt = null, string? LargeImage = null);
 
 public interface IRichPresenceService : IAsyncDisposable
 {
@@ -17,8 +17,8 @@ public interface IRichPresenceService : IAsyncDisposable
 
     event EventHandler? StatusChanged;
 
-    /// <summary>Connects (or disconnects) with the given application id; an empty id or disabled flag clears presence.</summary>
-    Task ConfigureAsync(string? applicationId, bool enabled, CancellationToken cancellationToken = default);
+    /// <summary>Connects with the built-in application id, or disconnects and clears presence when disabled.</summary>
+    Task ConfigureAsync(bool enabled, CancellationToken cancellationToken = default);
 
     /// <summary>Publishes the activity, or clears it when <paramref name="activity"/> is null.</summary>
     Task UpdateAsync(RichPresenceActivity? activity, CancellationToken cancellationToken = default);
@@ -41,7 +41,7 @@ public sealed class DiscordRichPresenceService : IRichPresenceService
     private readonly Func<CancellationToken, Task<Stream?>> connect;
     private readonly SemaphoreSlim gate = new(1, 1);
     private Stream? stream;
-    private string? applicationId;
+    private const string applicationId = "1546645159406473246";
     private bool enabled;
     private RichPresenceActivity? lastActivity;
     private string status = "Rich Presence is off.";
@@ -72,19 +72,17 @@ public sealed class DiscordRichPresenceService : IRichPresenceService
 
     public event EventHandler? StatusChanged;
 
-    public async Task ConfigureAsync(string? applicationId, bool enabled, CancellationToken cancellationToken = default)
+    public async Task ConfigureAsync(bool enabled, CancellationToken cancellationToken = default)
     {
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var id = applicationId?.Trim() ?? string.Empty;
-            var changed = this.enabled != enabled || this.applicationId != id;
+            var changed = this.enabled != enabled;
             this.enabled = enabled;
-            this.applicationId = id;
-            if (!enabled || id.Length == 0)
+            if (!enabled)
             {
                 await disconnectAsync().ConfigureAwait(false);
-                Status = enabled ? "Discord の Application ID を入力してください。" : "Rich Presence is off.";
+                Status = "Rich Presence is off.";
                 return;
             }
 
@@ -111,7 +109,7 @@ public sealed class DiscordRichPresenceService : IRichPresenceService
         try
         {
             lastActivity = activity;
-            if (!enabled || string.IsNullOrEmpty(applicationId))
+            if (!enabled)
             {
                 return;
             }
@@ -153,10 +151,15 @@ public sealed class DiscordRichPresenceService : IRichPresenceService
                 pid = processId,
                 activity = activity is null ? null : new
                 {
+                    type = 2,
                     details = truncate(activity.Details),
                     state = truncate(activity.State),
-                    timestamps = activity.StartedAt is { } started ? new { start = started.ToUnixTimeSeconds() } : null,
-                    assets = activity.LargeText is null ? null : new { large_text = truncate(activity.LargeText) },
+                    timestamps = activity.StartedAt is { } started ? new { start = started.ToUnixTimeSeconds(), end = activity.EndsAt?.ToUnixTimeSeconds() } : null,
+                    assets = activity.LargeText is null && activity.LargeImage is null ? null : new
+                    {
+                        large_image = activity.LargeImage,
+                        large_text = activity.LargeText is null ? null : truncate(activity.LargeText),
+                    },
                 },
             },
             nonce,
@@ -224,7 +227,7 @@ public sealed class DiscordRichPresenceService : IRichPresenceService
             if (reply is null || reply.Value.Opcode == op_close || reply.Value.Json.Contains("\"code\"", StringComparison.Ordinal) && reply.Value.Json.Contains("Invalid", StringComparison.OrdinalIgnoreCase))
             {
                 await connection.DisposeAsync().ConfigureAwait(false);
-                Status = "Discord が接続を拒否しました。Application ID を確認してください。";
+                Status = "Discord が接続を拒否しました。Discord を再起動して再度有効にしてください。";
                 return;
             }
 

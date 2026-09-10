@@ -44,7 +44,7 @@
 
 ### B. 実地確認が必要な項目(ユーザーの環境・認証情報が必要)
 
-- [ ] Discord Rich Presence: Discord 起動中に Application ID を設定して表示を確認
+- [ ] Discord Rich Presence: Discord 起動中に Enabled をオンにして表示を確認
 - [ ] osu! API: OAuth クライアント(Client ID / Secret)で「Fetch metadata」を実行し、ジャンル / 言語の取得と `genre:` 検索を確認
 - [ ] ヘッドレスサーバー `osu-music-server` を Linux(Raspberry Pi)で起動し、lazer ライブラリの読み込みと LAN からのストリーミングを確認
 - [ ] Web リモートをスマートフォンの実機ブラウザーで確認(PC 操作、Play here のストリーミング、背景画像)

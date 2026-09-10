@@ -12,6 +12,7 @@ public sealed class RichPresenceHostService : IAsyncDisposable
     private readonly SemaphoreSlim gate = new(1, 1);
     private bool attached;
     private bool disposed;
+    private long lastPositionUpdate;
 
     public RichPresenceHostService(MainWindowViewModel viewModel, IRichPresenceService presence, IUiDispatcher dispatcher)
     {
@@ -60,13 +61,21 @@ public sealed class RichPresenceHostService : IAsyncDisposable
         switch (args.PropertyName)
         {
             case nameof(MainWindowViewModel.IsRichPresenceEnabled):
-            case nameof(MainWindowViewModel.DiscordApplicationId):
                 _ = configureAsync();
                 break;
             case nameof(MainWindowViewModel.CurrentTrack):
             case nameof(MainWindowViewModel.IsPlaying):
             case nameof(MainWindowViewModel.Mod):
+            case nameof(MainWindowViewModel.TotalTime):
                 _ = updateAsync();
+                break;
+            case nameof(MainWindowViewModel.CurrentTime):
+                // Discord advances the timestamps itself; periodically reconcile seeks without flooding IPC.
+                if (viewModel.IsRichPresenceEnabled && Environment.TickCount64 - lastPositionUpdate >= 5000)
+                {
+                    lastPositionUpdate = Environment.TickCount64;
+                    _ = updateAsync();
+                }
                 break;
         }
     }
@@ -84,14 +93,12 @@ public sealed class RichPresenceHostService : IAsyncDisposable
                 return;
             }
 
-            string id = string.Empty;
             bool enabled = false;
             await dispatcher.InvokeAsync(() =>
             {
-                id = viewModel.DiscordApplicationId;
                 enabled = viewModel.IsRichPresenceEnabled;
             }).ConfigureAwait(false);
-            await presence.ConfigureAsync(id, enabled).ConfigureAwait(false);
+            await presence.ConfigureAsync(enabled).ConfigureAwait(false);
             await presence.UpdateAsync(await buildActivityAsync().ConfigureAwait(false)).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is IOException or ObjectDisposedException or OperationCanceledException)
@@ -127,19 +134,44 @@ public sealed class RichPresenceHostService : IAsyncDisposable
         RichPresenceActivity? activity = null;
         await dispatcher.InvokeAsync(() =>
         {
-            if (viewModel.CurrentTrack is not { } track)
+            if (!viewModel.IsPlaying || viewModel.CurrentTrack is not { } track)
             {
                 return;
             }
 
             var mod = viewModel.Mod == Audio.OsuAudioMod.None ? string.Empty : $" [{viewModel.Mod}]";
-            var elapsed = viewModel.IsPlaying ? viewModel.CurrentTime : (TimeSpan?)null;
+            var (start, end) = BuildTimestamps(viewModel.CurrentTime, viewModel.TotalTime, viewModel.IsPlaying, viewModel.Mod, DateTimeOffset.UtcNow);
             activity = new RichPresenceActivity(
                 track.Title,
-                (viewModel.IsPlaying ? "▶ " : "⏸ ") + track.Artist + mod,
-                elapsed is { } time ? DateTimeOffset.UtcNow - time : null,
-                $"mapped by {track.Creator}");
+                "▶ " + track.Artist + mod,
+                start,
+                $"mapped by {track.Creator}",
+                end,
+                BuildBackgroundUrl(track.Model.OnlineId));
         }).ConfigureAwait(false);
         return activity;
+    }
+
+    // Discord requires a public image URL, not a local stable/lazer background path.
+    internal static string? BuildBackgroundUrl(long? beatmapSetId) => beatmapSetId is > 0
+        ? FormattableString.Invariant($"https://assets.ppy.sh/beatmaps/{beatmapSetId.Value}/covers/cover.jpg")
+        : null;
+
+    internal static (DateTimeOffset? Start, DateTimeOffset? End) BuildTimestamps(
+        TimeSpan position, TimeSpan duration, bool playing, Audio.OsuAudioMod mod, DateTimeOffset now)
+    {
+        if (!playing || duration <= TimeSpan.Zero)
+        {
+            return (null, null);
+        }
+
+        var rate = mod switch
+        {
+            Audio.OsuAudioMod.DT or Audio.OsuAudioMod.NC => 1.5,
+            Audio.OsuAudioMod.HT or Audio.OsuAudioMod.DC => 0.75,
+            _ => 1.0,
+        };
+        var elapsed = Math.Clamp(position.TotalSeconds, 0, duration.TotalSeconds);
+        return (now - TimeSpan.FromSeconds(elapsed / rate), now + TimeSpan.FromSeconds((duration.TotalSeconds - elapsed) / rate));
     }
 }

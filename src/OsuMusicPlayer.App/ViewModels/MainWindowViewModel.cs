@@ -691,6 +691,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     partial void OnSelectedSortChanged(TrackSortOption value)
     {
         applyFilterAndSort();
+        syncViewSelection();
         notifyShellTexts();
     }
 

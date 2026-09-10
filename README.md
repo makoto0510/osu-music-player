@@ -129,7 +129,7 @@ dotnet run --project .\src\OsuMusicPlayer.ServerHost -- --port 5150 --lazer /hom
 
 ## Discord Rich Presence と osu! API
 
-- Rich Presence: discord.com/developers でアプリケーションを作り、その Application ID を「Settings」に入力して有効化します。Discord のローカル IPC に直接接続します(外部ライブラリなし)。
+- Rich Presence: 「Settings」の Discord にある Enabled でオン／オフを切り替えます。Application ID は `1546645159406473246` に固定されています。Discord のローカル IPC に直接接続します(外部ライブラリなし)。
 - ジャンル / 言語: osu! の OAuth クライアント(Client ID / Secret)を入力し「Fetch metadata」を押すと、オンライン ID のあるセットのジャンルと言語を取得してキャッシュします(`%AppData%\OsuMusicPlayer\online-metadata.json`)。取得後は `genre:anime` `language:japanese` で検索でき、詳細ペインにも表示されます。
 
 ## テスト
