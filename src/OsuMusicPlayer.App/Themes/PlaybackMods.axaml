@@ -1,0 +1,94 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
+                    xmlns:audio="using:OsuMusicPlayer.Audio">
+  <ControlTheme x:Key="ModCard" TargetType="ToggleButton">
+    <Setter Property="Background" Value="{DynamicResource ThemeSurfaceAltBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="14" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="Card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#Card">
+      <Setter Property="Background" Value="{DynamicResource ThemeButtonHoverBrush}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#Card">
+      <Setter Property="Background" Value="{DynamicResource ThemeAccentSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#Card">
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#Card">
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeTextBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <DataTemplate x:Key="PlaybackModSelector" x:DataType="vm:MainWindowViewModel">
+    <Button Classes="pill" Classes.active="{Binding !IsNoModActive}" MinWidth="72" Height="34" Padding="10,0" AutomationProperties.Name="Playback mods" ToolTip.Tip="{Binding ModSummary}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="{Binding ModText}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" />
+        <PathIcon Data="{StaticResource IconChevronDown}" Width="12" Height="12" />
+      </StackPanel>
+      <Button.Flyout>
+        <Flyout Placement="TopEdgeAlignedRight">
+          <StackPanel Width="344" Spacing="14">
+            <StackPanel Spacing="4">
+              <TextBlock Text="PLAYBACK MODS" Classes="eyebrow" />
+              <TextBlock Text="Find your tempo" FontSize="21" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding ModSummary}" Foreground="{DynamicResource ThemeTextMutedBrush}" FontSize="12" />
+            </StackPanel>
+            <ToggleButton Theme="{StaticResource ModCard}" IsChecked="{Binding IsNoModActive, Mode=OneWay}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.None}" AutomationProperties.Name="No mod, normal speed and original pitch">
+              <Grid ColumnDefinitions="44,*,Auto" ColumnSpacing="8">
+                <TextBlock Text="NM" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="Normal playback" FontWeight="SemiBold" /><TextBlock Text="1.00× · Original speed &amp; pitch" FontSize="11" Foreground="{DynamicResource ThemeTextMutedBrush}" /></StackPanel>
+                <PathIcon Grid.Column="2" Data="{StaticResource IconCheck}" Width="14" Height="14" Foreground="{DynamicResource ThemeAccentBrush}" IsVisible="{Binding IsNoModActive}" />
+              </Grid>
+            </ToggleButton>
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+              <ToggleButton Grid.Row="0" Grid.Column="0" Theme="{StaticResource ModCard}" IsChecked="{Binding IsDtActive, Mode=OneWay}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DT}" AutomationProperties.Name="Double Time, 1.50× speed, Original pitch">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="DT" FontSize="22" FontWeight="Bold" /><PathIcon Grid.Column="1" Data="{StaticResource IconCheck}" Width="14" Height="14" Foreground="{DynamicResource ThemeAccentBrush}" IsVisible="{Binding IsDtActive}" /></Grid>
+                  <TextBlock Text="Double Time" FontWeight="SemiBold" FontSize="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="1.50×" Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="SemiBold" /><TextBlock Text="Original pitch" Foreground="{DynamicResource ThemeTextMutedBrush}" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="0" Grid.Column="1" Theme="{StaticResource ModCard}" IsChecked="{Binding IsNcActive, Mode=OneWay}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.NC}" AutomationProperties.Name="Nightcore, 1.50× speed, Higher pitch">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="NC" FontSize="22" FontWeight="Bold" /><PathIcon Grid.Column="1" Data="{StaticResource IconCheck}" Width="14" Height="14" Foreground="{DynamicResource ThemeAccentBrush}" IsVisible="{Binding IsNcActive}" /></Grid>
+                  <TextBlock Text="Nightcore" FontWeight="SemiBold" FontSize="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="1.50×" Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="SemiBold" /><TextBlock Text="Higher pitch" Foreground="{DynamicResource ThemeTextMutedBrush}" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="1" Grid.Column="0" Theme="{StaticResource ModCard}" IsChecked="{Binding IsHtActive, Mode=OneWay}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.HT}" AutomationProperties.Name="Half Time, 0.75× speed, Original pitch">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="HT" FontSize="22" FontWeight="Bold" /><PathIcon Grid.Column="1" Data="{StaticResource IconCheck}" Width="14" Height="14" Foreground="{DynamicResource ThemeAccentBrush}" IsVisible="{Binding IsHtActive}" /></Grid>
+                  <TextBlock Text="Half Time" FontWeight="SemiBold" FontSize="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="0.75×" Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="SemiBold" /><TextBlock Text="Original pitch" Foreground="{DynamicResource ThemeTextMutedBrush}" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+                </StackPanel>
+              </ToggleButton>
+              <ToggleButton Grid.Row="1" Grid.Column="1" Theme="{StaticResource ModCard}" IsChecked="{Binding IsDcActive, Mode=OneWay}" Command="{Binding SetModCommand}" CommandParameter="{x:Static audio:OsuAudioMod.DC}" AutomationProperties.Name="Daycore, 0.75× speed, Lower pitch">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto"><TextBlock Text="DC" FontSize="22" FontWeight="Bold" /><PathIcon Grid.Column="1" Data="{StaticResource IconCheck}" Width="14" Height="14" Foreground="{DynamicResource ThemeAccentBrush}" IsVisible="{Binding IsDcActive}" /></Grid>
+                  <TextBlock Text="Daycore" FontWeight="SemiBold" FontSize="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="0.75×" Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="SemiBold" /><TextBlock Text="Lower pitch" Foreground="{DynamicResource ThemeTextMutedBrush}" FontSize="11" VerticalAlignment="Center" /></StackPanel>
+                </StackPanel>
+              </ToggleButton>
+            </Grid>
+            <TextBlock Text="Changes apply instantly. Tap the active mod to reset." FontSize="11" Foreground="{DynamicResource ThemeTextMutedBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Flyout>
+      </Button.Flyout>
+    </Button>
+  </DataTemplate>
+</ResourceDictionary>
+

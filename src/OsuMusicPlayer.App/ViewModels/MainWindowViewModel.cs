@@ -173,6 +173,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsHtActive))]
     [NotifyPropertyChangedFor(nameof(IsDcActive))]
     [NotifyPropertyChangedFor(nameof(ModText))]
+    [NotifyPropertyChangedFor(nameof(IsNoModActive))]
+    [NotifyPropertyChangedFor(nameof(ModSummary))]
     private OsuAudioMod mod;
 
     public MainWindowViewModel(

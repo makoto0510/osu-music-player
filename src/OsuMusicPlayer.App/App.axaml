@@ -7,6 +7,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://OsuMusicPlayer.App/Themes/Icons.axaml" />
+        <ResourceInclude Source="avares://OsuMusicPlayer.App/Themes/PlaybackMods.axaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#0F0D14" />
@@ -20,9 +21,9 @@
       <SolidColorBrush x:Key="ThemeAccentTextBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="ThemeAccentSoftBrush" Color="#33FF66AA" />
       <SolidColorBrush x:Key="ThemeSelectionBrush" Color="#40FF66AA" />
-      <SolidColorBrush x:Key="ThemeButtonBrush" Color="#FFFFFF" />
-      <SolidColorBrush x:Key="ThemeButtonHoverBrush" Color="#E8E8EC" />
-      <SolidColorBrush x:Key="ThemeButtonTextBrush" Color="#14141A" />
+      <SolidColorBrush x:Key="ThemeButtonBrush" Color="#252030" />
+      <SolidColorBrush x:Key="ThemeButtonHoverBrush" Color="#3F3B49" />
+      <SolidColorBrush x:Key="ThemeButtonTextBrush" Color="#FFFFFF" />
 
       <!-- Sidebar navigation entry: a flat, rounded row that lights up when checked. -->
       <ControlTheme x:Key="NavItem" TargetType="RadioButton">
@@ -165,6 +166,13 @@
       <Setter Property="Background" Value="{DynamicResource ThemeButtonHoverBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource ThemeButtonTextBrush}" />
     </Style>
+    <!-- Explicit content follows its logical button parent; presenters are template implementation details. -->
+    <Style Selector="Button TextBlock, ToggleButton TextBlock">
+      <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
+    <Style Selector="Button PathIcon, ToggleButton PathIcon">
+      <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
     <Style Selector="Button.chip">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Padding" Value="9,3" />
@@ -181,13 +189,19 @@
       <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource ThemeAccentTextBrush}" />
     </Style>
-    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter, Button.primary:pressed /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource ThemeAccentBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource ThemeAccentTextBrush}" />
       <Setter Property="Opacity" Value="0.85" />
     </Style>
 
     <!-- Flat icon buttons (header tools, transport, row actions) -->
+    <Style Selector="Button.icon:pointerover, Button.icon:pressed, ToggleButton.icon:pointerover, ToggleButton.icon:pressed, Button.ghost:pointerover, Button.ghost:pressed">
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.icon:checked, ToggleButton.icon:checked:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
+    </Style>
     <Style Selector="Button.icon, ToggleButton.icon">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -207,6 +221,7 @@
     </Style>
     <Style Selector="Button.icon:pressed /template/ ContentPresenter, ToggleButton.icon:pressed /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource ThemeSurfaceAltBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
     </Style>
     <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource ThemeAccentSoftBrush}" />
@@ -217,7 +232,7 @@
       <Setter Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
     </Style>
     <Style Selector="Button.icon PathIcon, ToggleButton.icon PathIcon, Button.ghost PathIcon, Button.pill PathIcon">
-      <Setter Property="Foreground" Value="{Binding $parent[ContentPresenter].Foreground}" />
+      <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
     </Style>
     <Style Selector="Button.icon.small, ToggleButton.icon.small">
       <Setter Property="Width" Value="28" />
@@ -275,6 +290,7 @@
 
     <!-- Outlined pill (header filter) -->
     <Style Selector="Button.pill, ToggleButton.pill">
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -284,8 +300,9 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="Button.pill:pointerover /template/ ContentPresenter">
+    <Style Selector="Button.pill:pointerover /template/ ContentPresenter, Button.pill:pressed /template/ ContentPresenter, ToggleButton.pill:pointerover /template/ ContentPresenter, ToggleButton.pill:pressed /template/ ContentPresenter, ToggleButton.pill:checked /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource ThemeAccentSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
     </Style>
     <Style Selector="Button.pill.active">
@@ -302,7 +319,7 @@
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Foreground" Value="{DynamicResource ThemeTextMutedBrush}" />
     </Style>
-    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter, Button.ghost:pressed /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource ThemeSurfaceAltBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
     </Style>

@@ -585,7 +585,7 @@
 
         <!-- Volume / panes -->
         <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="2">
-          <ComboBox ItemsSource="{Binding ModOptions}" SelectedItem="{Binding Mod, Mode=TwoWay}" Width="72" MinHeight="30" Margin="0,0,6,0" VerticalAlignment="Center" AutomationProperties.Name="Playback mod" ToolTip.Tip="Playback speed / pitch mod" />
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaybackModSelector}" Margin="0,0,6,0" VerticalAlignment="Center" />
           <Button Classes="icon" ToolTip.Tip="Volume mixer">
             <Panel><PathIcon Data="{StaticResource IconVolume}" IsVisible="{Binding !IsMuted}" /><PathIcon Data="{StaticResource IconVolumeOff}" IsVisible="{Binding IsMuted}" /></Panel>
             <Button.Flyout>

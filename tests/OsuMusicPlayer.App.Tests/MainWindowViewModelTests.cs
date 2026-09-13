@@ -14,6 +14,34 @@ namespace OsuMusicPlayer.App.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Theory]
+    [InlineData(OsuAudioMod.DT, "1.50× speed · Original pitch")]
+    [InlineData(OsuAudioMod.NC, "1.50× speed · Higher pitch")]
+    [InlineData(OsuAudioMod.HT, "0.75× speed · Original pitch")]
+    [InlineData(OsuAudioMod.DC, "0.75× speed · Lower pitch")]
+    public void PlaybackModSelector_UpdatesSummaryAndResetsActiveMod(OsuAudioMod mod, string summary)
+    {
+        using var viewModel = createViewModel(out var audio);
+        var changes = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+
+        viewModel.SetModCommand.Execute(mod);
+
+        viewModel.ModSummary.Should().Be(summary);
+        viewModel.ModText.Should().Be(mod.ToString());
+        viewModel.IsNoModActive.Should().BeFalse();
+        audio.Mod.Should().Be(mod);
+        changes.Should().Contain(nameof(MainWindowViewModel.ModSummary));
+        changes.Should().Contain(nameof(MainWindowViewModel.IsNoModActive));
+
+        viewModel.SetModCommand.Execute(mod);
+
+        viewModel.IsNoModActive.Should().BeTrue();
+        viewModel.ModText.Should().Be("NM");
+        viewModel.ModSummary.Should().Be("1.00× speed · Original pitch");
+        audio.Mod.Should().Be(OsuAudioMod.None);
+    }
+
+    [Theory]
     [InlineData("settings", "Settings")]
     [InlineData("sources", "Music sources")]
     [InlineData("equalizer", "Equalizer")]

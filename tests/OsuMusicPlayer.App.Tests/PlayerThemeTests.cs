@@ -62,11 +62,31 @@ public sealed class PlayerThemeTests
         resources["SystemAccentColor"].Should().Be(Color.FromRgb(0x5C, 0xD6, 0x8A));
         resources.ContainsKey("SystemAccentColorLight1").Should().BeTrue();
         resources.ContainsKey("ThemeSelectionBrush").Should().BeTrue();
-        resources["ThemeButtonBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(Colors.White);
-        resources["ThemeButtonTextBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(Color.FromRgb(0x14, 0x14, 0x1A));
+        resources["ThemeButtonBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(PlayerThemes.Resolve("Forest", null).SurfaceAlt);
+        resources["ThemeButtonTextBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(Colors.White);
 
         var brush = (SolidColorBrush)resources["ThemeAccentBrush"]!;
         ApplicationThemeApplier.Apply(resources, PlayerThemes.Resolve("Forest", "#112233"));
         brush.Color.Should().Be(Color.FromRgb(0x11, 0x22, 0x33), "the existing brush is recoloured so bound controls update");
+    }
+
+    [Fact]
+    public void Apply_SwitchingFromDaylightToEveryDarkPreset_RecoloursButtonContentWhite()
+    {
+        var resources = new ResourceDictionary();
+        var daylight = PlayerThemes.Resolve("Daylight", null);
+        ApplicationThemeApplier.Apply(resources, daylight);
+        var foreground = resources["ThemeButtonTextBrush"].Should().BeOfType<SolidColorBrush>().Subject;
+
+        foreach (var theme in PlayerThemes.Presets.Where(theme => theme.IsDark))
+        {
+            ApplicationThemeApplier.Apply(resources, theme);
+            resources["ThemeButtonTextBrush"].Should().BeSameAs(foreground);
+            foreground.Color.Should().Be(Colors.White, theme.Name);
+            resources["ThemeButtonBrush"].Should().BeOfType<SolidColorBrush>().Which.Color.Should().Be(theme.SurfaceAlt);
+
+            ApplicationThemeApplier.Apply(resources, daylight);
+            foreground.Color.Should().Be(daylight.Text);
+        }
     }
 }

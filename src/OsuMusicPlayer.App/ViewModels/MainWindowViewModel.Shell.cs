@@ -95,6 +95,17 @@ public sealed partial class MainWindowViewModel
 
     public string ModText => Mod == Audio.OsuAudioMod.None ? "NM" : Mod.ToString();
 
+    public bool IsNoModActive => Mod == Audio.OsuAudioMod.None;
+
+    public string ModSummary => Mod switch
+    {
+        Audio.OsuAudioMod.DT => "1.50× speed · Original pitch",
+        Audio.OsuAudioMod.NC => "1.50× speed · Higher pitch",
+        Audio.OsuAudioMod.HT => "0.75× speed · Original pitch",
+        Audio.OsuAudioMod.DC => "0.75× speed · Lower pitch",
+        _ => "1.00× speed · Original pitch",
+    };
+
     public IReadOnlyList<Audio.OsuAudioMod> ModOptions { get; } = Enum.GetValues<Audio.OsuAudioMod>();
 
     [RelayCommand]
