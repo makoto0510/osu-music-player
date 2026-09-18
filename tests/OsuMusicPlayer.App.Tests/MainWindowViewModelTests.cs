@@ -14,6 +14,47 @@ namespace OsuMusicPlayer.App.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Theory]
+    [InlineData("github", "https://github.com/makoto0510/osu-music-player")]
+    [InlineData("releases", "https://github.com/makoto0510/osu-music-player/releases")]
+    [InlineData("issues", "https://github.com/makoto0510/osu-music-player/issues")]
+    public void OpenProjectLink_OpensTheRequestedProjectPage(string link, string expectedUrl)
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+
+        viewModel.OpenProjectLinkCommand.Execute(link);
+
+        environment.Links.Opened.Should().ContainSingle()
+            .Which.Should().Be(new Uri(expectedUrl));
+        viewModel.ErrorMessage.Should().BeNullOrEmpty();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("unknown")]
+    public void OpenProjectLink_IgnoresUnknownLinks(string? link)
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+
+        viewModel.OpenProjectLinkCommand.Execute(link);
+
+        environment.Links.Opened.Should().BeEmpty();
+        viewModel.ErrorMessage.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public void OpenProjectLink_ReportsWhenBrowserCannotOpenTheLink()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Links.OpenResult = false;
+
+        viewModel.OpenProjectLinkCommand.Execute("github");
+
+        environment.Links.Opened.Should().ContainSingle();
+        viewModel.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
     [InlineData(OsuAudioMod.DT, "1.50× speed · Original pitch")]
     [InlineData(OsuAudioMod.NC, "1.50× speed · Higher pitch")]
     [InlineData(OsuAudioMod.HT, "0.75× speed · Original pitch")]
@@ -1670,7 +1711,8 @@ public sealed class MainWindowViewModelTests
     private sealed class FakeLinkOpener : ILinkOpener
     {
         public List<Uri> Opened { get; } = [];
-        public bool Open(Uri uri) { Opened.Add(uri); return true; }
+        public bool OpenResult { get; set; } = true;
+        public bool Open(Uri uri) { Opened.Add(uri); return OpenResult; }
         public List<string> OpenedFolders { get; } = [];
         public bool OpenFolder(string path) { OpenedFolders.Add(path); return true; }
     }

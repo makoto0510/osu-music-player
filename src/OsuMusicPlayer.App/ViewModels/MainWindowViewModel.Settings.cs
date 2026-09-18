@@ -11,6 +11,25 @@ namespace OsuMusicPlayer.App.ViewModels;
 /// <summary>Settings persistence, the equalizer and restoring the last playback state.</summary>
 public sealed partial class MainWindowViewModel
 {
+    public string AppVersionText => $"Version {typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "Unknown"}";
+
+    [RelayCommand]
+    private void OpenProjectLink(string? destination)
+    {
+        var url = destination switch
+        {
+            "github" => "https://github.com/makoto0510/osu-music-player",
+            "releases" => "https://github.com/makoto0510/osu-music-player/releases",
+            "issues" => "https://github.com/makoto0510/osu-music-player/issues",
+            _ => null,
+        };
+
+        if (url is not null && !linkOpener.Open(new Uri(url)))
+        {
+            ErrorMessage = $"ブラウザーを開けませんでした: {url}";
+        }
+    }
+
     private static readonly TimeSpan save_debounce = TimeSpan.FromMilliseconds(600);
 
     private static readonly HashSet<string> persisted_properties =

@@ -232,6 +232,25 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                 </TabItem>
+                <TabItem Header="About" ToolTip.Tip="このアプリについて">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="10" MaxWidth="500" HorizontalAlignment="Left" Margin="24,8,24,16">
+                      <TextBlock Text="About / このアプリについて" FontSize="20" FontWeight="Bold" />
+                      <TextBlock Text="osu! Music Player" FontSize="24" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding AppVersionText}" Classes="hint" />
+                      <TextBlock Text="Play music, hit sounds and storyboards from your local osu! library." TextWrapping="Wrap" />
+                      <TextBlock Text="Created by makoto0510" Classes="muted" />
+                      <Border Height="1" Background="{DynamicResource ThemeBorderBrush}" Margin="0,6" />
+                      <TextBlock Text="GitHub · makoto0510/osu-music-player" TextWrapping="Wrap" Classes="hint" />
+                      <WrapPanel Orientation="Horizontal">
+                        <Button Classes="small" Margin="0,0,8,8" Content="GitHub" Command="{Binding OpenProjectLinkCommand}" CommandParameter="github" ToolTip.Tip="https://github.com/makoto0510/osu-music-player" />
+                        <Button Classes="small" Margin="0,0,8,8" Content="Releases" Command="{Binding OpenProjectLinkCommand}" CommandParameter="releases" ToolTip.Tip="Download releases on GitHub" />
+                        <Button Classes="small" Margin="0,0,0,8" Content="Report an issue" Command="{Binding OpenProjectLinkCommand}" CommandParameter="issues" ToolTip.Tip="Report bugs or request features on GitHub" />
+                      </WrapPanel>
+                      <TextBlock Text="Links open in your default browser." Classes="hint" />
+                    </StackPanel>
+                  </ScrollViewer>
+                </TabItem>
               </TabControl>
             </Border>
           </StackPanel>

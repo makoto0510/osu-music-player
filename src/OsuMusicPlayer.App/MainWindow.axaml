@@ -341,6 +341,7 @@
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="{Binding VisualRowHeight}" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="{Binding DetailsRowHeight}" />
           </Grid.RowDefinitions>
 
@@ -354,38 +355,39 @@
               <Border IsVisible="{Binding IsVisualsPoppedOut}" Background="#88000000" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="8" Padding="12,6">
                 <TextBlock Text="Visuals are shown in their own window" FontSize="12" Foreground="White" />
               </Border>
-              <!-- Visual controls float over the cover -->
-              <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="8" CornerRadius="10" Background="#99000000" Padding="4,2">
-                <StackPanel Orientation="Horizontal" Spacing="0">
-                  <ToggleButton Classes="icon small" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" ToolTip.Tip="{Binding VideoToggleTip}"><PathIcon Data="{StaticResource IconVideo}" /></ToggleButton>
-                  <ToggleButton Classes="icon small" IsChecked="{Binding IsStoryboardEnabled, Mode=TwoWay}" ToolTip.Tip="Storyboard"><PathIcon Data="{StaticResource IconStoryboard}" /></ToggleButton>
-                  <ToggleButton Classes="icon small" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" ToolTip.Tip="{Binding HitsoundToggleTip}">
-                    <ToggleButton.ContextMenu>
-                      <ContextMenu>
-                        <MenuItem Header="Beatmap hit sounds" Command="{Binding SetHitsoundSourceBeatmapCommand}">
-                          <MenuItem.Icon>
-                            <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding !PreferSkinHitsounds}" />
-                          </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Skin hit sounds" Command="{Binding SetHitsoundSourceSkinCommand}">
-                          <MenuItem.Icon>
-                            <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding PreferSkinHitsounds}" />
-                          </MenuItem.Icon>
-                        </MenuItem>
-                      </ContextMenu>
-                    </ToggleButton.ContextMenu>
-                    <PathIcon Data="{StaticResource IconHeadphones}" />
-                  </ToggleButton>
-                  <Button Classes="icon small" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="{Binding VisualsWindowButtonText}"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
-                  <Button Classes="icon small" Command="{Binding #Root.FullscreenVisualsCommand}" ToolTip.Tip="Fullscreen (F11)"><PathIcon Data="{StaticResource IconFullscreen}" /></Button>
-                  <ToggleButton Classes="icon small" IsChecked="{Binding IsTheaterMode, Mode=TwoWay}" ToolTip.Tip="Theater mode (Ctrl+T)" AutomationProperties.Name="Theater mode" AutomationProperties.AutomationId="TheaterToggle"><PathIcon Data="{StaticResource IconTheater}" /></ToggleButton>
-                </StackPanel>
-              </Border>
             </Grid>
           </Border>
 
+          <!-- Native video surfaces cover Avalonia overlays; reserve a separate row for controls. -->
+          <Border Grid.Row="1" HorizontalAlignment="Right" Margin="14,8,14,0" CornerRadius="10" Background="{DynamicResource ThemeSurfaceAltBrush}" Padding="4,2">
+            <StackPanel Orientation="Horizontal" Spacing="0">
+              <ToggleButton Classes="icon small" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" ToolTip.Tip="{Binding VideoToggleTip}"><PathIcon Data="{StaticResource IconVideo}" /></ToggleButton>
+              <ToggleButton Classes="icon small" IsChecked="{Binding IsStoryboardEnabled, Mode=TwoWay}" ToolTip.Tip="Storyboard"><PathIcon Data="{StaticResource IconStoryboard}" /></ToggleButton>
+              <ToggleButton Classes="icon small" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" ToolTip.Tip="{Binding HitsoundToggleTip}">
+                <ToggleButton.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Beatmap hit sounds" Command="{Binding SetHitsoundSourceBeatmapCommand}">
+                      <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding !PreferSkinHitsounds}" />
+                      </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Skin hit sounds" Command="{Binding SetHitsoundSourceSkinCommand}">
+                      <MenuItem.Icon>
+                        <PathIcon Data="{StaticResource IconCheck}" IsVisible="{Binding PreferSkinHitsounds}" />
+                      </MenuItem.Icon>
+                    </MenuItem>
+                  </ContextMenu>
+                </ToggleButton.ContextMenu>
+                <PathIcon Data="{StaticResource IconHeadphones}" />
+              </ToggleButton>
+              <Button Classes="icon small" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="{Binding VisualsWindowButtonText}"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
+              <Button Classes="icon small" Command="{Binding #Root.FullscreenVisualsCommand}" ToolTip.Tip="Fullscreen (F11)"><PathIcon Data="{StaticResource IconFullscreen}" /></Button>
+              <ToggleButton Classes="icon small" IsChecked="{Binding IsTheaterMode, Mode=TwoWay}" ToolTip.Tip="Theater mode (Ctrl+T)" AutomationProperties.Name="Theater mode" AutomationProperties.AutomationId="TheaterToggle"><PathIcon Data="{StaticResource IconTheater}" /></ToggleButton>
+            </StackPanel>
+          </Border>
+
           <!-- Details -->
-          <Grid Grid.Row="1" IsVisible="{Binding IsDetailsPaneVisible}">
+          <Grid Grid.Row="2" IsVisible="{Binding IsDetailsPaneVisible}">
             <TextBlock IsVisible="{Binding !HasDetailTrack}" Text="Select a track to see it here" Classes="hint" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" Margin="24" />
             <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasDetailTrack}">
               <StackPanel Margin="18,14,18,16" Spacing="10">
