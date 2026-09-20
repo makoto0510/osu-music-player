@@ -1,277 +1,285 @@
 # osu! music player
 
+[English](README.md) | [日本語](README.ja.md)
+
 [![.NET](https://img.shields.io/badge/.NET-8.0-512bd4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Avalonia UI](https://img.shields.io/badge/Avalonia-11.x-9b59b6)](https://avaloniaui.net/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#動作環境)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](#クレジット--免責事項)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#system-requirements)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](#credits--disclaimer)
 
-ローカルにインストールされた **osu!stable** および **osu!lazer** の楽曲ライブラリをそのまま直接読み込んで楽しめる、高機能デスクトップ音楽プレイヤーです。  
-楽曲の再生にとどまらず、譜面付属の**背景動画**、**ヒットサウンド**、**ストーリーボード**の完全再現再生や、オートプレイ風の**難易度プレビュー**にも対応しています。
+A feature-rich desktop music player that directly loads and plays your local **osu!stable** and **osu!lazer** song libraries without needing to export or duplicate files.  
+Beyond audio playback, it faithfully renders beatmap **background videos**, **hitsounds**, and **storyboards**, and features an autoplay-style **difficulty preview**.
 
 > [!NOTE]
-> **安全設計 (Read-Only):**  
-> 本プレイヤーは osu! のデータフォルダーに対して**完全読み取り専用**でアクセスします。元のビートマップファイルやデータベースを変更・破損させることは一切ありません。プレイリストや設定情報は、本プレイヤー独自のデータフォルダーに独立して保存されます。
+> **Read-Only Safety Design:**  
+> This player accesses your osu! directories strictly in **read-only** mode. It will never alter, overwrite, or corrupt your beatmaps or database files. Playlists, user configurations, and cached data are saved entirely independently in the player's own application data folder.
 
 ---
 
-## 目次
+## Table of Contents
 
-- [主な機能](#主な機能)
-- [動作環境](#動作環境)
-- [ダウンロード & インストール](#ダウンロード--インストール)
-- [クイックスタート](#クイックスタート)
-- [機能ガイド](#機能ガイド)
-  - [ライブラリ統合と検索](#ライブラリ統合と検索)
-  - [UI モードとテーマ](#ui-モードとテーマ)
-  - [ビジュアル（動画・ストーリーボード・プレビュー）](#ビジュアル動画ストーリーボードプレビュー)
-  - [ヒットサウンド再現](#ヒットサウンド再現)
-- [キーボードショートカット](#キーボードショートカット)
-- [外部連携](#外部連携)
-  - [Web リモート & OBS オーバーレイ](#web-リモート--obs-オーバーレイ)
-  - [ヘッドレスサーバー](#ヘッドレスサーバー)
+- [Features](#features)
+- [System Requirements](#system-requirements)
+- [Download & Installation](#download--installation)
+- [Quick Start](#quick-start)
+- [Feature Guide](#feature-guide)
+  - [Library Integration & Search](#library-integration--search)
+  - [UI Modes & Themes](#ui-modes--themes)
+  - [Visuals (Video, Storyboard & Difficulty Preview)](#visuals-video-storyboard--difficulty-preview)
+  - [Hitsound Synchronization](#hitsound-synchronization)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Integrations](#integrations)
+  - [Web Remote & OBS Overlay](#web-remote--obs-overlay)
+  - [Headless Server](#headless-server)
   - [Discord Rich Presence & osu! API](#discord-rich-presence--osu-api)
-- [設定とデータの保存先](#設定とデータの保存先)
-- [ビルドと開発](#ビルドと開発)
-- [トラブルシューティング](#トラブルシューティング)
-- [クレジット & 免責事項](#クレジット--免責事項)
+- [Data & Configuration Storage](#data--configuration-storage)
+- [Building & Development](#building--development)
+- [Troubleshooting](#troubleshooting)
+- [Credits & Disclaimer](#credits--disclaimer)
+  - [Inspiration](#inspiration)
+  - [Disclaimer](#disclaimer)
+  - [Open Source & Third-Party Libraries](#open-source--third-party-libraries)
 
 ---
 
-## 主な機能
+## Features
 
-- **ライブラリのシームレスな統合**  
-  stable と lazer のライブラリを自動検出し、重複楽曲をスマートに統合。ゲーム内コレクション（`collection.db` / Realm）もそのまま読み込み可能。
-- **高機能オーディオエンジン**  
-  BASS オーディオエンジンを採用。キュー管理、シャッフル、リピート、再生速度/ピッチ変更（DT / NC / HT / DC mod）、10 バンドイコライザーを搭載。
-- **譜面演出の完全再現**  
-  - 背景動画再生（libVLC 連携、音声同期、mod 速度追従）
-  - ストーリーボード描画（加算合成、回転、アニメーション、ヒットサウンドトリガー対応）
-  - ヒットサウンド同期再生（譜面付属音源 / 各種スキン音源への切り替え対応）
-  - 4 モード（osu! / taiko / catch / mania）のオートプレイ難易度プレビュー
-- **自由度の高い UI カスタマイズ**  
-  現代的な **Studio モード** と、従来の音楽プレイヤーに近い **Classic モード** の 2 種類のレイアウト。6 種のテーマプリセットおよび自由なアクセントカラー設定。
-- **充実した外部連携機能**  
-  ブラウザからスマホや別端末で操作できる **Web リモート**、配信用の透過 **OBS オーバーレイ**、**Discord Rich Presence**、楽曲のジャンル・言語を補完する **osu! API v2** 連携。
+- **Seamless Library Integration**  
+  Automatically detects local stable and lazer libraries, intelligently deduplicating overlapping tracks. Supports game collections (`collection.db` and Realm collections).
+- **High-Fidelity Audio Engine**  
+  Powered by the BASS audio engine. Includes queue management, shuffle, repeat modes, playback speed and pitch adjustments (DT / NC / HT / DC mods), and a 10-band graphic equalizer with presets.
+- **Beatmap Visuals & Effects**  
+  - Background video playback synchronized to audio via libVLC, with speed-mod tracking.
+  - Storyboard rendering powered by SkiaSharp (supports additive blending, rotations, animations, and hitsound triggers).
+  - Synchronized hitsound playback (configurable between beatmap-specific samples and skin/default soundfonts).
+  - Minimalistic autoplay difficulty preview across all 4 game modes (osu!, taiko, catch, mania).
+- **Customizable User Interface**  
+  Choose between a modern **Studio Mode** layout and a traditional media player **Classic Mode**. Includes 6 curated color themes and support for custom `#RRGGBB` accent colors.
+- **Rich Integrations**  
+  Browser-based **Web Remote** for smartphone/tablet control with audio streaming ("Play here"), transparent **OBS Studio Overlay** for live streaming, **Discord Rich Presence**, and automatic metadata enrichment (genre/language) via **osu! API v2**.
 
 ---
 
-## 動作環境
+## System Requirements
 
-| OS | 対象アーキテクチャ | 対応 osu! ライブラリ | 背景動画の再生 |
+| OS | Target Architecture | Supported osu! Library | Background Video Support |
 | :--- | :--- | :--- | :--- |
-| **Windows** | x64 | osu!stable / osu!lazer | 同梱または NuGet 経由で libVLC 自動配置 |
-| **macOS** | Apple Silicon (arm64) / Intel (x64) | osu!lazer のみ | ビルド時に libVLC を配置 |
-| **Linux** | x64 / arm64 | osu!lazer のみ | システムの libVLC を利用 (`apt install libvlc-dev` 等) |
+| **Windows** | x64 | osu!stable / osu!lazer | Automatic via bundled/NuGet libVLC |
+| **macOS** | Apple Silicon (arm64) / Intel (x64) | osu!lazer only | libVLC bundled during build |
+| **Linux** | x64 / arm64 | osu!lazer only | Requires system libVLC (`apt install libvlc-dev` etc.) |
 
-- ローカルに楽曲データを含む osu! がインストールされている必要があります。
-- BASS / BASS_FX のネイティブバイナリは各プラットフォーム向けに同梱されています。
+- A local osu! installation with song files is required.
+- Native binaries for BASS and BASS_FX are pre-bundled for all supported platforms.
 
 ---
 
-## ダウンロード & インストール
+## Download & Installation
 
-### リリースバイナリを利用する場合 (推奨)
+### Using Prebuilt Releases (Recommended)
 
-1. [GitHub Releases](https://github.com/makoto0510/osu-music-player/releases) より、お使いの OS・環境に合ったアーカイブをダウンロードします。
+1. Download the archive matching your OS and architecture from [GitHub Releases](https://github.com/makoto0510/osu-music-player/releases):
    - Windows: `OsuMusicPlayer-win-x64.zip`
    - macOS: `OsuMusicPlayer-osx-arm64.zip` (Apple Silicon) / `OsuMusicPlayer-osx-x64.zip` (Intel)
    - Linux: `OsuMusicPlayer-linux-x64.tar.gz` / `OsuMusicPlayer-linux-arm64.tar.gz`
-2. アーカイブを任意のフォルダーに展開します。
-3. アプリケーションを実行します:
-   - **Windows:** `OsuMusicPlayer.App.exe` を起動。
-   - **macOS / Linux:** `OsuMusicPlayer.App` に実行権限を付与して起動。
+2. Extract the archive into a folder of your choice.
+3. Launch the application:
+   - **Windows:** Run `OsuMusicPlayer.App.exe`.
+   - **macOS / Linux:** Grant executable permissions and run `OsuMusicPlayer.App`:
      ```sh
      chmod +x OsuMusicPlayer.App
      ./OsuMusicPlayer.App
      ```
 
 > [!TIP]
-> **Self-Contained (ランタイム同梱) 版**をご利用の場合、.NET ランタイムを別途インストールする必要はありません。  
-> ランタイム非同梱版をご利用の場合は、**.NET 8 デスクトップランタイム**（および ASP.NET Core ランタイム）が必要です。
+> **Self-Contained Builds:** If you download a self-contained release package, no external .NET runtime installation is necessary.  
+> If using framework-dependent builds, the **.NET 8 Desktop Runtime** (and ASP.NET Core Runtime) must be installed on your machine.
 
 ---
 
-## クイックスタート
+## Quick Start
 
-1. **起動と自動検出**  
-   アプリを起動すると、PC 内の osu!stable / osu!lazer のインストール先を自動的に検出してライブラリの読み込みを開始します。
-2. **手動でのフォルダー指定**  
-   標準以外の場所へインストールしている場合や曲が表示されない場合は、ツールバーの **Sources** を開き、フォルダーを手動で追加してください。
-   - **osu!stable (Windows のみ):** `osu!.db` と `Songs` フォルダーを含むディレクトリ。
-   - **osu!lazer:** `client.realm` と `files` フォルダーを含むディレクトリ。
-3. **再生する**  
-   一覧から楽曲をダブルクリックすると即座に再生が始まります。
-4. **ライブラリの再読み込み**  
-   osu! 側で新しい曲をダウンロード・インポートした際は、ヘッダーの **Reload** をクリックすることで最新の状態に同期されます。
+1. **Launch and Auto-Detection**  
+   Upon opening, the player automatically scans standard directory paths to detect your osu!stable / osu!lazer installations and loads your library.
+2. **Adding Directories Manually**  
+   If your osu! installation is in a custom path or songs are not detected, open **Sources** in the toolbar to add your directories:
+   - **osu!stable (Windows only):** Select the folder containing `osu!.db` and the `Songs` directory.
+   - **osu!lazer:** Select the folder containing `client.realm` and the `files` directory.
+3. **Play Music**  
+   Double-click any track in the list to start playback immediately.
+4. **Reloading Library**  
+   After downloading or importing new beatmaps in osu!, click **Reload** in the header to refresh your library.
 
 ---
 
-## 機能ガイド
+## Feature Guide
 
-### ライブラリ統合と検索
+### Library Integration & Search
 
-stable と lazer の両方がインストールされている場合、同一楽曲の重複をハッシュやメタデータから自動的にマージして 1 つのトラックとしてすっきり表示します。
+When both stable and lazer are detected, identical songs are merged automatically by audio hash and metadata into a clean, unified track entry.
 
-#### 検索クエリチートシート
+#### Search Query Cheat Sheet
 
-検索バー（`Ctrl+F` または `/`）では、多彩なフィルター構文が利用可能です。
+The search bar (`Ctrl+F` or `/`) supports extensive filtering syntax:
 
-| 入力例 | 絞り込み内容 |
+| Query Example | Description |
 | :--- | :--- |
-| `artist:xi` | アーティスト名 |
-| `title:freedom` | タイトル名 |
-| `mapper:sotarks` | 譜面作成者（マッパー） |
-| `mode:mania` | ゲームモード (`osu` / `taiko` / `catch` / `mania`) |
-| `source:lazer` | ライブラリ元の指定 (`stable` / `lazer`) |
-| `bpm:180-240` | BPM の範囲指定 |
-| `stars:>6.5` | 難易度（星の数）での絞り込み |
-| `length:<3:00` | 曲の長さ（3分未満など） |
-| `genre:anime` | ジャンル指定（※osu! API メタデータ取得後） |
-| `language:japanese` | 楽曲言語指定（※osu! API メタデータ取得後） |
-| `-remix` | 特定キーワードの除外 |
-| `camellia|t+pazolite` | OR 検索（いずれかに一致） |
-| `"sweet love"` | 空白を含むフレーズの完全一致 |
+| `artist:xi` | Filter by artist name |
+| `title:freedom` | Filter by song title |
+| `mapper:sotarks` | Filter by beatmap creator (mapper) |
+| `mode:mania` | Filter by game mode (`osu` / `taiko` / `catch` / `mania`) |
+| `source:lazer` | Filter by library source (`stable` / `lazer`) |
+| `bpm:180-240` | Filter by BPM range |
+| `stars:>6.5` | Filter by star difficulty rating |
+| `length:<3:00` | Filter by track duration (e.g. under 3 minutes) |
+| `genre:anime` | Filter by genre (after fetching osu! API metadata) |
+| `language:japanese` | Filter by language (after fetching osu! API metadata) |
+| `-remix` | Exclude terms matching "remix" |
+| `camellia|t+pazolite` | OR search (matches either term) |
+| `"sweet love"` | Exact phrase matching with spaces |
 
-#### プレイリスト & 整理機能
-- **スマートプレイリスト:** 検索条件自体を保存し、条件に合う楽曲を常に自動収集。
-- **レコメンド機能:** 再生履歴のタグ・アーティスト・マッパー・BPM を分析し、ライブラリ内の好みに合う未再生曲を提示。
-- **コレクション書き出し:** プレイヤー上で作成・絞り込んだ曲リストを stable 形式の `collection.db` として書き出し可能（※安全のため osu! フォルダーへの直接上書きは制限されています）。
-
----
-
-### UI モードとテーマ
-
-**Settings → Appearance → Interface / UI** から、お好みの作業スタイルに合わせて 2 つの UI スタイルを切り替えられます。
-
-- **Studio モード (既定):** 楽曲リストを広く活用し、サイドパネル（Settings / Sources / Equalizer / Browse / Playlists）を用途に応じて素早く呼び出せるモダンデザイン。
-- **Classic モード:** 左サイドバー、中央トラック一覧、右側 Now Playing、下部プレイヤーバーで構成される、伝統的なメディアプレイヤーのレイアウト。
-
-#### テーマ & アクセントカラー
-- **プリセットテーマ:** osu! Pink / Lazer Purple / Midnight Blue / Forest / OLED Black / Daylight
-- **カスタムアクセントカラー:** `#RRGGBB` 形式で自由なカラーコードを指定可能。
+#### Organization & Playlists
+- **Smart Playlists:** Save your current search criteria as dynamic playlists that automatically update as new songs match the query.
+- **Recommendations:** Suggests unplayed songs based on your listening history (tags, artists, mappers, BPM).
+- **Export to collection.db:** Export your active track view into a stable-compatible `collection.db` file (direct overwrite into osu! directory is blocked for safety).
 
 ---
 
-### ビジュアル（動画・ストーリーボード・プレビュー）
+### UI Modes & Themes
 
-曲詳細ペインのトグルボタンから、いつでもビジュアル演出を切り替えられます。
+Switch between two layout styles under **Settings → Appearance → Interface / UI**:
 
-- **背景動画:** 譜面付属の動画を BASS 音声にミリ秒単位で同期再生。DT / HT などの速度変更 mod にもリアルタイムで追従します。
-- **ストーリーボード:** `.osb` および難易度別 `.osu` をパースし、SkiaSharp により高精度に描画。
-- **ポップアウト & 全画面表示 (`Ctrl+P` / `F11`):** 動画やストーリーボードを独立した別ウィンドウに切り離し、マルチモニター環境やシアター環境で全画面表示できます。
-- **難易度プレビュー (`Ctrl+Shift+P`):** 譜面の配置とリズムを 4 モード対応のミニマルなオートプレイ画面で確認できます。
+- **Studio Mode (Default):** Maximizes library browsing space with quick-access slide-out utility panels (Settings, Sources, Equalizer, Browse, Playlists).
+- **Classic Mode:** Traditional 3-pane layout featuring a left navigation sidebar, central track table, right Now Playing sidebar, and bottom playback bar.
 
----
-
-### ヒットサウンド再現
-
-**Hitsounds** 機能を有効にすると、譜面の打鍵音（ノーマル、ホイッスル、クラップ、フィニッシュ等）を再生中の音楽と完全同期して発音します。
-
-- **Beatmap 音源:** 譜面固有のカスタムサンプルを優先再生。
-- **Skin 音源:** 各種スキンや既定サウンドフォントの打鍵音で再生。
-- デバイスのレイテンシに応じたオフセット微調整（Settings）も可能です。
+#### Themes & Accent Colors
+- **Presets:** osu! Pink, Lazer Purple, Midnight Blue, Forest, OLED Black, and Daylight.
+- **Custom Accent:** Specify any `#RRGGBB` hex color code for personalized UI accents.
 
 ---
 
-## キーボードショートカット
+### Visuals (Video, Storyboard & Difficulty Preview)
 
-いつでも快適に操作できるよう、各種グローバルショートカットが割り当てられています（**Settings → Shortcuts** でも確認可能）。
+Toggle visual elements on the fly from the track details pane:
 
-| キー | 操作内容 |
+- **Background Video:** Plays beatmap background videos in millisecond sync with BASS audio, seamlessly adapting to playback speed mods (DT/HT).
+- **Storyboard:** Decodes `.osb` and difficulty-specific `.osu` files to render complex storyboards using SkiaSharp.
+- **Pop-out & Fullscreen (`Ctrl+P` / `F11`):** Detach video and storyboard playback into a separate window for multi-monitor setups or theater mode.
+- **Difficulty Preview (`Ctrl+Shift+P`):** Visualizes note placements and rhythmic patterns across all 4 modes in a lightweight autoplay overlay.
+
+---
+
+### Hitsound Synchronization
+
+Enabling **Hitsounds** plays hit sounds (normal, whistle, clap, finish) in exact rhythm with the song playback:
+
+- **Beatmap Soundfont:** Prioritizes custom samples bundled within the beatmap folder.
+- **Skin Soundfont:** Uses your configured skin or default sound fonts for consistent feedback.
+- Customizable device latency offset can be calibrated in Settings.
+
+---
+
+## Keyboard Shortcuts
+
+Global shortcuts enable rapid, keyboard-driven navigation (viewable anytime in **Settings → Shortcuts**):
+
+| Shortcut | Action |
 | :--- | :--- |
-| `Space` / `Enter` | 再生 / 一時停止（選択中の曲を再生） |
-| `Ctrl + ←` / `Ctrl + →` | 前の曲 / 次の曲 |
-| `Shift + ←` / `Shift + →` | 5秒 巻き戻し / 早送り |
-| `Ctrl + ↑` / `Ctrl + ↓` | 音量の上下 |
-| `Ctrl + F` または `/` | 検索バーにフォーカス |
-| `Ctrl + D` | お気に入りの切り替え |
-| `Ctrl + E` | 再生キューに追加 |
-| `Ctrl + H` | 選択中の曲を一時的に非表示 |
-| `Ctrl + S` / `Ctrl + R` | シャッフル / リピートの切り替え |
-| `Ctrl + Q` | キュー / Now Playing ペインの表示切替 |
-| `Ctrl + T` | Theater モード |
-| `Ctrl + P` / `F11` | ビジュアルの別ウィンドウ化 / 全画面表示 |
-| `Ctrl + Shift + P` | 難易度プレビュー表示 |
-| `Ctrl + ,` | 設定ウィンドウを開く |
-| `Esc` | 検索クリア / 全画面・別ウィンドウ解除 |
+| `Space` / `Enter` | Play / Pause (or play selected track) |
+| `Ctrl + ←` / `Ctrl + →` | Previous track / Next track |
+| `Shift + ←` / `Shift + →` | Seek 5 seconds backward / forward |
+| `Ctrl + ↑` / `Ctrl + ↓` | Volume up / down |
+| `Ctrl + F` or `/` | Focus search bar |
+| `Ctrl + D` | Toggle favourite |
+| `Ctrl + E` | Add to playback queue |
+| `Ctrl + H` | Temporarily hide selected track |
+| `Ctrl + S` / `Ctrl + R` | Toggle Shuffle / Repeat mode |
+| `Ctrl + Q` | Toggle Queue / Now Playing pane |
+| `Ctrl + T` | Toggle Theater Mode |
+| `Ctrl + P` / `F11` | Pop-out visuals window / Toggle Fullscreen |
+| `Ctrl + Shift + P` | Toggle Difficulty Preview |
+| `Ctrl + ,` | Open Settings |
+| `Esc` | Clear search / Exit fullscreen or pop-out window |
 
-※ テキスト入力中は誤爆を防ぐため `Space`、`Enter`、`/` などの単一キー操作は自動的に無効化されます。OS のメディアキーにも対応しています。
+*Note: Single-key shortcuts like `Space`, `Enter`, and `/` are disabled during text input. Hardware media keys are also supported.*
 
 ---
 
-## 外部連携
+## Integrations
 
-### Web リモート & OBS オーバーレイ
+### Web Remote & OBS Overlay
 
-内蔵サーバー（既定ポート: `5150`）を有効にすると、ブラウザ経由でのコントロールや配信画面への組み込みが可能になります。
+Enabling the internal server (default port: `5150`) exposes web-based controls and streaming assets:
 
-| パス | 説明・用途 |
+| Path | Description & Use Case |
 | :--- | :--- |
-| `http://<IP>:5150/` | **Web リモート UI:** スマホやタブレットから再生操作、トラックブラウズ、および「Play here」機能による端末側への音声ストリーミング |
-| `http://localhost:5150/overlay` | **OBS ブラウザーソース:** 背景透過の再生中楽曲オーバーレイ（推奨サイズ: 600 × 120） |
-| `/api/tracks` | 楽曲リストの取得（検索・ページング対応） |
-| `/api/tracks/{id}/audio` | HTTP Live Audio ストリーミング（HTTP Range 対応） |
-| `/api/tracks/{id}/background` | 楽曲の背景画像取得 |
-| `/api/state` | 現在の再生状態（再生中トラック、シーク位置、音量、キュー等） |
+| `http://<IP>:5150/` | **Web Remote UI:** Control playback, browse tracks, and stream audio directly to mobile devices via "Play here". |
+| `http://localhost:5150/overlay` | **OBS Browser Source:** Transparent now-playing overlay designed for stream layouts (recommended size: 600 × 120). |
+| `/api/tracks` | Query track list with pagination and search filter support. |
+| `/api/tracks/{id}/audio` | Live HTTP audio stream (supports HTTP Range requests). |
+| `/api/tracks/{id}/background` | Fetch beatmap background image. |
+| `/api/state` | Current playback state (track, seek position, volume, queue). |
 
 > [!CAUTION]
-> 内蔵サーバーには認証機能がありません。必ず信頼できるローカルネットワーク（LAN）内でのみご利用いただき、ルーターのポート開放等でインターネットへ直接公開しないでください。
+> The internal server operates without authentication. Only use it within trusted local networks (LAN). Do NOT expose port 5150 directly to the public internet.
 
 ---
 
-### ヘッドレスサーバー
+### Headless Server
 
-GUI を起動せず、バックグラウンドの音楽ストリーミングサーバーとして常時起動するための `OsuMusicPlayer.ServerHost` も用意されています（Raspberry Pi などの Linux サーバー運用に最適です）。
+For dedicated music streaming on headless setups (e.g. Raspberry Pi or Linux home servers), use the `OsuMusicPlayer.ServerHost` binary:
 
 ```sh
 dotnet run --project ./src/OsuMusicPlayer.ServerHost -- --port 5150 --lazer /path/to/osu-lazer-data
 ```
-- `--local-only`: LAN からのアクセスを拒否し localhost のみに限定。
-- `--stable <path>`: Windows 環境で stable フォルダーも指定する場合。
+- `--local-only`: Restricts connections to `localhost` only.
+- `--stable <path>`: Specifies an osu!stable directory (Windows only).
 
 ---
 
 ### Discord Rich Presence & osu! API
 
-- **Discord Rich Presence:** 再生中の曲名、アーティスト名、難易度、経過時間を Discord のアクティビティステータスにリアルタイム表示します。
-- **osu! API v2 連携:** osu! 公式の OAuth クライアント情報（Client ID / Secret）を設定することで、公式サーバーから楽曲の「ジャンル」や「言語」メタデータを自動取得・キャッシュします。
+- **Discord Rich Presence:** Broadcasts song title, artist, difficulty, and playback progress to your Discord profile activity status.
+- **osu! API v2 Integration:** Provide your osu! OAuth credentials (Client ID / Secret) under Settings to automatically fetch and cache official genre and language metadata.
 
 ---
 
-## 設定とデータの保存先
+## Data & Configuration Storage
 
-本プレイヤーの設定やキャッシュは、すべて OS 標準のアプリケーションデータ領域に格納されます。
+All player settings and cache databases are stored in standard OS application data folders:
 
-- **設定ファイル:** `%AppData%\OsuMusicPlayer\settings.json`（macOS / Linux では各環境の `ApplicationData` 相当パス）
-  - 登録フォルダー、音量、テーマ、カスタムプレイリスト、再生履歴等を保存。
-- **オンラインメタデータキャッシュ:** `online-metadata.json`
-  - osu! API から取得したジャンル・言語情報を保存。
+- **Settings File:** `%AppData%\OsuMusicPlayer\settings.json` (or OS-equivalent `ApplicationData` path on macOS/Linux).
+  - Stores configured source paths, volume, themes, playlists, and history.
+- **Online Metadata Cache:** `online-metadata.json`
+  - Stores cached genre/language information retrieved via osu! API.
 
 ---
 
-## ビルドと開発
+## Building & Development
 
-### 開発環境の前提要件
+### Prerequisites
 - **.NET 8 SDK** (C# 12)
-- 対応プラットフォームの OS 環境
+- Target operating system environment
 
-### リポジトリのクローンと実行
+### Clone and Run
 
 ```sh
-# 依存パッケージの復元
+# Restore dependencies
 dotnet restore ./OsuMusicPlayer.sln --configfile ./NuGet.Config
 
-# デスクトップアプリの実行
+# Run the desktop application
 dotnet run --project ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj
 ```
 
-### 配布用パッケージのビルド (`publish`)
+### Publishing Standalone Releases (`publish`)
 
-各 OS 向けにランタイムを含めた自己完結型（Self-Contained）バイナリを出力する例：
+Build self-contained binaries for target architectures:
 
 ```sh
 # Windows x64
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r win-x64 --self-contained true -o ./artifacts/publish/win-x64
+
+# macOS Intel
+dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r osx-x64 --self-contained true -o ./artifacts/publish/osx-x64
 
 # macOS Apple Silicon
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r osx-arm64 --self-contained true -o ./artifacts/publish/osx-arm64
@@ -280,58 +288,61 @@ dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r 
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r linux-x64 --self-contained true -o ./artifacts/publish/linux-x64
 ```
 
-### テストの実行
+### Running Tests
 
 ```sh
-# 単体テスト (xUnit)
+# Unit tests (xUnit)
 dotnet test ./OsuMusicPlayer.sln
 
-# 実ライブラリを用いた結合試験ハーネス
+# Integration test harness with local osu! data
 dotnet run --project ./tools/OsuMusicPlayer.IntegrationHarness -- all
 ```
 
-#### プロジェクト構成
+#### Project Structure
 
 ```
 src/
- ├── OsuMusicPlayer.Core/       # ドメインモデル、osu!db / Realm パーサー、重複統合ロジック
- ├── OsuMusicPlayer.Audio/      # BASS / BASS_FX ラッパー、イコライザー、ヒットサウンド生成
- ├── OsuMusicPlayer.Server/     # Kestrel サーバー、ストリーミング API、Web リモート、OBS オーバーレイ
- ├── OsuMusicPlayer.ServerHost/ # ヘッドレスサーバー用実行ホスト
- └── OsuMusicPlayer.App/        # Avalonia UI アプリケーション本体、設定・テーマ管理
-tests/                          # 単体テストプロジェクト
-tools/                          # 結合試験・検証用ハーネス
-third_party/                    # BASS 等のネイティブライブラリおよびライセンス情報
+ ├── OsuMusicPlayer.Core/       # Domain models, osu!.db / Realm parsers, deduplication logic
+ ├── OsuMusicPlayer.Audio/      # BASS / BASS_FX wrappers, equalizer, hitsound synthesis
+ ├── OsuMusicPlayer.Server/     # Kestrel server, streaming API, Web Remote, OBS overlay
+ ├── OsuMusicPlayer.ServerHost/ # Headless server host
+ └── OsuMusicPlayer.App/        # Avalonia UI desktop application, settings and themes
+tests/                          # Unit tests
+tools/                          # Integration testing harnesses
+third_party/                    # Native BASS binaries and license documents
 ```
 
 ---
 
-## トラブルシューティング
+## Troubleshooting
 
-| 現象 | 主な原因と確認事項 |
+| Issue | Cause & Recommended Action |
 | :--- | :--- |
-| **楽曲が一覧に表示されない** | ツールバーの **Sources** を確認してください。osu!stable は `osu!.db` と `Songs`、lazer は `client.realm` と `files` が存在するフォルダーを指定し、**Reload** を実行してください。 |
-| **音声ライブラリの読み込み失敗** | お使いの OS / CPU アーキテクチャに合致したパッケージか確認してください。また、展開時に `bass.dll` などのネイティブファイルが欠落していないか確認してください。 |
-| **背景動画が再生されない** | 譜面自体に動画ファイルが存在するか、詳細ペインで **Video** がオンになっているか確認してください。Linux 環境では `libvlc-dev` パッケージがシステムにインストールされている必要があります。 |
-| **macOS で起動がブロックされる** | 未署名アプリケーションの隔離（Gatekeeper）による場合があります。システム設定の「プライバシーとセキュリティ」から実行を許可してください。 |
-| **Web リモートに接続できない** | Settings の Server でサーバーが有効になっているか、ファイアウォールでポート `5150` が許可されているか、また **Allow LAN** がオンになっているかを確認してください。 |
+| **Songs do not appear in the library** | Check **Sources** in the toolbar. Ensure osu!stable points to a folder containing `osu!.db` and `Songs`, or lazer points to `client.realm` and `files`. Then click **Reload**. |
+| **Audio engine fails to initialize** | Verify that you downloaded the build matching your OS and architecture, and ensure all native libraries (such as `bass.dll`) are present in the application folder. |
+| **Background video does not play** | Verify that the beatmap contains a video file and that **Video** is enabled in the details pane. On Linux, ensure `libvlc-dev` is installed on your system. |
+| **macOS blocks application launch** | Caused by macOS Gatekeeper for unsigned binaries. Allow execution under System Settings → Privacy & Security. |
+| **Cannot connect to Web Remote** | Verify that the server is enabled in Settings, port `5150` is allowed through your firewall, and **Allow LAN** is checked. |
 
 ---
 
-## クレジット & 免責事項
+## Credits & Disclaimer
 
-### 免責事項 (Disclaimer)
-- 本ソフトウェアは非公式のファンメイドプロジェクトであり、ppy Pty Ltd または osu! 公式チームとは一切関係ありません。
-- "osu!" は ppy Pty Ltd の登録商標です。
+### Inspiration
+This project is heavily inspired by [Osu-Player](https://github.com/Milkitic/Osu-Player) by Milkitic. Special thanks for the pioneering concept and brilliant ideas!
 
-### オープンソース & サードパーティライブラリ
-本プロジェクトは、以下の素晴らしいオープンソースライブラリおよびソフトウェアを活用して制作されています。
+### Disclaimer
+- This is an unofficial, community-driven fan project and is not affiliated with or endorsed by ppy Pty Ltd or the osu! team.
+- "osu!" is a registered trademark of ppy Pty Ltd.
 
-- **UI フレームワーク:** [Avalonia UI](https://avaloniaui.net/)
-- **オーディオ再生:** [ManagedBass](https://github.com/fiload/ManagedBass) / [Un4seen BASS & BASS_FX](https://www.un4seen.com/)
-  - ※ BASS および BASS_FX の非商用利用に関する規約は [third_party/README.md](third_party/README.md) をご覧ください。
-- **osu! ファイル解析:** [OsuParsers](https://github.com/DuskyVanilla/OsuParsers)
-- **データベース:** [Realm .NET SDK](https://github.com/realm/realm-dotnet)
-- **動画再生:** [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) / [VideoLAN VLC](https://www.videolan.org/)
-- **ストーリーボード再現:** [ReOsuStoryboardPlayer](https://github.com/MikiraSora/ReOsuStoryboardPlayer)
-- **ヒットサウンド参照:** [KeyASIO.Net](https://github.com/Milkitic/KeyASIO.Net)
+### Open Source & Third-Party Libraries
+This project is built possible thanks to these open-source libraries and components:
+
+- **UI Framework:** [Avalonia UI](https://avaloniaui.net/)
+- **Audio Engine:** [ManagedBass](https://github.com/fiload/ManagedBass) / [Un4seen BASS & BASS_FX](https://www.un4seen.com/)  
+  *(For BASS non-commercial licensing terms, please refer to [third_party/README.md](third_party/README.md))*
+- **osu! Parsing:** [OsuParsers](https://github.com/DuskyVanilla/OsuParsers)
+- **Database Engine:** [Realm .NET SDK](https://github.com/realm/realm-dotnet)
+- **Video Playback:** [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) / [VideoLAN VLC](https://www.videolan.org/)
+- **Storyboard Engine:** [ReOsuStoryboardPlayer](https://github.com/MikiraSora/ReOsuStoryboardPlayer)
+- **Hitsound Reference:** [KeyASIO.Net](https://github.com/Milkitic/KeyASIO.Net)
