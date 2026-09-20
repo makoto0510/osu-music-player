@@ -9,3 +9,6 @@ FodyWeavers.xsd
 *.suo
 .DS_Store
 third_party/packages/
+human-debug-list.md
+documents.md
+TASKS.md
