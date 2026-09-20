@@ -65,7 +65,7 @@
 | OS | 対象アーキテクチャ | 対応 osu! ライブラリ | 背景動画の再生 |
 | :--- | :--- | :--- | :--- |
 | **Windows** | x64 | osu!stable / osu!lazer | 同梱または NuGet 経由で libVLC 自動配置 |
-| **macOS** | Apple Silicon (arm64) / Intel (x64) | osu!lazer のみ | ビルド時に libVLC を配置 |
+| **macOS** | Apple Silicon (arm64) / Intel (x64) | osu!lazer のみ | 現行の libVLC パッケージは Intel 専用のため、ARM64 では動画を利用できません |
 | **Linux** | x64 / arm64 | osu!lazer のみ | システムの libVLC を利用 (`apt install libvlc-dev` 等) |
 
 - ローカルに楽曲データを含む osu! がインストールされている必要があります。
@@ -84,7 +84,8 @@
 2. アーカイブを任意のフォルダーに展開します。
 3. アプリケーションを実行します:
    - **Windows:** `OsuMusicPlayer.App.exe` を起動。
-   - **macOS / Linux:** `OsuMusicPlayer.App` に実行権限を付与して起動。
+   - **macOS:** アーカイブに `OsuMusicPlayer.app` が含まれている場合は Finder から開きます。旧形式の実行ファイルだけを含むアーカイブでは、下記のコマンドを使用してください。初回起動時に仮署名ビルドの実行を「システム設定 → プライバシーとセキュリティ → このまま開く」で許可する必要がある場合があります。`chmod` だけでは Gatekeeper による拒否を解決できません。
+   - **Linux / 旧形式の macOS アーカイブ:** `OsuMusicPlayer.App` に実行権限を付与して起動。
      ```sh
      chmod +x OsuMusicPlayer.App
      ./OsuMusicPlayer.App
@@ -279,14 +280,26 @@ dotnet run --project ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r win-x64 --self-contained true -o ./artifacts/publish/win-x64
 
 # macOS Intel
-dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r osx-x64 --self-contained true -o ./artifacts/publish/osx-x64
+bash tools/macos/publish.sh osx-x64
 
 # macOS Apple Silicon
-dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r osx-arm64 --self-contained true -o ./artifacts/publish/osx-arm64
+bash tools/macos/publish.sh osx-arm64
 
 # Linux x64
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r linux-x64 --self-contained true -o ./artifacts/publish/linux-x64
 ```
+
+macOS 用スクリプトは Mac 上で実行してください。`artifacts/publish/<rid>-bundle/build.*` に毎回新しい自己完結型 `.app` と ZIP を生成し、.NET に必要な JIT エンタイトルメントを含めてネイティブライブラリとアプリバンドルに署名します。既定の署名はローカルテスト用の仮署名であり、ダウンロードしたリリースを Gatekeeper に信頼させるものではありません。
+
+配布用には、インストール済みの Developer ID Application 証明書を指定してビルドします。
+
+```sh
+MACOS_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' bash tools/macos/publish.sh osx-arm64
+```
+
+生成された ZIP を `xcrun notarytool submit <zip> --keychain-profile <profile> --wait` で公証に提出し、Apple の承認後に `xcrun stapler staple <app>` と `spctl --assess --type execute --verbose=2 <app>` を実行してください。その後、チケットを含む ZIP を `ditto -c -k --keepParent <app> <zip>` で作り直します。パスとキーチェーンプロファイルは環境に合わせて指定してください。詳しくは [Apple の公証ワークフロー](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow) と [.NET の macOS 発行手順](https://learn.microsoft.com/en-us/dotnet/core/deploying/macos) を参照してください。
+
+ローカルビルドがウィンドウを表示する前に `Killed: 9` / 終了コード 137 で終了する場合は、macOS のコンソールで `AppleMobileFileIntegrity` / `AppleSystemPolicy` による拒否を確認してください。仮署名が有効でも Gatekeeper に拒否されることがあります。インストール済みの .NET SDK がある場合は、`dotnet <発行先ディレクトリ>/OsuMusicPlayer.app/Contents/Resources/payload/OsuMusicPlayer.App.dll` を実行すると、apphost の拒否とアプリ初期化時の失敗を切り分けられます。Gatekeeper をシステム全体で無効化しないでください。配布版で承認ダイアログを避けるには Developer ID 署名と公証が必要です。
 
 ### テストの実行
 
@@ -321,7 +334,7 @@ third_party/                    # BASS 等のネイティブライブラリお�
 | **楽曲が一覧に表示されない** | ツールバーの **Sources** を確認してください。osu!stable は `osu!.db` と `Songs`、lazer は `client.realm` と `files` が存在するフォルダーを指定し、**Reload** を実行してください。 |
 | **音声ライブラリの読み込み失敗** | お使いの OS / CPU アーキテクチャに合致したパッケージか確認してください。また、展開時に `bass.dll` などのネイティブファイルが欠落していないか確認してください。 |
 | **背景動画が再生されない** | 譜面自体に動画ファイルが存在するか、詳細ペインで **Video** がオンになっているか確認してください。Linux 環境では `libvlc-dev` パッケージがシステムにインストールされている必要があります。 |
-| **macOS で起動がブロックされる** | 未署名アプリケーションの隔離（Gatekeeper）による場合があります。システム設定の「プライバシーとセキュリティ」から実行を許可してください。 |
+| **macOS で起動がブロックされる** | macOS の Gatekeeper が未署名または仮署名のバイナリを拒否している可能性があります。システム設定の「プライバシーとセキュリティ」から実行を許可してください。配布版で承認を不要にするには Developer ID 署名と公証が必要です。 |
 | **Web リモートに接続できない** | Settings の Server でサーバーが有効になっているか、ファイアウォールでポート `5150` が許可されているか、また **Allow LAN** がオンになっているかを確認してください。 |
 
 ---

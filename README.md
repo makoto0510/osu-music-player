@@ -65,7 +65,7 @@ Beyond audio playback, it faithfully renders beatmap **background videos**, **hi
 | OS | Target Architecture | Supported osu! Library | Background Video Support |
 | :--- | :--- | :--- | :--- |
 | **Windows** | x64 | osu!stable / osu!lazer | Automatic via bundled/NuGet libVLC |
-| **macOS** | Apple Silicon (arm64) / Intel (x64) | osu!lazer only | libVLC bundled during build |
+| **macOS** | Apple Silicon (arm64) / Intel (x64) | osu!lazer only | Current libVLC package is Intel-only; video is unavailable on ARM64 |
 | **Linux** | x64 / arm64 | osu!lazer only | Requires system libVLC (`apt install libvlc-dev` etc.) |
 
 - A local osu! installation with song files is required.
@@ -84,7 +84,8 @@ Beyond audio playback, it faithfully renders beatmap **background videos**, **hi
 2. Extract the archive into a folder of your choice.
 3. Launch the application:
    - **Windows:** Run `OsuMusicPlayer.App.exe`.
-   - **macOS / Linux:** Grant executable permissions and run `OsuMusicPlayer.App`:
+   - **macOS:** If the archive contains `OsuMusicPlayer.app`, open it in Finder. For older archives containing a bare executable, use the commands below. An ad-hoc signed build may require approval under **System Settings → Privacy & Security → Open Anyway** after the first launch attempt; `chmod` alone does not resolve Gatekeeper rejection.
+   - **Linux / older macOS archives:** Grant executable permissions and run `OsuMusicPlayer.App`:
      ```sh
      chmod +x OsuMusicPlayer.App
      ./OsuMusicPlayer.App
@@ -279,14 +280,39 @@ Build self-contained binaries for target architectures:
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r win-x64 --self-contained true -o ./artifacts/publish/win-x64
 
 # macOS Intel
-dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r osx-x64 --self-contained true -o ./artifacts/publish/osx-x64
+bash tools/macos/publish.sh osx-x64
 
 # macOS Apple Silicon
-dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r osx-arm64 --self-contained true -o ./artifacts/publish/osx-arm64
+bash tools/macos/publish.sh osx-arm64
 
 # Linux x64
 dotnet publish ./src/OsuMusicPlayer.App/OsuMusicPlayer.App.csproj -c Release -r linux-x64 --self-contained true -o ./artifacts/publish/linux-x64
 ```
+
+The macOS script runs on a Mac and produces a self-contained `.app` and ZIP in a new
+`artifacts/publish/<rid>-bundle/build.*` directory. It signs native libraries and the
+bundle, including the JIT entitlement required by .NET. The default ad-hoc signature
+is for local testing; it does **not** make a downloaded release trusted by Gatekeeper.
+For distribution, build with an installed Developer ID Application certificate:
+
+```sh
+MACOS_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' bash tools/macos/publish.sh osx-arm64
+```
+
+Then submit the generated ZIP using `xcrun notarytool submit <zip> --keychain-profile
+<profile> --wait`. After Apple accepts it, run `xcrun stapler staple <app>` and
+`spctl --assess --type execute --verbose=2 <app>`, and recreate the ZIP with
+`ditto -c -k --keepParent <app> <zip>` so it includes the ticket. Use your own paths
+and configured keychain profile. See [Apple's notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
+and [.NET macOS publishing](https://learn.microsoft.com/en-us/dotnet/core/deploying/macos).
+
+If a local build exits with `Killed: 9` / exit code 137 before showing a window,
+check macOS Console for `AppleMobileFileIntegrity` / `AppleSystemPolicy` rejection.
+A valid ad-hoc signature can still be rejected by Gatekeeper. For diagnosis with
+an installed .NET SDK, `dotnet <publish-directory>/OsuMusicPlayer.App.dll` can
+distinguish apphost rejection from an application initialization failure. Do not
+disable Gatekeeper globally. Developer ID signing and notarization are required
+to avoid approval prompts for distributed builds.
 
 ### Running Tests
 
