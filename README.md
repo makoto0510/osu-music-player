@@ -10,6 +10,10 @@
 A feature-rich desktop music player that directly loads and plays your local **osu!stable** and **osu!lazer** song libraries without needing to export or duplicate files.  
 Beyond audio playback, it faithfully renders beatmap **background videos**, **hitsounds**, and **storyboards**, and features an autoplay-style **difficulty preview**.
 
+![013](images/013.png)
+![014](images/014.png)
+
+
 > [!NOTE]
 > **Read-Only Safety Design:**  
 > This player accesses your osu! directories strictly in **read-only** mode. It will never alter, overwrite, or corrupt your beatmaps or database files. Playlists, user configurations, and cached data are saved entirely independently in the player's own application data folder.
