@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="OsuMusicPlayer.Mobile.App.MainView">
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Background="#15151d">
+    <StackPanel Grid.Row="0" Margin="20,24,20,12" Spacing="4">
+      <TextBlock Text="osu! music player" FontSize="25" FontWeight="Bold" />
+      <TextBlock Text="Android remote" Foreground="#aaaaaf" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Margin="20,0,20,12" Spacing="8">
+      <TextBox Watermark="http://192.168.1.10:5150/" Text="{Binding ServerAddress}" />
+      <Button Content="サーバーに接続" Command="{Binding ConnectCommand}" HorizontalAlignment="Stretch" />
+      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#c5c5d0" />
+    </StackPanel>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="20,0,20,12" ColumnSpacing="8">
+      <TextBox Grid.Column="0" Watermark="曲名・アーティストで検索" Text="{Binding SearchText}" />
+      <Button Grid.Column="1" Content="検索" Command="{Binding SearchCommand}" />
+    </Grid>
+
+    <ListBox Grid.Row="3" Margin="12,0" ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="8,6" Spacing="2">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#aaaaaf" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Border Grid.Row="4" Background="#232330" Padding="20,12,20,20">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{Binding CurrentTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+          <Button Grid.Column="0" Content="前へ" Command="{Binding PreviousCommand}" />
+          <Button Grid.Column="1" Content="再生/停止" Command="{Binding ToggleCommand}" />
+          <Button Grid.Column="2" Content="次へ" Command="{Binding NextCommand}" />
+          <Button Grid.Column="3" Content="選択曲を再生" Command="{Binding PlaySelectedCommand}" />
+        </Grid>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>
