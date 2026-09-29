@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using OsuMusicPlayer.Mobile.Core;
 using Xunit;
 
 namespace OsuMusicPlayer.Server.Tests;
@@ -62,6 +63,42 @@ public sealed class MusicServerTests
         {
             File.Delete(audioPath);
         }
+    }
+
+    [Fact]
+    public async Task MobileClient_UsesServerContract()
+    {
+        var bridge = new FakeBridge(Path.Combine(Path.GetTempPath(), "unused-mobile-test.mp3"));
+        await using var server = new MusicServer();
+        await server.StartAsync(new MusicServerOptions { Port = 0, AllowRemoteConnections = false }, bridge);
+        using var httpClient = new HttpClient { BaseAddress = new Uri(server.Urls[0]) };
+        var client = new MobileServerClient(httpClient);
+
+        var page = await client.GetTracksAsync("camellia", limit: 10);
+        page.Total.Should().Be(1);
+        page.Items.Should().ContainSingle().Which.Id.Should().Be(bridge.Tracks[0].Id);
+        (await client.GetStateAsync()).Volume.Should().Be(1);
+
+        await client.PlayAsync(bridge.Tracks[0].Id);
+        bridge.Played.Should().ContainSingle().Which.Should().Be(bridge.Tracks[0].Id);
+        await client.SetVolumeAsync(0.25);
+        bridge.Volume.Should().Be(0.25);
+        client.GetAudioUri(bridge.Tracks[0].Id).AbsolutePath.Should().Be($"/api/tracks/{bridge.Tracks[0].Id:D}/audio");
+    }
+
+    [Fact]
+    public async Task MobileClient_RejectsInvalidAddressesAndControlValues()
+    {
+        using var noAddress = new HttpClient();
+        FluentActions.Invoking(() => new MobileServerClient(noAddress)).Should().Throw<ArgumentException>();
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri("http://localhost:5150/") };
+        var client = new MobileServerClient(httpClient);
+        using var pathAddress = new HttpClient { BaseAddress = new Uri("http://localhost:5150/remote/") };
+        FluentActions.Invoking(() => new MobileServerClient(pathAddress)).Should().Throw<ArgumentException>();
+        await FluentActions.Awaiting(() => client.SeekAsync(double.NaN)).Should().ThrowAsync<ArgumentOutOfRangeException>();
+        await FluentActions.Awaiting(() => client.SetVolumeAsync(1.5)).Should().ThrowAsync<ArgumentOutOfRangeException>();
+        await FluentActions.Awaiting(() => client.GetTracksAsync(offset: -1)).Should().ThrowAsync<ArgumentOutOfRangeException>();
     }
 
     [Fact]
