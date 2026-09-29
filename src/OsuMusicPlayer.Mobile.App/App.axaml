@@ -4,5 +4,8 @@
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="Control">
+      <Setter Property="TextElement.FontFamily" Value="$Default" />
+    </Style>
   </Application.Styles>
 </Application>

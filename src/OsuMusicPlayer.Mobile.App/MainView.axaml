@@ -3,8 +3,8 @@
              x:Class="OsuMusicPlayer.Mobile.App.MainView">
   <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Background="#15151d">
     <StackPanel Grid.Row="0" Margin="20,24,20,12" Spacing="4">
-      <TextBlock Text="osu! music player" FontSize="25" FontWeight="Bold" />
-      <TextBlock Text="Android remote" Foreground="#aaaaaf" />
+      <TextBlock Text="osu! ミュージックプレーヤー" FontSize="25" />
+      <TextBlock Text="スマホ再生・ダウンロード / PC リモコン" Foreground="#aaaaaf" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Margin="20,0,20,12" Spacing="8">
@@ -18,20 +18,45 @@
       <Button Grid.Column="1" Content="検索" Command="{Binding SearchCommand}" />
     </Grid>
 
-    <ListBox Grid.Row="3" Margin="12,0" ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}">
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <StackPanel Margin="8,6" Spacing="2">
-            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#aaaaaf" TextTrimming="CharacterEllipsis" />
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <TabControl Grid.Row="3" Margin="12,0">
+      <TabItem Header="サーバーの曲">
+        <ListBox ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="8,6" Spacing="2">
+                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#aaaaaf" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+      <TabItem Header="保存済み">
+        <ListBox ItemsSource="{Binding DownloadedTracks}" SelectedItem="{Binding SelectedDownloadedTrack}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="8,6" Spacing="2">
+                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#aaaaaf" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+    </TabControl>
 
     <Border Grid.Row="4" Background="#232330" Padding="20,12,20,20">
       <StackPanel Spacing="8">
-        <TextBlock Text="{Binding CurrentTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="スマホで再生" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding PhoneTitle}" TextTrimming="CharacterEllipsis" />
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+          <Button Grid.Row="0" Grid.Column="0" Content="選択曲を再生" Command="{Binding PlayOnPhoneCommand}" />
+          <Button Grid.Row="0" Grid.Column="1" Content="一時停止 / 再開" Command="{Binding TogglePhoneCommand}" />
+          <Button Grid.Row="1" Grid.Column="0" Content="選択曲をダウンロード" Command="{Binding DownloadSelectedCommand}" />
+          <Button Grid.Row="1" Grid.Column="1" Content="保存済みを再生" Command="{Binding PlayDownloadedCommand}" />
+        </Grid>
+        <TextBlock Text="PC の再生を操作" FontWeight="SemiBold" Margin="0,4,0,0" />
+        <TextBlock Text="{Binding CurrentTitle}" TextTrimming="CharacterEllipsis" />
         <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
           <Button Grid.Column="0" Content="前へ" Command="{Binding PreviousCommand}" />
           <Button Grid.Column="1" Content="再生/停止" Command="{Binding ToggleCommand}" />

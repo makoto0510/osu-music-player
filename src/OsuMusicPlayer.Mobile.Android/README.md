@@ -1,4 +1,4 @@
-# Android アプリ（TASK4 初期版）
+# Android アプリ
 
 既存のデスクトップ／ヘッドレスサーバーを操作する Avalonia 製 Android アプリです。Android 端末から osu! のデータファイルを直接読みません。
 
@@ -6,14 +6,16 @@
 
 - LAN 上のサーバーURLを手動入力して接続
 - 楽曲検索と一覧表示（先頭100曲。検索はサーバーの全曲が対象）
-- 選択曲のPC側再生、再生／一時停止、前曲／次曲
-- 再生中の曲名表示
+- 選択曲のスマホ側再生と一時停止／再開
+- 選択曲のダウンロードと保存済み曲の再生
+- 選択曲のPC側再生、PC側の再生／一時停止、前曲／次曲
+- PCで再生中の曲名表示
 
-端末内での音声再生、背景画像、キュー／お気に入り、接続先の保存・自動発見、バックグラウンド再生は後続作業です。サーバーの音声・背景URLは `MobileServerClient` に用意しています。
+スマホで再生すると、PCサーバーから音声をストリーミングします。ダウンロードした曲はAndroidアプリ専用領域に保存され、「保存済み」タブから接続なしでも再生できます。端末の一般的な Downloads フォルダーには出力されません。背景画像、キュー／お気に入り、接続先の保存・自動発見、バックグラウンド再生は後続作業です。
 
 ## ビルドと接続
 
-1. .NET 8 SDK、Android ワークロード、Android SDK を用意します。
+1. .NET 10 SDK、対応する Android ワークロード、Android SDK を用意します。共有の Mobile.App と Mobile.Core は引き続き .NET 8 を対象とします。
 2. `dotnet restore src/OsuMusicPlayer.Mobile.Android/OsuMusicPlayer.Mobile.Android.csproj --configfile NuGet.Config` を実行します。
 3. `dotnet build src/OsuMusicPlayer.Mobile.Android/OsuMusicPlayer.Mobile.Android.csproj -c Debug` を実行します。
 4. PCアプリの Settings → Server / OBS でサーバーと Allow LAN を有効にするか、ServerHost を起動します。
