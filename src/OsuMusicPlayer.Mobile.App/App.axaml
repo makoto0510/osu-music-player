@@ -5,7 +5,8 @@
   <Application.Styles>
     <FluentTheme />
     <Style Selector="Control">
-      <Setter Property="TextElement.FontFamily" Value="$Default" />
+      <Setter Property="TextElement.FontFamily" Value="Noto Sans CJK JP" />
     </Style>
   </Application.Styles>
 </Application>
+

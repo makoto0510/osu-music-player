@@ -1,69 +1,154 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="OsuMusicPlayer.Mobile.App.MainView">
-  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Background="#15151d">
-    <StackPanel Grid.Row="0" Margin="20,24,20,12" Spacing="4">
-      <TextBlock Text="osu! ミュージックプレーヤー" FontSize="25" />
-      <TextBlock Text="スマホ再生・ダウンロード / PC リモコン" Foreground="#aaaaaf" />
-    </StackPanel>
-
-    <StackPanel Grid.Row="1" Margin="20,0,20,12" Spacing="8">
-      <TextBox Watermark="http://192.168.1.10:5150/" Text="{Binding ServerAddress}" />
-      <Button Content="サーバーに接続" Command="{Binding ConnectCommand}" HorizontalAlignment="Stretch" />
-      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#c5c5d0" />
-    </StackPanel>
-
-    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="20,0,20,12" ColumnSpacing="8">
-      <TextBox Grid.Column="0" Watermark="曲名・アーティストで検索" Text="{Binding SearchText}" />
-      <Button Grid.Column="1" Content="検索" Command="{Binding SearchCommand}" />
+  <UserControl.Styles>
+    <Style Selector="TextBlock"><Setter Property="Foreground" Value="#F5F2FA" /></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#A6A1B6" /><Setter Property="FontSize" Value="12" /></Style>
+    <Style Selector="TextBlock.heading"><Setter Property="FontSize" Value="28" /></Style>
+    <Style Selector="Button">
+      <Setter Property="MinHeight" Value="48" /><Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Background" Value="#272333" /><Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="#F5F2FA" /><Setter Property="Padding" Value="14,10" />
+    </Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#F279AF" /><Setter Property="Foreground" Value="#20101B" /></Style>
+    <Style Selector="TextBox"><Setter Property="MinHeight" Value="48" /><Setter Property="CornerRadius" Value="14" /><Setter Property="Background" Value="#211E2C" /><Setter Property="BorderBrush" Value="#393344" /></Style>
+    <Style Selector="ListBox"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /></Style>
+    <Style Selector="ListBoxItem"><Setter Property="MinHeight" Value="76" /><Setter Property="Padding" Value="8" /><Setter Property="CornerRadius" Value="14" /><Setter Property="Margin" Value="0,2" /></Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter"><Setter Property="Background" Value="#382537" /></Style>
+    <Style Selector="TabItem"><Setter Property="MinHeight" Value="56" /><Setter Property="FontSize" Value="12" /><Setter Property="FontWeight" Value="Normal" /><Setter Property="Padding" Value="12,14" /></Style>
+  </UserControl.Styles>
+  <UserControl.Resources>
+    <DataTemplate x:Key="TrackTemplate">
+      <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12">
+        <Border Width="48" Height="48" CornerRadius="14" Background="#33273F">
+          <TextBlock Text="♪" FontSize="26" Foreground="#F5A3CA" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
+          <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Artist}" Classes="muted" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="♪" Foreground="#A6A1B6" VerticalAlignment="Center" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Grid RowDefinitions="Auto,*,Auto,Auto" Background="#131119">
+    <Grid Margin="24,20,24,12" ColumnDefinitions="*,Auto">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="osu!" Foreground="#F279AF" FontSize="22" />
+        <TextBlock Text="music" FontSize="22" FontWeight="Light" />
+      </StackPanel>
+      <Border Grid.Column="1" Background="#282131" CornerRadius="10" Padding="10,5" VerticalAlignment="Center">
+        <TextBlock Text="MOBILE" FontSize="10" Foreground="#C8B4DC" LetterSpacing="2" />
+      </Border>
     </Grid>
 
-    <TabControl Grid.Row="3" Margin="12,0">
-      <TabItem Header="サーバーの曲">
-        <ListBox ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Margin="8,6" Spacing="2">
-                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#aaaaaf" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+    <TabControl Grid.Row="1" TabStripPlacement="Bottom" Background="Transparent" Padding="0">
+      <TabItem Header="ライブラリ">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20,8,20,8">
+          <StackPanel Spacing="6" Margin="4,0,4,20">
+            <TextBlock Text="いつもの曲を、どこでも。" Classes="muted" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="ライブラリ" Classes="heading" />
+              <TextBlock Grid.Column="1" Text="{Binding Tracks.Count, StringFormat='{}{0} 曲表示'}" Classes="muted" VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,12">
+            <TextBox Text="{Binding SearchText}" Watermark="曲名・アーティストを検索" AutomationProperties.Name="楽曲を検索">
+              <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" /></TextBox.KeyBindings>
+            </TextBox>
+            <Button Grid.Column="1" Content="検索" Command="{Binding SearchCommand}" />
+          </Grid>
+          <Grid Grid.Row="2">
+            <ListBox ItemsSource="{Binding Tracks}" SelectedItem="{Binding SelectedTrack}" ItemTemplate="{StaticResource TrackTemplate}" />
+            <StackPanel IsVisible="{Binding !Tracks.Count}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Margin="16">
+              <TextBlock Text="あなたの音楽は、PCから。" FontSize="18" TextAlignment="Center" />
+              <TextBlock Text="「接続」からPCにつなぐと、曲が表示されます。&#10;検索結果がない場合は検索語を変えてください。" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+          </Grid>
+          <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,12,0,0">
+            <Button Classes="primary" Content="▶  選択曲をスマホで再生" Command="{Binding PlayOnPhoneCommand}" HorizontalAlignment="Stretch" />
+            <Button Grid.Column="1" Content="↓ 保存" Command="{Binding DownloadSelectedCommand}" AutomationProperties.Name="選択曲をダウンロード" />
+          </Grid>
+        </Grid>
       </TabItem>
       <TabItem Header="保存済み">
-        <ListBox ItemsSource="{Binding DownloadedTracks}" SelectedItem="{Binding SelectedDownloadedTrack}">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Margin="8,6" Spacing="2">
-                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#aaaaaf" TextTrimming="CharacterEllipsis" />
+        <Grid RowDefinitions="Auto,*,Auto" Margin="20,8,20,8">
+          <StackPanel Margin="4,0,4,20" Spacing="6">
+            <TextBlock Text="接続なしでも、音楽と一緒に。" Classes="muted" />
+            <TextBlock Text="保存済み" Classes="heading" />
+            <TextBlock Text="{Binding DownloadedTracks.Count, StringFormat='アプリ内に {0} 曲保存'}" Classes="muted" />
+          </StackPanel>
+          <Grid Grid.Row="1">
+            <ListBox ItemsSource="{Binding DownloadedTracks}" SelectedItem="{Binding SelectedDownloadedTrack}" ItemTemplate="{StaticResource TrackTemplate}" />
+            <StackPanel IsVisible="{Binding !DownloadedTracks.Count}" VerticalAlignment="Center" Margin="16" Spacing="10">
+              <TextBlock Text="お気に入りの曲を持ち出そう。" FontSize="18" TextAlignment="Center" />
+              <TextBlock Text="ライブラリで曲を選んで「↓ 保存」。&#10;保存した曲はここから再生できます。" Classes="muted" TextAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+          </Grid>
+          <Button Grid.Row="2" Classes="primary" Content="▶  保存済みの選択曲を再生" Command="{Binding PlayDownloadedCommand}" HorizontalAlignment="Stretch" Margin="0,12,0,0" />
+        </Grid>
+      </TabItem>
+      <TabItem Header="PC操作">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="24,8,24,24" Spacing="20">
+            <StackPanel Spacing="6"><TextBlock Text="手元から、PCの音楽をコントロール。" Classes="muted" /><TextBlock Text="PC リモコン" Classes="heading" /></StackPanel>
+            <Border CornerRadius="24" Padding="24" MinHeight="180">
+              <Border.Background><LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%"><GradientStop Color="#472A4D" Offset="0" /><GradientStop Color="#242137" Offset="1" /></LinearGradientBrush></Border.Background>
+              <StackPanel Spacing="18" VerticalAlignment="Center">
+                <TextBlock Text="PLAYING ON PC" FontSize="10" LetterSpacing="2" Foreground="#E7AED5" />
+                <TextBlock Text="{Binding CurrentTitle}" FontSize="22" TextWrapping="Wrap" />
+                <TextBlock Text="接続先のPCから音声が流れます" Classes="muted" />
               </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+            </Border>
+            <Grid ColumnDefinitions="*,2*,*" ColumnSpacing="8">
+              <Button Content="前へ" Command="{Binding PreviousCommand}" HorizontalAlignment="Stretch" />
+              <Button Grid.Column="1" Classes="primary" Content="再生 / 一時停止" Command="{Binding ToggleCommand}" HorizontalAlignment="Stretch" />
+              <Button Grid.Column="2" Content="次へ" Command="{Binding NextCommand}" HorizontalAlignment="Stretch" />
+            </Grid>
+            <Border Background="#211D2B" CornerRadius="18" Padding="18">
+              <StackPanel Spacing="12">
+                <TextBlock Text="ライブラリの選択曲" Classes="muted" />
+                <TextBlock Text="{Binding SelectedTrack.Title, TargetNullValue='ライブラリで曲を選択してください'}" TextWrapping="Wrap" />
+                <Button Content="選択曲をPCで再生" Command="{Binding PlaySelectedCommand}" HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="接続">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="24,8,24,24" Spacing="20">
+            <StackPanel Spacing="6"><TextBlock Text="あなたのPCと、音楽をつなぐ。" Classes="muted" /><TextBlock Text="サーバーに接続" Classes="heading" /></StackPanel>
+            <Border Background="#211D2B" CornerRadius="20" Padding="20">
+              <StackPanel Spacing="14">
+                <TextBlock Text="PC のサーバーURL" />
+                <TextBox Watermark="http://192.168.1.10:5150/" Text="{Binding ServerAddress}" AutomationProperties.Name="PCのサーバーURL" />
+                <Button Classes="primary" Content="接続する" Command="{Binding ConnectCommand}" HorizontalAlignment="Stretch" />
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding ConnectCommand.IsRunning}" Height="3" />
+              </StackPanel>
+            </Border>
+            <StackPanel Spacing="14">
+              <TextBlock Text="接続の準備" FontSize="16" />
+              <TextBlock Text="01   スマホとPCを同じWi-Fiにつなぎます。" TextWrapping="Wrap" Classes="muted" />
+              <TextBlock Text="02   PCの Settings → Server / OBS でサーバーと Allow LAN を有効にします。" TextWrapping="Wrap" Classes="muted" />
+              <TextBlock Text="03   PCのLAN IPとポートを入力して接続します。" TextWrapping="Wrap" Classes="muted" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
     </TabControl>
 
-    <Border Grid.Row="4" Background="#232330" Padding="20,12,20,20">
-      <StackPanel Spacing="8">
-        <TextBlock Text="スマホで再生" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding PhoneTitle}" TextTrimming="CharacterEllipsis" />
-        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
-          <Button Grid.Row="0" Grid.Column="0" Content="選択曲を再生" Command="{Binding PlayOnPhoneCommand}" />
-          <Button Grid.Row="0" Grid.Column="1" Content="一時停止 / 再開" Command="{Binding TogglePhoneCommand}" />
-          <Button Grid.Row="1" Grid.Column="0" Content="選択曲をダウンロード" Command="{Binding DownloadSelectedCommand}" />
-          <Button Grid.Row="1" Grid.Column="1" Content="保存済みを再生" Command="{Binding PlayDownloadedCommand}" />
-        </Grid>
-        <TextBlock Text="PC の再生を操作" FontWeight="SemiBold" Margin="0,4,0,0" />
-        <TextBlock Text="{Binding CurrentTitle}" TextTrimming="CharacterEllipsis" />
-        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
-          <Button Grid.Column="0" Content="前へ" Command="{Binding PreviousCommand}" />
-          <Button Grid.Column="1" Content="再生/停止" Command="{Binding ToggleCommand}" />
-          <Button Grid.Column="2" Content="次へ" Command="{Binding NextCommand}" />
-          <Button Grid.Column="3" Content="選択曲を再生" Command="{Binding PlaySelectedCommand}" />
-        </Grid>
-      </StackPanel>
+    <Border Grid.Row="2" Margin="16,8,16,0" Background="#2D2334" CornerRadius="18" Padding="14,10">
+      <Grid ColumnDefinitions="32,*,Auto" ColumnSpacing="10">
+        <TextBlock Text="♪" Foreground="#F279AF" FontSize="28" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+          <TextBlock Text="このスマホで再生" FontSize="10" Foreground="#E3ACCD" />
+          <TextBlock Text="{Binding PhoneTitle}" FontSize="13" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <Button Grid.Column="2" Content="▶ / Ⅱ" Command="{Binding TogglePhoneCommand}" AutomationProperties.Name="スマホの再生を一時停止または再開" />
+      </Grid>
     </Border>
+    <TextBlock Grid.Row="3" Text="{Binding Status}" Classes="muted" FontSize="11" MaxHeight="48" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" Margin="24,10,24,14" />
   </Grid>
 </UserControl>
+
