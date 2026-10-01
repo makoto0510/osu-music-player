@@ -100,7 +100,14 @@
     </DataTemplate>
   </Window.Resources>
 
-  <Panel>
+  <Panel ClipToBounds="True">
+    <!-- Extend beyond the window so the blur does not fade at its edges.
+         Image opacity lets the active theme tint the artwork and keeps text readable. -->
+    <Image Source="{Binding ThemeBackgroundTrack.LargeBackgroundImage^}"
+           IsVisible="{Binding UseBeatmapBackground}" Stretch="UniformToFill"
+           Margin="-64" Opacity="0.35" IsHitTestVisible="False">
+      <Image.Effect><BlurEffect Radius="32" /></Image.Effect>
+    </Image>
   <Grid x:Name="ClassicShell" RowDefinitions="Auto,*,Auto" IsVisible="{Binding !IsStudioInterface}">
 
     <!-- ===== Header: logo · search · filter · tools · window buttons ===== -->

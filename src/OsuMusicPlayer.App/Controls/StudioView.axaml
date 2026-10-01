@@ -8,7 +8,7 @@
              x:Class="OsuMusicPlayer.App.Controls.StudioView"
              x:DataType="vm:MainWindowViewModel"
              FontFamily="Segoe UI, Yu Gothic UI, Meiryo, Hiragino Sans, Noto Sans CJK JP, Noto Sans JP"
-             Background="{DynamicResource ThemeBackgroundBrush}">
+             Background="Transparent">
   <UserControl.Resources>
     <MenuFlyout x:Key="StudioTrackMenu" Placement="BottomEdgeAlignedRight">
       <MenuItem Header="Play" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaySelectedCommand}">

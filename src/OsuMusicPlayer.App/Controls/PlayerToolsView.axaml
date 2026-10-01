@@ -125,6 +125,8 @@
                       </StackPanel>
                       <CheckBox Grid.Row="3" Grid.Column="1" Content="Use the skin's combo colours instead of the beatmap's" IsChecked="{Binding PreferSkinComboColours, Mode=TwoWay}" />
                     </Grid>
+                    <CheckBox Content="Use blurred beatmap background" IsChecked="{Binding UseBeatmapBackground, Mode=TwoWay}" />
+                    <TextBlock Text="Follows the playing track, or your selection before playback. Uses the theme colour when artwork is unavailable." Classes="hint" TextWrapping="Wrap" />
                     <TextBlock Classes="hint" Text="{Binding SkinsFolderPath, StringFormat='Put skin folders (osu! format: skin.ini + PNG elements) in {0}. Skins installed in osu!stable are listed too.'}" TextWrapping="Wrap" />
                     <TextBlock Classes="hint" Text="{Binding PreviewSkinStatusText}" IsVisible="{Binding PreviewSkinStatusText.Length}" TextWrapping="Wrap" />
                   </StackPanel>

@@ -46,6 +46,21 @@ public sealed class JsonSettingsStoreTests
         settings.Appearance.InterfaceName.Should().Be("Studio");
         settings.Appearance.ThemeName.Should().Be("Daylight");
     }
+
+    [Fact]
+    public async Task BeatmapBackground_RoundTripsAndOldSettingsDefaultToFalse()
+    {
+        using var directory = new TestDirectory();
+        var path = Path.Combine(directory.Path, "settings.json");
+        var store = new JsonSettingsStore(path);
+
+        await store.SaveAsync(new AppSettings { Appearance = new AppearanceSettings { UseBeatmapBackground = true } });
+        (await store.LoadAsync()).Appearance.UseBeatmapBackground.Should().BeTrue();
+
+        await File.WriteAllTextAsync(path, "{\"Appearance\":{\"ThemeName\":\"Daylight\"}}");
+        (await store.LoadAsync()).Appearance.UseBeatmapBackground.Should().BeFalse();
+    }
+
     [Fact]
     public async Task LoadAsync_ReturnsDefaultsWhenFileIsMissing()
     {

@@ -684,6 +684,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     private void notifyDetailTrackChanged()
     {
         OnPropertyChanged(nameof(DetailTrack));
+        OnPropertyChanged(nameof(ThemeBackgroundTrack));
         OnPropertyChanged(nameof(HasDetailTrack));
         OnPropertyChanged(nameof(HasCurrentTrack));
         OnPropertyChanged(nameof(CanOpenOnWeb));

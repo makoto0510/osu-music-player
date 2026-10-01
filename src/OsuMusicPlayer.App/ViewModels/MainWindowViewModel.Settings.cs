@@ -39,7 +39,7 @@ public sealed partial class MainWindowViewModel
         nameof(EffectVolume), nameof(HitsoundOffsetMs), nameof(PreferSkinHitsounds), nameof(IsServerEnabled), nameof(ServerPort), nameof(ServerAllowRemote),
         nameof(IsRichPresenceEnabled), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText), nameof(HideDuplicateSongs),
-        nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
+        nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(UseBeatmapBackground), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
     ];
 
     private readonly object saveSync = new();
@@ -298,6 +298,7 @@ public sealed partial class MainWindowViewModel
             {
                 InterfaceName = SelectedInterfaceName,
                 ThemeName = SelectedThemeName,
+                UseBeatmapBackground = UseBeatmapBackground,
                 AccentColor = AccentColorText.Trim(),
                 PreviewSkin = string.Equals(requestedPreviewSkinName, PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase) ? string.Empty : requestedPreviewSkinName,
                 PreferSkinComboColours = PreferSkinComboColours,

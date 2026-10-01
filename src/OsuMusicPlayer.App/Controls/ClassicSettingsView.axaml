@@ -21,6 +21,8 @@
             <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8"><ComboBox ItemsSource="{Binding PreviewSkinNames}" SelectedItem="{Binding SelectedPreviewSkinName, Mode=TwoWay}" Width="240" /><Button Classes="small" Content="Refresh" Command="{Binding RefreshPreviewSkinsCommand}" /><Button Classes="small" Content="Open folder" Command="{Binding OpenSkinsFolderCommand}" /></StackPanel>
           </Grid>
           <TextBlock Text="{Binding AccentColorStatusText}" Classes="hint" Margin="130,0,0,0" />
+          <CheckBox Content="Use blurred beatmap background" IsChecked="{Binding UseBeatmapBackground, Mode=TwoWay}" />
+          <TextBlock Text="Follows the playing track, or your selection before playback. Uses the theme colour when artwork is unavailable." Classes="hint" TextWrapping="Wrap" />
           <CheckBox Margin="130,0,0,0" Content="Use the skin's combo colours instead of the beatmap's" IsChecked="{Binding PreferSkinComboColours, Mode=TwoWay}" />
           <TextBlock Text="{Binding PreviewSkinStatusText}" Classes="hint" IsVisible="{Binding PreviewSkinStatusText.Length}" />
         </StackPanel>

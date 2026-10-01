@@ -46,6 +46,9 @@ public sealed class AppearanceSettings
 
     public string ThemeName { get; init; } = "osu! Pink";
 
+    /// <summary>Use the current beatmap's blurred artwork as the player background.</summary>
+    public bool UseBeatmapBackground { get; init; }
+
     /// <summary>Hex accent override such as "#FF66AA"; empty keeps the preset's accent.</summary>
     public string AccentColor { get; init; } = string.Empty;
 

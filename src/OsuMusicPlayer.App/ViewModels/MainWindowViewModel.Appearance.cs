@@ -25,6 +25,13 @@ public sealed partial class MainWindowViewModel
     public bool IsStudioInterface => SelectedInterfaceName == "Studio";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ThemeBackgroundTrack))]
+    private bool useBeatmapBackground;
+
+    /// <summary>Follow playback, or the selected track before playback starts.</summary>
+    public TrackItemViewModel? ThemeBackgroundTrack => UseBeatmapBackground ? CurrentTrack ?? SelectedTrack : null;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentTheme))]
     private string selectedThemeName = PlayerThemes.DefaultName;
 
@@ -68,6 +75,7 @@ public sealed partial class MainWindowViewModel
         SelectedInterfaceName = InterfaceNames.FirstOrDefault(name => string.Equals(name, settings.Appearance.InterfaceName, StringComparison.OrdinalIgnoreCase)) ?? "Studio";
         SelectedThemeName = PlayerThemes.Names.FirstOrDefault(name => string.Equals(name, settings.Appearance.ThemeName, StringComparison.OrdinalIgnoreCase)) ?? PlayerThemes.DefaultName;
         AccentColorText = PlayerThemes.TryParseColor(settings.Appearance.AccentColor, out _) ? settings.Appearance.AccentColor : string.Empty;
+        UseBeatmapBackground = settings.Appearance.UseBeatmapBackground;
         applyTheme();
     }
 }

@@ -1494,6 +1494,77 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task BeatmapBackground_UsesPlayingTrackThenSelectedTrackAndCanBeDisabled()
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.UseBeatmapBackground.Should().BeFalse();
+        viewModel.ThemeBackgroundTrack.Should().BeNull();
+        viewModel.UseBeatmapBackground = true;
+        viewModel.ThemeBackgroundTrack.Should().BeNull("there is no selected or playing track yet");
+
+        viewModel.ReplaceTracksForTesting([
+            createSet("Playing", "Artist", "Mapper", "", 100, 100),
+            createSet("Selected", "Artist", "Mapper", "", 100, 100),
+        ]);
+        var playing = viewModel.Tracks[0];
+        var selected = viewModel.Tracks[1];
+        viewModel.SelectedTrack = playing;
+        viewModel.ThemeBackgroundTrack.Should().BeSameAs(playing);
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        viewModel.SelectedTrack = selected;
+        viewModel.CurrentTrack.Should().BeSameAs(playing);
+        viewModel.ThemeBackgroundTrack.Should().BeSameAs(playing, "the playing track takes priority over a different selection");
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        viewModel.ThemeBackgroundTrack.Should().BeSameAs(selected, "the background follows the next track that starts playing");
+        viewModel.SelectedTrack = null;
+        viewModel.ThemeBackgroundTrack.Should().BeSameAs(selected);
+        viewModel.UseBeatmapBackground = false;
+        viewModel.ThemeBackgroundTrack.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task BeatmapBackground_RestoresAndPersistsSetting()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { UseBeatmapBackground = true } };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.UseBeatmapBackground.Should().BeTrue();
+        viewModel.UseBeatmapBackground = false;
+        await viewModel.PendingSave;
+        environment.Settings.Current.Appearance.UseBeatmapBackground.Should().BeFalse();
+        viewModel.UseBeatmapBackground = true;
+        await viewModel.PendingSave;
+        environment.Settings.Current.Appearance.UseBeatmapBackground.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BeatmapBackground_NotifiesWhenSelectionPlaybackOrSettingChanges()
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.ReplaceTracksForTesting([
+            createSet("First", "Artist", "Mapper", "", 100, 100),
+            createSet("Second", "Artist", "Mapper", "", 100, 100),
+        ]);
+        var changes = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        changes.Should().Contain(nameof(MainWindowViewModel.ThemeBackgroundTrack));
+        changes.Clear();
+
+        viewModel.UseBeatmapBackground = true;
+        changes.Should().Contain(nameof(MainWindowViewModel.ThemeBackgroundTrack));
+        changes.Clear();
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        changes.Should().Contain(nameof(MainWindowViewModel.ThemeBackgroundTrack));
+    }
+
+    [Fact]
     public async Task Shortcuts_StepVolumeSeekAndToggleState()
     {
         using var viewModel = createViewModel(out var audio);
