@@ -196,7 +196,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         IFileSaver? fileSaver = null,
         IAudioDurationProbe? durationProbe = null,
         IThemeApplier? themeApplier = null,
-        PreviewSkinCatalog? skinCatalog = null)
+        PreviewSkinCatalog? skinCatalog = null,
+        CustomizationStore? customizationStore = null,
+        IBackgroundAccentColorExtractor? accentColorExtractor = null)
     {
         this.beatmapManager = beatmapManager ?? throw new ArgumentNullException(nameof(beatmapManager));
         this.audioEngine = audioEngine ?? throw new ArgumentNullException(nameof(audioEngine));
@@ -216,6 +218,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         this.fileSaver = fileSaver;
         this.durationProbe = durationProbe;
         this.themeApplier = themeApplier;
+        this.accentColorExtractor = accentColorExtractor ?? new BackgroundAccentColorExtractor();
+        this.customizationStore = customizationStore ?? new CustomizationStore(Path.Combine(AppContext.BaseDirectory, "Custom"));
         this.skinCatalog = skinCatalog ?? PreviewSkinCatalog.CreateDefault();
         masterVolume = audioEngine.Volume;
         mod = audioEngine.Mod;
@@ -318,6 +322,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             var settings = await settingsStore.LoadAsync(lifetimeCancellation.Token).ConfigureAwait(false);
+            var customization = await Task.Run(() => this.customizationStore.LoadAsync(lifetimeCancellation.Token), lifetimeCancellation.Token).ConfigureAwait(false);
+            await dispatcher.InvokeAsync(() => updateCustomization(customization)).ConfigureAwait(false);
             manualInstallations.Clear();
             foreach (var setting in settings.ManualInstallations)
             {
@@ -685,6 +691,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(DetailTrack));
         OnPropertyChanged(nameof(ThemeBackgroundTrack));
+        refreshBeatmapAccent();
         OnPropertyChanged(nameof(HasDetailTrack));
         OnPropertyChanged(nameof(HasCurrentTrack));
         OnPropertyChanged(nameof(CanOpenOnWeb));

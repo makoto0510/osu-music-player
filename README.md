@@ -159,6 +159,7 @@ Switch between two layout styles under **Settings → Appearance → Interface /
 #### Themes & Accent Colors
 - **Presets:** osu! Pink, Lazer Purple, Midnight Blue, Forest, OLED Black, and Daylight.
 - **Custom Accent:** Specify any `#RRGGBB` hex color code for personalized UI accents.
+- **Custom files:** Edit themes, supported UI typography and spacing, skins, and the OBS overlay in the `Custom` folder beside the executable. See the [customization guide](src/OsuMusicPlayer.App/Customization/README.md).
 
 ---
 
@@ -376,3 +377,4 @@ This project is built possible thanks to these open-source libraries and compone
 - **Video Playback:** [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) / [VideoLAN VLC](https://www.videolan.org/)
 - **Storyboard Engine:** [ReOsuStoryboardPlayer](https://github.com/MikiraSora/ReOsuStoryboardPlayer)
 - **Hitsound Reference:** [KeyASIO.Net](https://github.com/Milkitic/KeyASIO.Net)
+

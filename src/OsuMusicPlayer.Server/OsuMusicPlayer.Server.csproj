@@ -11,5 +11,10 @@
   <ItemGroup>
     <EmbeddedResource Include="wwwroot\index.html" LogicalName="index.html" />
     <EmbeddedResource Include="wwwroot\overlay.html" LogicalName="overlay.html" />
+    <Content Include="Customization\Overlay\**\*">
+      <TargetPath>Custom\Overlay\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 </Project>

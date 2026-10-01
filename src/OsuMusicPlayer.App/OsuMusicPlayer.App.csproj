@@ -22,4 +22,7 @@
     <ProjectReference Include="../OsuMusicPlayer.Server/OsuMusicPlayer.Server.csproj" />
   </ItemGroup>
   <Import Project="BassNatives.targets" />
+  <ItemGroup>
+    <Content Include="Customization\**\*" Link="Custom\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

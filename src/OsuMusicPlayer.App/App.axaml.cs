@@ -31,7 +31,11 @@ public sealed partial class App : Application
         Done,
     }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        ApplicationThemeApplier.Apply(Resources, PlayerThemes.Resolve(null, null));
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -131,13 +135,15 @@ public sealed partial class App : Application
         services.AddSingleton<IBeatmapMediaResolver, BeatmapMediaResolver>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<IBackgroundImageLoader, BackgroundImageLoader>();
+        services.AddSingleton<IBackgroundAccentColorExtractor, BackgroundAccentColorExtractor>();
         services.AddSingleton<IAudioEngine>(static _ => AudioEngineFactory.Create());
         services.AddSingleton<IVideoPlayer>(static _ => VideoPlayerFactory.Create());
         services.AddSingleton<IHitsoundPlayer>(static provider => new BassHitsoundPlayer(provider.GetRequiredService<IAudioEngine>()));
         services.AddSingleton<IHitsoundSampleSourceFactory, HitsoundSampleSourceFactory>();
         services.AddSingleton<IStoryboardLoader>(static _ => new StoryboardLoader());
         services.AddSingleton<ILinkOpener, ShellLinkOpener>();
-        services.AddSingleton(static _ => PreviewSkinCatalog.CreateDefault());
+        services.AddSingleton(static _ => new CustomizationStore(Path.Combine(AppContext.BaseDirectory, "Custom")));
+        services.AddSingleton(static _ => new PreviewSkinCatalog(Path.Combine(AppContext.BaseDirectory, "Custom", "Skins"), PreviewSkinCatalog.GetDefaultRootPath()));
         services.AddSingleton<IThemeApplier, ApplicationThemeApplier>();
         services.AddSingleton<IOnlineMetadataService>(static _ => new OnlineMetadataService());
         services.AddSingleton<IPlayerBridge, ViewModelPlayerBridge>();

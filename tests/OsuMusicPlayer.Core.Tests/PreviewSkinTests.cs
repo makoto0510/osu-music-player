@@ -173,4 +173,30 @@ public sealed class PreviewSkinTests
         root.Should().EndWith(Path.Combine("OsuMusicPlayer", "Skins"));
         Path.IsPathRooted(root).Should().BeTrue();
     }
+
+    [Fact]
+    public void Catalog_ListsAdditionalRootAfterPrimaryAndFindMigratesOldSelection()
+    {
+        using var directory = new TestDirectory();
+        var primary = directory.CreateDirectory("Custom", "Skins");
+        var documents = directory.CreateDirectory("Documents", "OsuMusicPlayer", "Skins");
+        directory.CreateDirectory("Custom", "Skins", "Shared");
+        directory.CreateDirectory("Custom", "Skins", "PrimaryOnly");
+        directory.CreateDirectory("Documents", "OsuMusicPlayer", "Skins", "Shared");
+        directory.CreateDirectory("Documents", "OsuMusicPlayer", "Skins", "DocumentsOnly");
+
+        var catalog = new PreviewSkinCatalog(primary, documents);
+        var entries = catalog.Enumerate();
+
+        entries.Select(static entry => entry.Name)
+            .Should().Equal("PrimaryOnly", "Shared", "Documents: DocumentsOnly", "Documents: Shared");
+        PreviewSkinCatalog.Find(entries, "Shared")!.Directory.Should().Be(Path.Combine(primary, "Shared"));
+        PreviewSkinCatalog.Find(entries, "DocumentsOnly")!.Directory.Should().Be(Path.Combine(documents, "DocumentsOnly"));
+        PreviewSkinCatalog.Find(entries, "Default").Should().BeNull();
+
+        var missing = new PreviewSkinCatalog(primary, Path.Combine(directory.Path, "missing"));
+        missing.Enumerate().Select(static entry => entry.Name).Should().Equal("PrimaryOnly", "Shared");
+        missing.EnsureRootExists().Should().BeTrue();
+        Directory.Exists(Path.Combine(directory.Path, "missing")).Should().BeFalse("only the primary root is created");
+    }
 }

@@ -158,6 +158,7 @@ stable と lazer の両方がインストールされている場合、同一楽
 #### テーマ & アクセントカラー
 - **プリセットテーマ:** osu! Pink / Lazer Purple / Midnight Blue / Forest / OLED Black / Daylight
 - **カスタムアクセントカラー:** `#RRGGBB` 形式で自由なカラーコードを指定可能。
+- **カスタムファイル:** 実行ファイル隣の `Custom` フォルダーでテーマ、UI の文字・余白、スキン、OBS オーバーレイを調整できます。詳しくは [カスタマイズガイド](src/OsuMusicPlayer.App/Customization/README.ja.md) を参照してください。
 
 ---
 
@@ -362,3 +363,4 @@ third_party/                    # BASS 等のネイティブライブラリお�
 - **動画再生:** [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) / [VideoLAN VLC](https://www.videolan.org/)
 - **ストーリーボード再現:** [ReOsuStoryboardPlayer](https://github.com/MikiraSora/ReOsuStoryboardPlayer)
 - **ヒットサウンド参照:** [KeyASIO.Net](https://github.com/Milkitic/KeyASIO.Net)
+

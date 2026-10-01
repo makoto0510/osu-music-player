@@ -10,6 +10,91 @@ namespace OsuMusicPlayer.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private readonly IThemeApplier? themeApplier;
+    private readonly IBackgroundAccentColorExtractor accentColorExtractor;
+    private Avalonia.Media.Color? beatmapAccent;
+    private TrackItemViewModel? accentTrack;
+    private long accentRequestVersion;
+    internal Task PendingAccentUpdate { get; private set; } = Task.CompletedTask;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentTheme))]
+    [NotifyPropertyChangedFor(nameof(AccentColorStatusText))]
+    private bool useBeatmapAccentColor;
+
+    partial void OnUseBeatmapAccentColorChanged(bool value) => refreshBeatmapAccent(force: true);
+
+    private void refreshBeatmapAccent(bool force = false)
+    {
+        if (disposed) return;
+        var track = UseBeatmapAccentColor ? CurrentTrack ?? SelectedTrack : null;
+        if (!force && ReferenceEquals(accentTrack, track)) return;
+        accentTrack = track;
+        var version = ++accentRequestVersion;
+        beatmapAccent = null;
+        notifyBeatmapAccentChanged();
+        PendingAccentUpdate = track is null ? Task.CompletedTask : loadBeatmapAccentAsync(track, version);
+    }
+
+    private async Task loadBeatmapAccentAsync(TrackItemViewModel track, long version)
+    {
+        var color = await accentColorExtractor.ExtractAsync(track.Model.BackgroundFilePath, lifetimeCancellation.Token).ConfigureAwait(false);
+        if (lifetimeCancellation.IsCancellationRequested) return;
+        await dispatcher.InvokeAsync(() =>
+        {
+            if (disposed || version != accentRequestVersion) return;
+            beatmapAccent = color;
+            notifyBeatmapAccentChanged();
+        }).ConfigureAwait(false);
+    }
+
+    private void notifyBeatmapAccentChanged()
+    {
+        OnPropertyChanged(nameof(CurrentTheme));
+        OnPropertyChanged(nameof(AccentColorStatusText));
+        applyTheme();
+    }
+    private readonly CustomizationStore customizationStore;
+    private CustomizationSnapshot customization = new([], new(), []);
+
+    public string CustomizationFolderPath => customizationStore.RootPath;
+
+    [ObservableProperty]
+    private string customizationStatusText = string.Empty;
+
+    [RelayCommand]
+    private void OpenCustomizationFolder()
+    {
+        if (!linkOpener.OpenFolder(CustomizationFolderPath))
+            CustomizationStatusText = $"Custom folder: {CustomizationFolderPath}";
+    }
+
+    [RelayCommand]
+    private async Task ReloadCustomizationAsync()
+    {
+        try
+        {
+            var snapshot = await Task.Run(() => customizationStore.LoadAsync(lifetimeCancellation.Token), lifetimeCancellation.Token).ConfigureAwait(false);
+            await dispatcher.InvokeAsync(() =>
+            {
+                updateCustomization(snapshot);
+                applyTheme();
+                ActivePreviewSkin = OsuMusicPlayer.Core.Skins.PreviewSkin.Default;
+                refreshPreviewSkins();
+            }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested) { }
+    }
+
+    private void updateCustomization(CustomizationSnapshot snapshot)
+    {
+        customization = snapshot;
+        // A ComboBox can clear its selection when ItemsSource changes.
+        var selected = SelectedThemeName;
+        OnPropertyChanged(nameof(ThemeNames));
+        SelectedThemeName = ThemeNames.FirstOrDefault(name => name.Equals(selected, StringComparison.OrdinalIgnoreCase)) ?? PlayerThemes.DefaultName;
+        OnPropertyChanged(nameof(CurrentTheme));
+        CustomizationStatusText = snapshot.Errors.Count == 0 ? "Custom files loaded / カスタムを読み込みました" : string.Join(Environment.NewLine, snapshot.Errors);
+    }
 
     public IReadOnlyList<string> InterfaceNames { get; } = ["Studio", "Classic"];
 
@@ -41,11 +126,24 @@ public sealed partial class MainWindowViewModel
     [NotifyPropertyChangedFor(nameof(AccentColorStatusText))]
     private string accentColorText = string.Empty;
 
-    public IReadOnlyList<string> ThemeNames => PlayerThemes.Names;
+    public IReadOnlyList<string> ThemeNames => [.. PlayerThemes.Names, .. customization.Themes.Select(theme => theme.Name)];
 
-    public PlayerTheme CurrentTheme => PlayerThemes.Resolve(SelectedThemeName, AccentColorText);
+    public PlayerTheme CurrentTheme
+    {
+        get
+        {
+            var theme = customization.Themes.FirstOrDefault(theme => theme.Name.Equals(SelectedThemeName, StringComparison.OrdinalIgnoreCase))
+                ?? PlayerThemes.Resolve(SelectedThemeName, null);
+            if (PlayerThemes.TryParseColor(AccentColorText, out var accent)) theme = theme.WithAccent(accent);
+            if (UseBeatmapAccentColor && beatmapAccent is { } extracted)
+                theme = theme.WithAccent(PlayerThemes.ReadableAccent(extracted, theme));
+            return theme with { Ui = customization.Ui };
+        }
+    }
 
-    public string AccentColorStatusText => string.IsNullOrWhiteSpace(AccentColorText)
+    public string AccentColorStatusText => UseBeatmapAccentColor && beatmapAccent is not null
+        ? "Background image accent / 背景画像のテーマ色"
+        : string.IsNullOrWhiteSpace(AccentColorText)
         ? "Preset accent"
         : PlayerThemes.TryParseColor(AccentColorText, out _) ? "Custom accent" : "Enter a colour like #FF66AA";
 
@@ -73,9 +171,10 @@ public sealed partial class MainWindowViewModel
     private void applyRestoredAppearance(AppSettings settings)
     {
         SelectedInterfaceName = InterfaceNames.FirstOrDefault(name => string.Equals(name, settings.Appearance.InterfaceName, StringComparison.OrdinalIgnoreCase)) ?? "Studio";
-        SelectedThemeName = PlayerThemes.Names.FirstOrDefault(name => string.Equals(name, settings.Appearance.ThemeName, StringComparison.OrdinalIgnoreCase)) ?? PlayerThemes.DefaultName;
+        SelectedThemeName = ThemeNames.FirstOrDefault(name => string.Equals(name, settings.Appearance.ThemeName, StringComparison.OrdinalIgnoreCase)) ?? PlayerThemes.DefaultName;
         AccentColorText = PlayerThemes.TryParseColor(settings.Appearance.AccentColor, out _) ? settings.Appearance.AccentColor : string.Empty;
         UseBeatmapBackground = settings.Appearance.UseBeatmapBackground;
+        UseBeatmapAccentColor = settings.Appearance.UseBeatmapAccentColor;
         applyTheme();
     }
 }

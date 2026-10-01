@@ -11,6 +11,7 @@
         x:Name="Root"
         x:DataType="vm:MainWindowViewModel"
         Title="osu! music player"
+        FontFamily="{DynamicResource CustomFontFamily}"
         Width="1280" Height="820" MinWidth="1000" MinHeight="640"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
@@ -271,11 +272,11 @@
           <StackPanel Grid.Column="0" Spacing="2">
             <TextBlock Text="{Binding ViewTitle}" FontSize="26" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
             <StackPanel Orientation="Horizontal" Spacing="4">
-              <TextBlock Text="{Binding TrackCountText}" Classes="muted" FontSize="12.5" VerticalAlignment="Center" />
-              <TextBlock Text="•" Classes="hint" FontSize="12.5" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding TrackCountText}" Classes="muted" FontSize="{DynamicResource CustomTrackMetaFontSize}" VerticalAlignment="Center" />
+              <TextBlock Text="•" Classes="hint" FontSize="{DynamicResource CustomTrackMetaFontSize}" VerticalAlignment="Center" />
               <Button Classes="ghost" Flyout="{StaticResource SortMenu}" Padding="4,1" AutomationProperties.Name="Sort" AutomationProperties.AutomationId="SortButton" ToolTip.Tip="Sort order (playlists keep their own order)">
                 <StackPanel Orientation="Horizontal" Spacing="3">
-                  <TextBlock Text="{Binding SortLabelText}" FontSize="12.5" />
+                  <TextBlock Text="{Binding SortLabelText}" FontSize="{DynamicResource CustomTrackMetaFontSize}" />
                   <PathIcon Data="{StaticResource IconChevronDown}" Width="13" Height="13" />
                 </StackPanel>
               </Button>
@@ -307,13 +308,13 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:TrackItemViewModel">
-                <Grid Height="56" ColumnSpacing="10" Background="Transparent" ContextFlyout="{StaticResource TrackMenu}">
+                <Grid MinHeight="{DynamicResource CustomTrackRowHeight}" ColumnSpacing="10" Background="Transparent" ContextFlyout="{StaticResource TrackMenu}">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="34" /><ColumnDefinition Width="56" /><ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ArtistColumnWidth}" />
                     <ColumnDefinition Width="64" /><ColumnDefinition Width="64" /><ColumnDefinition Width="36" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Grid.Column="0" Text="{Binding Position}" Classes="muted" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="0" Text="{Binding Position}" Classes="muted" FontSize="{DynamicResource CustomTrackMetaFontSize}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   <Border Grid.Column="1" Classes="thumb" Width="46" Height="46">
                     <Grid>
                       <PathIcon Data="{StaticResource IconMusicNote}" Classes="faint" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -321,12 +322,12 @@
                     </Grid>
                   </Border>
                   <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
-                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Title}" FontSize="{DynamicResource CustomTrackTitleFontSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding CreatorText}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                  <TextBlock Grid.Column="3" Text="{Binding Artist}" Classes="muted" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Artist}" />
-                  <TextBlock Grid.Column="4" Text="{Binding BpmValueText}" Classes="muted" FontSize="12.5" VerticalAlignment="Center" HorizontalAlignment="Right" />
-                  <TextBlock Grid.Column="5" Text="{Binding LengthText}" Classes="muted" FontSize="12.5" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                  <TextBlock Grid.Column="3" Text="{Binding Artist}" Classes="muted" FontSize="{DynamicResource CustomTrackMetaFontSize}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Artist}" />
+                  <TextBlock Grid.Column="4" Text="{Binding BpmValueText}" Classes="muted" FontSize="{DynamicResource CustomTrackMetaFontSize}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                  <TextBlock Grid.Column="5" Text="{Binding LengthText}" Classes="muted" FontSize="{DynamicResource CustomTrackMetaFontSize}" VerticalAlignment="Center" HorizontalAlignment="Right" />
                   <Button Grid.Column="6" Classes="icon small heart" Classes.on="{Binding IsFavourite}" VerticalAlignment="Center"
                           Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).ToggleFavouriteForCommand}" CommandParameter="{Binding}" ToolTip.Tip="Favourite (Ctrl+D)">
                     <Panel>
@@ -490,7 +491,7 @@
                             <Image Source="{Binding BackgroundImage^}" Stretch="UniformToFill" />
                           </Border>
                           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
-                            <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource ThemeTextBrush}" />
+                            <TextBlock Text="{Binding Title}" FontSize="{DynamicResource CustomTrackMetaFontSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource ThemeTextBrush}" />
                             <TextBlock Text="{Binding Artist}" Classes="hint" TextTrimming="CharacterEllipsis" />
                           </StackPanel>
                           <TextBlock Grid.Column="2" Text="{Binding LengthText}" Classes="hint" VerticalAlignment="Center" />
@@ -519,7 +520,7 @@
                                 <Border Grid.Column="0" Width="5" CornerRadius="3" Background="{Binding StarColor}" />
                                 <Border Grid.Column="1" Classes="badge" Margin="0" VerticalAlignment="Center"><TextBlock Text="{Binding RulesetText}" FontSize="10" /></Border>
                                 <StackPanel Grid.Column="2" Spacing="1">
-                                  <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding Name}" FontSize="{DynamicResource CustomTrackMetaFontSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                   <TextBlock Text="{Binding StatsText}" Classes="hint" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="3" Text="{Binding StarText}" FontSize="12" VerticalAlignment="Center" Foreground="{Binding StarColor}" FontWeight="SemiBold" />

@@ -57,7 +57,11 @@ public sealed partial class MainWindowViewModel
 
     /// <summary>Re-scans the skin folders; call after adding a folder while the app is running.</summary>
     [RelayCommand]
-    private void RefreshPreviewSkins() => refreshPreviewSkins();
+    private void RefreshPreviewSkins()
+    {
+        ActivePreviewSkin = PreviewSkin.Default;
+        refreshPreviewSkins();
+    }
 
     /// <summary>Creates the skins folder if needed and shows it in the file manager.</summary>
     [RelayCommand]

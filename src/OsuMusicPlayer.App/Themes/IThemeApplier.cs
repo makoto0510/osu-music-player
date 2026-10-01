@@ -35,6 +35,17 @@ public sealed class ApplicationThemeApplier : IThemeApplier
         ArgumentNullException.ThrowIfNull(resources);
         ArgumentNullException.ThrowIfNull(theme);
 
+        var ui = theme.Ui.Validate();
+        resources["CustomFontFamily"] = new FontFamily(ui.FontFamily);
+        resources["CustomTitleFontSize"] = ui.TitleFontSize;
+        resources["CustomTrackTitleFontSize"] = ui.TrackTitleFontSize;
+        resources["CustomTrackMetaFontSize"] = ui.TrackMetaFontSize;
+        resources["CustomPanelCornerRadius"] = new CornerRadius(ui.PanelCornerRadius);
+        resources["CustomPanelPadding"] = new Thickness(ui.PanelPadding, ui.PanelPadding * 0.7);
+        resources["CustomButtonCornerRadius"] = new CornerRadius(ui.ButtonCornerRadius);
+        resources["CustomButtonPadding"] = new Thickness(ui.ButtonPadding, ui.ButtonPadding * 0.5);
+        resources["CustomTrackRowHeight"] = ui.TrackRowHeight;
+
         setBrush(resources, "ThemeBackgroundBrush", theme.Background);
         setBrush(resources, "ThemeSurfaceBrush", theme.Surface);
         setBrush(resources, "ThemeSurfaceAltBrush", theme.SurfaceAlt);

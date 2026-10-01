@@ -19,8 +19,18 @@ public sealed record PlayerTheme(
     Color TextFaint,
     Color Accent)
 {
+    public UiCustomization Ui { get; init; } = new();
     /// <summary>Text drawn on top of the accent colour.</summary>
-    public Color AccentText => relativeLuminance(Accent) > 0.45 ? Color.FromRgb(0x14, 0x14, 0x1A) : Colors.White;
+    public Color AccentText
+    {
+        get
+        {
+            var darkText = Color.FromRgb(0x14, 0x14, 0x1A);
+            var luminance = relativeLuminance(Accent);
+            return (luminance + 0.05) / (relativeLuminance(darkText) + 0.05) >= 1.05 / (luminance + 0.05)
+                ? darkText : Colors.White;
+        }
+    }
 
     public PlayerTheme WithAccent(Color accent) => this with { Accent = accent };
 
@@ -89,6 +99,30 @@ public static class PlayerThemes
     }
 
     public static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+
+    /// <summary>Keeps an artwork accent legible on the selected theme's surfaces.</summary>
+    public static Color ReadableAccent(Color color, PlayerTheme theme)
+    {
+        static double luminance(Color c)
+        {
+            static double linear(byte value) => value / 255.0 <= 0.04045
+                ? value / 255.0 / 12.92 : Math.Pow((value / 255.0 + 0.055) / 1.055, 2.4);
+            return 0.2126 * linear(c.R) + 0.7152 * linear(c.G) + 0.0722 * linear(c.B);
+        }
+        static double contrast(Color a, Color b)
+        {
+            var first = luminance(a);
+            var second = luminance(b);
+            return (Math.Max(first, second) + 0.05) / (Math.Min(first, second) + 0.05);
+        }
+        for (var i = 0; i <= 100; i++)
+        {
+            var candidate = Shade(color, (theme.IsDark ? 1 : -1) * i / 100.0);
+            if (contrast(candidate, theme.Background) >= 4.5 && contrast(candidate, theme.Surface) >= 4.5
+                && contrast(candidate, theme.SurfaceAlt) >= 4.5) return candidate;
+        }
+        return theme.IsDark ? Colors.White : Colors.Black;
+    }
 
     /// <summary>Lightens (positive) or darkens (negative) a colour by a fraction of the distance to white / black.</summary>
     public static Color Shade(Color color, double amount)

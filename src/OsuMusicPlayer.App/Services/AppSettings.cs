@@ -49,6 +49,9 @@ public sealed class AppearanceSettings
     /// <summary>Use the current beatmap's blurred artwork as the player background.</summary>
     public bool UseBeatmapBackground { get; init; }
 
+    /// <summary>Derive the theme accent from the current beatmap's background artwork.</summary>
+    public bool UseBeatmapAccentColor { get; init; }
+
     /// <summary>Hex accent override such as "#FF66AA"; empty keeps the preset's accent.</summary>
     public string AccentColor { get; init; } = string.Empty;
 

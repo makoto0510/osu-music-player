@@ -1380,12 +1380,43 @@ public sealed class MainWindowViewModelTests
 
     private static MainWindowViewModel createViewModel(out FakeAudioEngine audio) => createViewModel(out audio, out _);
 
-    private static MainWindowViewModel createViewModel(out FakeAudioEngine audio, out TestEnvironment environment, IFileSaver? fileSaver = null, IAudioDurationProbe? durationProbe = null)
+    private static MainWindowViewModel createViewModel(out FakeAudioEngine audio, out TestEnvironment environment, IFileSaver? fileSaver = null, IAudioDurationProbe? durationProbe = null, IBackgroundAccentColorExtractor? accentColorExtractor = null)
     {
         audio = new FakeAudioEngine();
         environment = new TestEnvironment();
         var manager = new BeatmapManager([environment.Loader], new DuplicateDetector());
-        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe, environment.Theme, environment.SkinCatalog);
+        return new MainWindowViewModel(manager, audio, environment.Locator, new ImmediateDispatcher(), new NullImageLoader(), environment.Settings, environment.Picker, environment.Media, environment.Video, environment.Hitsounds, new HitsoundSampleSourceFactory(static () => null), environment.Storyboard, environment.Links, [environment.Collections], null, fileSaver, durationProbe, environment.Theme, environment.SkinCatalog, new CustomizationStore(environment.Skins.Path), accentColorExtractor);
+    }
+
+    [Fact]
+    public async Task Customization_RestoresThemeAndReloadsEditedFilesWithoutRestart()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        var themePath = environment.Skins.CreateFile("Themes/mint.json", """{ "name": "Mint", "colors": { "accent": "#75E0B2" } }""");
+        environment.Skins.CreateFile("UI/ui.json", """{ "trackRowHeight": 80 }""");
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { ThemeName = "Custom: Mint" } };
+        await viewModel.InitializeAsync();
+        viewModel.ThemeNames.Should().Contain("Custom: Mint");
+        viewModel.SelectedThemeName.Should().Be("Custom: Mint");
+        viewModel.CurrentTheme.Ui.TrackRowHeight.Should().Be(80);
+
+        // Mimic the ComboBox resetting selection when its items are refreshed.
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.ThemeNames))
+                viewModel.SelectedThemeName = string.Empty;
+        };
+        await File.WriteAllTextAsync(themePath, """{ "name": "Mint", "colors": { "accent": "#123456" } }""");
+        await viewModel.ReloadCustomizationCommand.ExecuteAsync(null);
+        viewModel.SelectedThemeName.Should().Be("Custom: Mint");
+        environment.Theme.Applied.Should().NotBeNull();
+        environment.Theme.Applied?.Accent.Should().Be(Avalonia.Media.Color.FromRgb(0x12, 0x34, 0x56));
+
+        File.Delete(themePath);
+        await viewModel.ReloadCustomizationCommand.ExecuteAsync(null);
+        viewModel.SelectedThemeName.Should().Be(OsuMusicPlayer.App.Themes.PlayerThemes.DefaultName);
+        viewModel.OpenCustomizationFolderCommand.Execute(null);
+        environment.Links.OpenedFolders.Should().Contain(environment.Skins.Path);
     }
 
     [Fact]
@@ -1539,6 +1570,23 @@ public sealed class MainWindowViewModelTests
         viewModel.UseBeatmapBackground = true;
         await viewModel.PendingSave;
         environment.Settings.Current.Appearance.UseBeatmapBackground.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BeatmapAccentColor_RestoresAndPersistsSetting()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Settings.Current = new AppSettings { Appearance = new AppearanceSettings { UseBeatmapAccentColor = true } };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.UseBeatmapAccentColor.Should().BeTrue();
+        viewModel.UseBeatmapAccentColor = false;
+        await viewModel.PendingSave;
+        environment.Settings.Current.Appearance.UseBeatmapAccentColor.Should().BeFalse();
+        viewModel.UseBeatmapAccentColor = true;
+        await viewModel.PendingSave;
+        environment.Settings.Current.Appearance.UseBeatmapAccentColor.Should().BeTrue();
     }
 
     [Fact]
@@ -1725,6 +1773,82 @@ public sealed class MainWindowViewModelTests
     {
         public OsuMusicPlayer.App.Themes.PlayerTheme? Applied { get; private set; }
         public void Apply(OsuMusicPlayer.App.Themes.PlayerTheme theme) => Applied = theme;
+    }
+
+    [Fact]
+    public async Task BeatmapAccent_FollowsPlaybackAndRestoresManualColourWhenDisabledOrMissing()
+    {
+        var extractor = new ControlledAccentExtractor();
+        using var viewModel = createViewModel(out _, out var environment, accentColorExtractor: extractor);
+        viewModel.ReplaceTracksForTesting([
+            createSet("First", "Artist", "Mapper", "", 100, 100) with { BackgroundFilePath = "first.png" },
+            createSet("Second", "Artist", "Mapper", "", 100, 100) with { BackgroundFilePath = "second.png" },
+        ]);
+        viewModel.AccentColorText = "#ABCDEF";
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        viewModel.UseBeatmapAccentColor = true;
+        var firstUpdate = viewModel.PendingAccentUpdate;
+        extractor.Complete("first.png", Avalonia.Media.Colors.CornflowerBlue);
+        await firstUpdate;
+        var firstAccent = viewModel.CurrentTheme.Accent;
+        firstAccent.Should().NotBe(Avalonia.Media.Color.Parse("#ABCDEF"));
+        environment.Theme.Applied?.Accent.Should().Be(firstAccent);
+
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        viewModel.SelectedTrack = viewModel.Tracks[1];
+        viewModel.CurrentTheme.Accent.Should().Be(firstAccent, "selection must not override the playing track");
+        extractor.Paths.Should().Equal("first.png");
+        await viewModel.PlaySelectedCommand.ExecuteAsync(null);
+        extractor.Complete("second.png", null);
+        await viewModel.PendingAccentUpdate;
+        viewModel.CurrentTheme.Accent.Should().Be(Avalonia.Media.Color.Parse("#ABCDEF"));
+
+        viewModel.UseBeatmapAccentColor = false;
+        viewModel.CurrentTheme.Accent.Should().Be(Avalonia.Media.Color.Parse("#ABCDEF"));
+    }
+
+    [Fact]
+    public async Task BeatmapAccent_DiscardsOlderResultsAndResultsArrivingAfterDisable()
+    {
+        var extractor = new ControlledAccentExtractor();
+        using var viewModel = createViewModel(out _, out _, accentColorExtractor: extractor);
+        viewModel.ReplaceTracksForTesting([
+            createSet("First", "Artist", "Mapper", "", 100, 100) with { BackgroundFilePath = "first.png" },
+            createSet("Second", "Artist", "Mapper", "", 100, 100) with { BackgroundFilePath = "second.png" },
+        ]);
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        viewModel.UseBeatmapAccentColor = true;
+        var firstUpdate = viewModel.PendingAccentUpdate;
+        viewModel.SelectedTrack = viewModel.Tracks[1];
+        var secondUpdate = viewModel.PendingAccentUpdate;
+        extractor.Complete("second.png", Avalonia.Media.Colors.CornflowerBlue);
+        await secondUpdate;
+        var newest = viewModel.CurrentTheme.Accent;
+        extractor.Complete("first.png", Avalonia.Media.Colors.Red);
+        await firstUpdate;
+        viewModel.CurrentTheme.Accent.Should().Be(newest);
+
+        viewModel.SelectedTrack = viewModel.Tracks[0];
+        var pending = viewModel.PendingAccentUpdate;
+        viewModel.UseBeatmapAccentColor = false;
+        extractor.Complete("first.png", Avalonia.Media.Colors.Red);
+        await pending;
+        viewModel.CurrentTheme.Accent.Should().Be(OsuMusicPlayer.App.Themes.PlayerThemes.Resolve(null, null).Accent);
+    }
+
+    private sealed class ControlledAccentExtractor : IBackgroundAccentColorExtractor
+    {
+        private readonly Dictionary<string, TaskCompletionSource<Avalonia.Media.Color?>> requests = [];
+        public List<string> Paths { get; } = [];
+        public Task<Avalonia.Media.Color?> ExtractAsync(string? path, CancellationToken cancellationToken = default)
+        {
+            if (path is null) return Task.FromResult<Avalonia.Media.Color?>(null);
+            Paths.Add(path);
+            var request = new TaskCompletionSource<Avalonia.Media.Color?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            requests[path] = request;
+            return request.Task;
+        }
+        public void Complete(string path, Avalonia.Media.Color? color) => requests[path].SetResult(color);
     }
 
     private static UnifiedBeatmapSet createSet(string title, string artist, string creator, string tags, double bpm, int seconds) => new()

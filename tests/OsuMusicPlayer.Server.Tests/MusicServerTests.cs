@@ -26,7 +26,12 @@ public sealed class MusicServerTests
 
             var page = await client.GetStringAsync("/");
             page.Should().Contain("<title>osu! music player</title>");
-            (await client.GetStringAsync("/overlay")).Should().Contain("overlay");
+            var overlay = await client.GetStringAsync("/overlay");
+            overlay.Should().Contain("overlay");
+            overlay.Should().Contain("/overlay-assets/overlay.css");
+            using var overlayCss = await client.GetAsync("/overlay-assets/overlay.css");
+            overlayCss.StatusCode.Should().Be(HttpStatusCode.OK);
+            overlayCss.Content.Headers.ContentType!.MediaType.Should().Be("text/css");
 
             var list = await client.GetFromJsonAsync<JsonElement>("/api/tracks?q=camellia&limit=10");
             list.GetProperty("total").GetInt32().Should().Be(1);
@@ -61,6 +66,53 @@ public sealed class MusicServerTests
         finally
         {
             File.Delete(audioPath);
+        }
+    }
+
+    [Fact]
+    public async Task OverlayPage_ReadsEditsOnEachRequestAndFallsBackWhenMissing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"osu-overlay-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var file = Path.Combine(root, "overlay.html");
+        try
+        {
+            await File.WriteAllTextAsync(file, "<html>My overlay</html>");
+            var page = (await MusicServer.overlayPage(root)).Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ContentHttpResult>().Subject;
+            page.ResponseContent.Should().Be("<html>My overlay</html>");
+            await File.WriteAllTextAsync(file, "<html>Edited overlay</html>");
+            page = (await MusicServer.overlayPage(root)).Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ContentHttpResult>().Subject;
+            page.ResponseContent.Should().Be("<html>Edited overlay</html>");
+            File.Delete(file);
+            page = (await MusicServer.overlayPage(root)).Should().BeOfType<Microsoft.AspNetCore.Http.HttpResults.ContentHttpResult>().Subject;
+            page.ResponseContent.Should().Contain("<title>osu! music player overlay</title>");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void OverlayFiles_ConfinesPathsAndAllowsOnlyWebAssets()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"osu-overlay-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "overlay.html"), "<html></html>");
+        File.WriteAllText(Path.Combine(root, "overlay.css"), "body {}");
+        try
+        {
+            OverlayFiles.TryResolve(root, "overlay.html").Should().Be(Path.Combine(root, "overlay.html"));
+            OverlayFiles.TryResolve(root, "overlay.css").Should().Be(Path.Combine(root, "overlay.css"));
+            OverlayFiles.TryResolve(root, "../secrets.txt").Should().BeNull();
+            OverlayFiles.TryResolve(root, "sub/../../secrets.txt").Should().BeNull();
+            OverlayFiles.TryResolve(root, "overlay.html/../secret.txt").Should().BeNull();
+            OverlayFiles.TryResolve(root, "settings.json").Should().BeNull();
+            OverlayFiles.ContentType("overlay.css").Should().Be("text/css");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 

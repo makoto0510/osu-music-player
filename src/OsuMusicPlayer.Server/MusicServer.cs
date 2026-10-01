@@ -72,7 +72,7 @@ public sealed class MusicServer : IAsyncDisposable
         });
 
         var app = builder.Build();
-        mapRoutes(app, bridge);
+        mapRoutes(app, bridge, Path.Combine(AppContext.BaseDirectory, "Custom", "Overlay"));
         await app.StartAsync(cancellationToken).ConfigureAwait(false);
         application = app;
 
@@ -113,10 +113,19 @@ public sealed class MusicServer : IAsyncDisposable
 
     public ValueTask DisposeAsync() => new(StopAsync());
 
-    private static void mapRoutes(WebApplication app, IPlayerBridge bridge)
+    private static void mapRoutes(WebApplication app, IPlayerBridge bridge, string overlayDirectory)
     {
         app.MapGet("/", static () => htmlPage("index.html"));
-        app.MapGet("/overlay", static () => htmlPage("overlay.html"));
+        app.MapGet("/overlay", (Func<HttpContext, Task<IResult>>)((HttpContext context) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return overlayPage(overlayDirectory);
+        }));
+        app.MapGet("/overlay-assets/{**path}", (HttpContext context, string? path) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return overlayAsset(overlayDirectory, path);
+        });
 
         app.MapGet("/api/tracks", async (string? q, int? offset, int? limit, CancellationToken cancellationToken) =>
         {
@@ -197,6 +206,43 @@ public sealed class MusicServer : IAsyncDisposable
             await bridge.EnqueueAsync(id, cancellationToken).ConfigureAwait(false) ? Results.Ok() : Results.NotFound());
         app.MapPost("/api/favourite/{id:guid}", async (Guid id, CancellationToken cancellationToken) =>
             await bridge.ToggleFavouriteAsync(id, cancellationToken).ConfigureAwait(false) ? Results.Ok() : Results.NotFound());
+    }
+
+    internal static async Task<IResult> overlayPage(string overlayDirectory)
+    {
+        var path = OverlayFiles.TryResolve(overlayDirectory, "overlay.html");
+        if (path is not null)
+        {
+            try
+            {
+                return Results.Content(await File.ReadAllTextAsync(path).ConfigureAwait(false), "text/html; charset=utf-8");
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Fall back to the embedded page if the user file is missing or unreadable.
+            }
+        }
+
+        return htmlPage("overlay.html");
+    }
+
+    private static async Task<IResult> overlayAsset(string overlayDirectory, string? relativePath)
+    {
+        var path = OverlayFiles.TryResolve(overlayDirectory, relativePath);
+        if (path is null)
+        {
+            return Results.NotFound();
+        }
+
+        try
+        {
+            var content = await File.ReadAllBytesAsync(path).ConfigureAwait(false);
+            return Results.Bytes(content, OverlayFiles.ContentType(path));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Results.NotFound();
+        }
     }
 
     private static IResult htmlPage(string resourceName)

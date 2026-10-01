@@ -9,6 +9,12 @@
       <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,0,0,0">
         <StackPanel Spacing="10" MaxWidth="500" HorizontalAlignment="Left">
           <TextBlock Text="Appearance" FontSize="20" FontWeight="Bold" />
+          <WrapPanel>
+            <Button Content="Open custom folder" Command="{Binding OpenCustomizationFolderCommand}" Margin="0,0,8,8" />
+            <Button Content="Reload custom files" Command="{Binding ReloadCustomizationCommand}" Margin="0,0,0,8" />
+          </WrapPanel>
+          <TextBlock Text="{Binding CustomizationFolderPath}" Classes="hint" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding CustomizationStatusText}" Classes="hint" TextWrapping="Wrap" />
           <TextBlock Text="Interface, colours and the preview skin." Classes="hint" />
           <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="10">
             <TextBlock Text="Interface / UI" Classes="muted" VerticalAlignment="Center" />
@@ -22,6 +28,7 @@
           </Grid>
           <TextBlock Text="{Binding AccentColorStatusText}" Classes="hint" Margin="130,0,0,0" />
           <CheckBox Content="Use blurred beatmap background" IsChecked="{Binding UseBeatmapBackground, Mode=TwoWay}" />
+          <CheckBox Content="背景画像からテーマ色を抽出 / Extract theme colour from background" IsChecked="{Binding UseBeatmapAccentColor, Mode=TwoWay}" />
           <TextBlock Text="Follows the playing track, or your selection before playback. Uses the theme colour when artwork is unavailable." Classes="hint" TextWrapping="Wrap" />
           <CheckBox Margin="130,0,0,0" Content="Use the skin's combo colours instead of the beatmap's" IsChecked="{Binding PreferSkinComboColours, Mode=TwoWay}" />
           <TextBlock Text="{Binding PreviewSkinStatusText}" Classes="hint" IsVisible="{Binding PreviewSkinStatusText.Length}" />
