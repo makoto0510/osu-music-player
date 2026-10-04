@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OsuMusicPlayer.App.ViewModels"
              xmlns:input="using:OsuMusicPlayer.App.Input"
+             xmlns:converters="using:Avalonia.Data.Converters"
              x:Class="OsuMusicPlayer.App.Controls.PlayerToolsView"
              x:DataType="vm:MainWindowViewModel">
 
@@ -96,8 +97,14 @@
               </Grid>
             </Border>
 
-            <!-- Settings -->
-            <Border Classes="panel" Margin="0,0,0,10" IsVisible="{Binding IsSettingsPanelVisible}">
+            <!-- Classic settings are shown in the dedicated dialog. -->
+            <Border Classes="panel" Margin="0,0,0,10">
+              <Border.IsVisible>
+                <MultiBinding Converter="{x:Static converters:BoolConverters.And}">
+                  <Binding Path="IsSettingsPanelVisible" />
+                  <Binding Path="IsStudioInterface" />
+                </MultiBinding>
+              </Border.IsVisible>
               <TabControl Padding="0,8,0,0">
                 <TabItem Header="Appearance">
                   <StackPanel Spacing="8" MaxWidth="560" HorizontalAlignment="Left">

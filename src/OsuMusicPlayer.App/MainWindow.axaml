@@ -418,7 +418,11 @@
                             </Button>
                           </StackPanel>
                         </Grid>
-                        <TextBlock Text="{Binding Artist}" Classes="muted" FontSize="13.5" TextWrapping="Wrap" />
+                        <Button Classes="ghost artistSearch" HorizontalAlignment="Left"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SearchArtistCommand}"
+                                CommandParameter="{Binding Artist}" ToolTip.Tip="Search this artist">
+                          <TextBlock Text="{Binding Artist}" FontSize="13.5" TextWrapping="Wrap" />
+                        </Button>
                         <TextBlock Text="{Binding CreatorText}" Classes="hint" FontSize="12" TextWrapping="Wrap" />
                       </StackPanel>
                     </DataTemplate>

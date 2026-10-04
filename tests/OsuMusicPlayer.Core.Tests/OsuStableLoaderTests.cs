@@ -10,6 +10,55 @@ namespace OsuMusicPlayer.Core.Tests;
 public sealed class OsuStableLoaderTests
 {
     [Fact]
+    public void BackgroundReader_StopsBeforeStoryboardCommands()
+    {
+        using var reader = new CountingReader("[Events]\n0,0,\"background, image.jpg\",0,0\nSprite,Foreground,Centre,\"sprite.png\",320,240\n F,0,0,1000,0,1\n[HitObjects]");
+
+        OsuBeatmapFileParser.ReadBackgroundFileName(reader).Should().Be("background, image.jpg");
+        reader.LinesRead.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData("[Events]\n// comment\n1,100,\"video.mp4\"\n[HitObjects]\n0,0,\"not-a-background.jpg\"", null)]
+    [InlineData("[Events]\n0,0,\"\"\nBackground,0,\"valid.jpg\"", "valid.jpg")]
+    public void BackgroundReader_HandlesMissingAndEmptyBackgrounds(string content, string? expected)
+    {
+        using var reader = new StringReader(content);
+        OsuBeatmapFileParser.ReadBackgroundFileName(reader).Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task LoadAsync_RechecksAudioFilesOnReload()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        using var directory = new TestDirectory();
+        directory.CreateFile("osu!.db");
+        directory.CreateDirectory("Songs", "set-folder");
+        var audio = directory.CreateFile("Songs\\set-folder\\audio.mp3");
+        var loader = new OsuStableLoader(new FakeStableReader([createEntry(1, "Easy", "easy.osu"), createEntry(2, "Hard", "hard.osu")]));
+
+        (await loader.LoadAsync(directory.Path)).Should().ContainSingle().Which.Beatmaps.Should().HaveCount(2);
+        File.Delete(audio);
+        (await loader.LoadAsync(directory.Path)).Should().BeEmpty();
+        File.WriteAllText(audio, "audio");
+        (await loader.LoadAsync(directory.Path)).Should().ContainSingle();
+    }
+
+    private sealed class CountingReader(string content) : StringReader(content)
+    {
+        public int LinesRead { get; private set; }
+        public override string? ReadLine()
+        {
+            LinesRead++;
+            return base.ReadLine();
+        }
+    }
+
+    [Fact]
     public void StableDatabaseReader_ExtractsBackgroundWithoutParsingBrokenHitObjects()
     {
         using var directory = new TestDirectory();

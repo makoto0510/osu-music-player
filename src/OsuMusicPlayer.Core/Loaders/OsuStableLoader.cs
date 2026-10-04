@@ -101,19 +101,41 @@ public sealed class OsuStableLoader : IBeatmapLoader
         // audio file belong to the same track even when some of them have no online set id
         // (locally created difficulties) or were downloaded as a different online set.
         var mapped = new List<(string AudioPath, string FolderPath, DbBeatmap Entry)>();
+        // Difficulties usually share the same folder and audio file. Probe each once
+        // per scan; keeping these caches local allows later reloads to see file changes.
+        var folderExists = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        var audioExists = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var folderPath = resolveChildPath(songsPath, entry.FolderName);
-                if (folderPath is null || !Directory.Exists(folderPath))
+                if (folderPath is null)
+                {
+                    continue;
+                }
+
+                if (!folderExists.TryGetValue(folderPath, out var hasFolder))
+                {
+                    folderExists[folderPath] = hasFolder = Directory.Exists(folderPath);
+                }
+                if (!hasFolder)
                 {
                     continue;
                 }
 
                 var audioPath = resolveChildPath(folderPath, entry.AudioFileName);
-                if (audioPath is null || !File.Exists(audioPath))
+                if (audioPath is null)
+                {
+                    continue;
+                }
+
+                if (!audioExists.TryGetValue(audioPath, out var hasAudio))
+                {
+                    audioExists[audioPath] = hasAudio = File.Exists(audioPath);
+                }
+                if (!hasAudio)
                 {
                     continue;
                 }
@@ -180,7 +202,7 @@ public sealed class OsuStableLoader : IBeatmapLoader
                     continue;
                 }
 
-                var backgroundName = databaseReader.ReadEventAssets(beatmapPath).BackgroundFileName;
+                var backgroundName = databaseReader.ReadBackgroundFileName(beatmapPath);
                 var backgroundPath = resolveChildPath(item.FolderPath, backgroundName);
                 if (backgroundPath is not null && File.Exists(backgroundPath))
                 {

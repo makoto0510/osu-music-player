@@ -140,6 +140,15 @@ public sealed partial class MainWindowViewModel
     }
 
     [RelayCommand]
+    private void SearchArtist(string? artist)
+    {
+        if (!string.IsNullOrWhiteSpace(artist))
+        {
+            SelectBrowse(new BrowseEntry(artist, $"artist:\"{artist.Trim()}\"", 0));
+        }
+    }
+
+    [RelayCommand]
     private void CloseSettings() => IsSettingsPanelVisible = false;
 
     /// <summary>Row buttons (heart, "…") swallow the click, so they select their row explicitly.</summary>

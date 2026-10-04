@@ -17,6 +17,16 @@ public sealed record BeatmapEventAssets(string? BackgroundFileName, string? Vide
 /// </summary>
 public static partial class OsuBeatmapFileParser
 {
+    /// <summary>Stops at the first background, without scanning storyboard commands.</summary>
+    public static string? ReadBackgroundFileName(string beatmapPath)
+    {
+        using var stream = new FileStream(beatmapPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream, detectEncodingFromByteOrderMarks: true);
+        return ReadBackgroundFileName(reader);
+    }
+
+    public static string? ReadBackgroundFileName(TextReader reader) => readEventAssets(reader, backgroundOnly: true).BackgroundFileName;
+
     public static BeatmapEventAssets ReadEventAssets(string beatmapPath)
     {
         using var stream = new FileStream(beatmapPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -24,7 +34,9 @@ public static partial class OsuBeatmapFileParser
         return ReadEventAssets(reader);
     }
 
-    public static BeatmapEventAssets ReadEventAssets(TextReader reader)
+    public static BeatmapEventAssets ReadEventAssets(TextReader reader) => readEventAssets(reader, backgroundOnly: false);
+
+    private static BeatmapEventAssets readEventAssets(TextReader reader, bool backgroundOnly)
     {
         ArgumentNullException.ThrowIfNull(reader);
 
@@ -80,6 +92,10 @@ public static partial class OsuBeatmapFileParser
             if (kind is "0" or "Background")
             {
                 background ??= fileName;
+                if (backgroundOnly)
+                {
+                    break;
+                }
             }
             else if (kind is "1" or "Video")
             {

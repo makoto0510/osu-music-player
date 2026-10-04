@@ -28,6 +28,10 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
     private bool isFavourite;
     private int position;
     private IReadOnlyList<string>? tagChips;
+    private string? tags;
+    private double? bpm;
+    private TimeSpan? length;
+    private double? maxStarRating;
 
     public UnifiedBeatmapSet Model { get; }
 
@@ -103,10 +107,10 @@ public sealed class TrackItemViewModel : ObservableObject, IDisposable
     public string Title => firstNonEmpty(Model.TitleUnicode, Model.Title, "(Untitled)");
     public string Artist => firstNonEmpty(Model.ArtistUnicode, Model.Artist, "(Unknown artist)");
     public string Creator => Model.Creator;
-    public string Tags => string.Join(' ', Model.Beatmaps.Select(static beatmap => beatmap.Tags));
-    public double BPM => Model.Beatmaps.Count == 0 ? 0 : Model.Beatmaps.Max(static beatmap => beatmap.BPM);
-    public TimeSpan Length => Model.Beatmaps.Count == 0 ? TimeSpan.Zero : Model.Beatmaps.Max(static beatmap => beatmap.Length);
-    public double MaxStarRating => Model.Beatmaps.Count == 0 ? 0 : Model.Beatmaps.Max(static beatmap => beatmap.StarRating);
+    public string Tags => tags ??= string.Join(' ', Model.Beatmaps.Select(static beatmap => beatmap.Tags));
+    public double BPM => bpm ??= Model.Beatmaps.Count == 0 ? 0 : Model.Beatmaps.Max(static beatmap => beatmap.BPM);
+    public TimeSpan Length => length ??= Model.Beatmaps.Count == 0 ? TimeSpan.Zero : Model.Beatmaps.Max(static beatmap => beatmap.Length);
+    public double MaxStarRating => maxStarRating ??= Model.Beatmaps.Count == 0 ? 0 : Model.Beatmaps.Max(static beatmap => beatmap.StarRating);
     public string BpmText => string.Create(CultureInfo.InvariantCulture, $"{BPM:0.#} BPM");
     public string BpmValueText => string.Create(CultureInfo.InvariantCulture, $"{BPM:0}");
     public string CreatorText => string.IsNullOrWhiteSpace(Creator) ? string.Empty : $"mapped by {Creator}";

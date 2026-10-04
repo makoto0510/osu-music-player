@@ -13,6 +13,74 @@ namespace OsuMusicPlayer.App.Tests;
 
 public sealed class MainWindowViewModelTests
 {
+    [Fact]
+    public async Task Initialize_LoadsCollectionsWhileBeatmapsAreStillLoading()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        var releaseBeatmaps = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var collectionsStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Loader.BeforeLoad = token => releaseBeatmaps.Task.WaitAsync(token);
+        environment.Collections.OnLoad = () => collectionsStarted.TrySetResult();
+
+        var initialization = viewModel.InitializeAsync();
+        try
+        {
+            await collectionsStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            initialization.IsCompleted.Should().BeFalse();
+        }
+        finally
+        {
+            releaseBeatmaps.TrySetResult();
+            await initialization;
+        }
+        viewModel.ErrorMessage.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Reload_RefreshesActiveCollectionWithNewTrackInstances()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        var set = createSet("Before", "Artist", "Mapper", "", 150, 100) with
+        {
+            Beatmaps = [new UnifiedBeatmap { Id = Guid.NewGuid(), DifficultyName = "Normal", Tags = "", Md5Hash = "abc" }],
+        };
+        environment.Loader.Sets = [set];
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Collections.Collections = [new BeatmapCollectionInfo("Practice", OsuInstallationKind.Lazer, ["abc", "ABC"])];
+        await viewModel.InitializeAsync();
+        viewModel.SelectedView = viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Collection);
+        var previousTrack = viewModel.Tracks.Single();
+        environment.Loader.Sets = [set with { Title = "After" }];
+
+        await viewModel.ReloadLibraryCommand.ExecuteAsync(null);
+
+        viewModel.SelectedView.Should().NotBeNull();
+        viewModel.SelectedView?.Kind.Should().Be(LibraryViewKind.Collection);
+        viewModel.Tracks.Should().ContainSingle().Which.Should().NotBeSameAs(previousTrack);
+        viewModel.Tracks[0].Title.Should().Be("After");
+    }
+
+    [Fact]
+    public void ReplaceTracks_PreservesActiveFavouritesAndBatchesListNotifications()
+    {
+        using var viewModel = createViewModel(out _);
+        var set = createSet("Favourite", "Artist", "Mapper", "", 150, 100);
+        viewModel.ReplaceTracksForTesting([set]);
+        viewModel.SelectedTrack = viewModel.Tracks.Single();
+        viewModel.ToggleFavouriteCommand.Execute(null);
+        viewModel.SelectedView = viewModel.Views.Single(static view => view.Kind == LibraryViewKind.Favourites);
+        var notifications = 0;
+        viewModel.Tracks.CollectionChanged += (_, _) => notifications++;
+
+        viewModel.ReplaceTracksForTesting([set with { Title = "Updated favourite" }]);
+
+        viewModel.Tracks.Should().ContainSingle().Which.IsFavourite.Should().BeTrue();
+        viewModel.Tracks[0].Title.Should().Be("Updated favourite");
+        viewModel.Tracks[0].Position.Should().Be(1);
+        notifications.Should().Be(1);
+    }
+
     [Theory]
     [InlineData("github", "https://github.com/makoto0510/osu-music-player")]
     [InlineData("releases", "https://github.com/makoto0510/osu-music-player/releases")]
@@ -1218,6 +1286,45 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void SearchArtist_QuotesNamesAndRevealsStudioSearchResults()
+    {
+        using var viewModel = createViewModel(out _);
+        const string artist = "ずっと 真夜中でいいのに。";
+        viewModel.ReplaceTracksForTesting([
+            createSet("First song", artist, "Mapper One", "", 200, 100),
+            createSet("Second song", artist, "Mapper Two", "", 180, 100),
+            createSet(artist, "Other artist", "Mapper Three", "", 160, 100),
+        ]);
+        viewModel.OpenStudioToolCommand.Execute("browse");
+        viewModel.IsTheaterMode = true;
+
+        viewModel.SearchArtistCommand.Execute(artist);
+
+        viewModel.SearchText.Should().Be($"artist:\"{artist}\"");
+        viewModel.Tracks.Select(static track => track.Title).Should().BeEquivalentTo("First song", "Second song");
+        viewModel.IsBrowsePanelVisible.Should().BeFalse();
+        viewModel.IsTheaterMode.Should().BeFalse();
+        viewModel.IsStudioToolsVisible.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t  ")]
+    public void SearchArtist_IgnoresEmptyOrWhitespaceNames(string? artist)
+    {
+        using var viewModel = createViewModel(out _);
+        viewModel.SearchText = "existing query";
+        viewModel.OpenStudioToolCommand.Execute("browse");
+
+        viewModel.SearchArtistCommand.Execute(artist);
+
+        viewModel.SearchText.Should().Be("existing query");
+        viewModel.IsBrowsePanelVisible.Should().BeTrue();
+    }
+
+    [Fact]
     public void OpenOnWeb_UsesTheOnlineSetId()
     {
         using var viewModel = createViewModel(out _, out var environment);
@@ -1916,7 +2023,12 @@ public sealed class MainWindowViewModelTests
     {
         public OsuInstallationKind Kind => OsuInstallationKind.Lazer;
         public IReadOnlyList<BeatmapCollectionInfo> Collections { get; set; } = [];
-        public Task<IReadOnlyList<BeatmapCollectionInfo>> LoadAsync(string installationPath, CancellationToken cancellationToken = default) => Task.FromResult(Collections);
+        public Action? OnLoad { get; set; }
+        public Task<IReadOnlyList<BeatmapCollectionInfo>> LoadAsync(string installationPath, CancellationToken cancellationToken = default)
+        {
+            OnLoad?.Invoke();
+            return Task.FromResult(Collections);
+        }
     }
 
     private sealed class FakeHitsoundPlayer : IHitsoundPlayer
@@ -1996,11 +2108,16 @@ public sealed class MainWindowViewModelTests
         public OsuInstallationKind Kind => OsuInstallationKind.Lazer;
         public IReadOnlyList<UnifiedBeatmapSet> Sets { get; set; } = [];
         public List<string> LoadedPaths { get; } = [];
+        public Func<CancellationToken, Task>? BeforeLoad { get; set; }
 
-        public Task<IReadOnlyList<UnifiedBeatmapSet>> LoadAsync(string installationPath, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<UnifiedBeatmapSet>> LoadAsync(string installationPath, CancellationToken cancellationToken = default)
         {
             LoadedPaths.Add(installationPath);
-            return Task.FromResult(Sets);
+            if (BeforeLoad is { } beforeLoad)
+            {
+                await beforeLoad(cancellationToken);
+            }
+            return Sets;
         }
     }
 

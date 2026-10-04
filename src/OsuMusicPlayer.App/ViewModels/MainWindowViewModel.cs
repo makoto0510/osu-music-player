@@ -230,7 +230,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         initializePersistence();
     }
 
-    public ObservableCollection<TrackItemViewModel> Tracks { get; } = [];
+    private readonly BulkObservableCollection<TrackItemViewModel> visibleTracks = new();
+    public ObservableCollection<TrackItemViewModel> Tracks => visibleTracks;
     public ObservableCollection<InstallationItemViewModel> Installations { get; } = [];
     public ObservableCollection<TrackItemViewModel> Queue { get; } = [];
     public bool HasQueue => Queue.Count > 0;
@@ -321,8 +322,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
         ErrorMessage = null;
         try
         {
-            var settings = await settingsStore.LoadAsync(lifetimeCancellation.Token).ConfigureAwait(false);
-            var customization = await Task.Run(() => this.customizationStore.LoadAsync(lifetimeCancellation.Token), lifetimeCancellation.Token).ConfigureAwait(false);
+            var settingsTask = settingsStore.LoadAsync(lifetimeCancellation.Token);
+            var customizationTask = Task.Run(() => this.customizationStore.LoadAsync(lifetimeCancellation.Token), lifetimeCancellation.Token);
+            await Task.WhenAll(settingsTask, customizationTask).ConfigureAwait(false);
+            var settings = await settingsTask.ConfigureAwait(false);
+            var customization = await customizationTask.ConfigureAwait(false);
             await dispatcher.InvokeAsync(() => updateCustomization(customization)).ConfigureAwait(false);
             manualInstallations.Clear();
             foreach (var setting in settings.ManualInstallations)
@@ -946,9 +950,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
                 LibraryStatusText = installations.Count == 0 ? string.Empty : "Loading library…";
             }).ConfigureAwait(false);
 
-            var models = await beatmapManager.LoadAsync(installations.Select(static entry => entry.Installation), token).ConfigureAwait(false);
+            var sources = installations.Select(static entry => entry.Installation).ToArray();
+            var modelsTask = beatmapManager.LoadAsync(sources, token);
+            var collectionsTask = loadCollectionsAsync(sources, token);
+            await Task.WhenAll(modelsTask, collectionsTask).ConfigureAwait(false);
+            var models = await modelsTask.ConfigureAwait(false);
             models = await fillMissingDurationsAsync(models, token).ConfigureAwait(false);
-            var loadedCollections = await loadCollectionsAsync(installations.Select(static entry => entry.Installation).ToArray(), token).ConfigureAwait(false);
+            var loadedCollections = await collectionsTask.ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
             await dispatcher.InvokeAsync(() =>
             {
@@ -1022,16 +1030,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
         allTracks.Clear();
         allTracks.AddRange(items);
+        rebuildLibraryIndexes();
         applyFilterAndSort();
 
         // Rebind the player to the freshly created items before the old ones (and their
         // bitmaps) are disposed, so the UI never renders a disposed image.
-        CurrentTrack = currentId is null ? null : allTracks.FirstOrDefault(track => track.Model.Id == currentId);
-        SelectedTrack = selectedId is null ? null : allTracks.FirstOrDefault(track => track.Model.Id == selectedId);
+        CurrentTrack = currentId is null ? null : tracksById.GetValueOrDefault(currentId.Value);
+        SelectedTrack = selectedId is null ? null : tracksById.GetValueOrDefault(selectedId.Value);
 
         for (var i = Queue.Count - 1; i >= 0; i--)
         {
-            var replacement = allTracks.FirstOrDefault(track => track.Model.Id == Queue[i].Model.Id);
+            var replacement = tracksById.GetValueOrDefault(Queue[i].Model.Id);
             if (replacement is null)
             {
                 Queue.RemoveAt(i);
@@ -1044,7 +1053,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
 
         notifyQueueChanged();
         shuffleHistory.Clear();
-        rebuildLibraryIndexes();
 
         foreach (var track in previous)
         {
@@ -1075,18 +1083,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
             };
         }
 
+        var replacement = query.ToArray();
         var selected = SelectedTrack;
         foreach (var track in Tracks)
         {
             track.Position = 0;
         }
 
-        Tracks.Clear();
-        foreach (var track in query)
+        for (var i = 0; i < replacement.Length; i++)
         {
-            track.Position = Tracks.Count + 1;
-            Tracks.Add(track);
+            replacement[i].Position = i + 1;
         }
+        visibleTracks.ReplaceAll(replacement);
 
         OnPropertyChanged(nameof(HasTracks));
         OnPropertyChanged(nameof(TrackCountText));

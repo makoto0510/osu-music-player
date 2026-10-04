@@ -8,6 +8,8 @@ internal interface IStableDatabaseReader
     IReadOnlyList<DbBeatmap> Read(string databasePath);
 
     BeatmapEventAssets ReadEventAssets(string beatmapPath);
+
+    string? ReadBackgroundFileName(string beatmapPath) => ReadEventAssets(beatmapPath).BackgroundFileName;
 }
 
 internal sealed class StableDatabaseReader : IStableDatabaseReader
@@ -24,4 +26,6 @@ internal sealed class StableDatabaseReader : IStableDatabaseReader
     }
 
     public BeatmapEventAssets ReadEventAssets(string beatmapPath) => OsuBeatmapFileParser.ReadEventAssets(beatmapPath);
+
+    public string? ReadBackgroundFileName(string beatmapPath) => OsuBeatmapFileParser.ReadBackgroundFileName(beatmapPath);
 }

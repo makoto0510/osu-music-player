@@ -326,6 +326,15 @@
       <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
     </Style>
 
+    <Style Selector="Button.artistSearch">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.artistSearch:pointerover TextBlock, Button.artistSearch:focus-visible TextBlock">
+      <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+
     <!-- Window caption buttons -->
     <Style Selector="Button.caption">
       <Setter Property="Background" Value="Transparent" />

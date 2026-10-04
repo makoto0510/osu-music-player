@@ -309,8 +309,8 @@ public sealed partial class MainWindowViewModel
                 foreach (var collection in group)
                 {
                     var name = ambiguous ? $"{collection.Name} ({(collection.Source == OsuInstallationKind.Stable ? "stable" : "lazer")})" : collection.Name;
-                    var members = collection.BeatmapMd5Hashes.Select(hash => tracksByMd5.GetValueOrDefault(hash)).Where(static track => track is not null).Distinct().ToArray();
-                    Views.Add(new LibraryView(LibraryViewKind.Collection, name, null, tracks => tracks.Where(members.Contains), members.Length));
+                    var members = collection.BeatmapMd5Hashes.Select(hash => tracksByMd5.GetValueOrDefault(hash)).OfType<TrackItemViewModel>().ToHashSet();
+                    Views.Add(new LibraryView(LibraryViewKind.Collection, name, null, tracks => tracks.Where(members.Contains), members.Count));
                 }
             }
 
