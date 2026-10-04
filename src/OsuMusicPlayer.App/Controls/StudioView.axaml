@@ -226,10 +226,18 @@
           </Grid>
         </Grid>
 
-        <!-- Native video has a dedicated theater surface, without text over the native window. -->
+        <!-- Storyboard content uses VideoView's native transparent overlay in theater. -->
         <Grid Grid.RowSpan="3" RowDefinitions="*,Auto" IsVisible="{Binding IsTheaterMode}">
           <Border Background="Black" CornerRadius="12" ClipToBounds="True">
-            <Grid><Image Source="{Binding DetailTrack.LargeBackgroundImage^}" Stretch="Uniform" /><controls:StoryboardView x:Name="StudioStoryboard" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPane}" /><vlc:VideoView x:Name="StudioVideo" IsVisible="{Binding ShowVideoInPane}" Height="{Binding VideoSurfaceHeight}" /></Grid>
+            <Grid>
+              <Image Source="{Binding DetailTrack.LargeBackgroundImage^}" Stretch="Uniform" />
+              <controls:StoryboardView x:Name="StudioStoryboard" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPaneWithoutVideo}" />
+              <vlc:VideoView x:Name="StudioVideo" IsVisible="{Binding ShowVideoInStudioPane}" Height="{Binding VideoSurfaceHeight}">
+                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                  <controls:StoryboardView x:Name="StudioVideoStoryboard" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPane}" />
+                </Grid>
+              </vlc:VideoView>
+            </Grid>
           </Border>
           <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,12">
             <ToggleButton Content="Theater" IsChecked="{Binding IsTheaterMode, Mode=TwoWay}" /><ToggleButton Content="Video" IsChecked="{Binding IsVideoEnabled, Mode=TwoWay}" IsEnabled="{Binding IsVideoAvailable}" /><ToggleButton Content="Storyboard" IsChecked="{Binding IsStoryboardEnabled, Mode=TwoWay}" /><ToggleButton Content="Hit sounds" IsChecked="{Binding IsHitsoundEnabled, Mode=TwoWay}" />

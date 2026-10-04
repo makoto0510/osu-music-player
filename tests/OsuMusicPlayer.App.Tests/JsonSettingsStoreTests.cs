@@ -48,6 +48,31 @@ public sealed class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task PanelVisibility_RoundTripsAndOldSettingsDefaultToClosed()
+    {
+        using var directory = new TestDirectory();
+        var path = Path.Combine(directory.Path, "settings.json");
+        var store = new JsonSettingsStore(path);
+        var panels = new PanelVisibilitySettings
+        {
+            Queue = true,
+            Playlists = true,
+            Browse = true,
+            Equalizer = true,
+            Sources = true,
+            Settings = true,
+        };
+
+        await store.SaveAsync(new AppSettings { Panels = panels });
+        var loaded = await store.LoadAsync();
+        loaded.Panels.Should().BeEquivalentTo(panels);
+
+        await File.WriteAllTextAsync(path, "{}");
+        var migrated = await store.LoadAsync();
+        migrated.Panels.Should().BeEquivalentTo(new PanelVisibilitySettings());
+    }
+
+    [Fact]
     public async Task BeatmapBackground_RoundTripsAndOldSettingsDefaultToFalse()
     {
         using var directory = new TestDirectory();

@@ -70,7 +70,9 @@ public sealed partial class MainWindow : Window
         // The storyboard follows the audio engine's clock directly so animation stays
         // smooth; the view model's 100 ms position updates are too coarse for that.
         StoryboardView.Clock = () => audioEngine.CurrentTime;
+        VideoStoryboardView.Clock = () => audioEngine.CurrentTime;
         StudioShell.StoryboardSurface.Clock = () => audioEngine.CurrentTime;
+        StudioShell.VideoStoryboardSurface.Clock = () => audioEngine.CurrentTime;
 
         // LibVLCSharp.Avalonia only hands the native window handle to libVLC inside the
         // MediaPlayer setter, and the handle does not exist until the view is attached to

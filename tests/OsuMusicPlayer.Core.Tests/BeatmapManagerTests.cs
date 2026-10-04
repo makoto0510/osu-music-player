@@ -53,6 +53,29 @@ public sealed class BeatmapManagerTests
         await action.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [Fact]
+    public async Task LoadAsync_KeepsMultipleSongsAndMatchesEachAcrossInstallations()
+    {
+        var first = ModelFactory.Set(100, source: BeatmapSource.Lazer,
+            beatmaps: [ModelFactory.Beatmap(1, "First")]) with { AudioFilePath = "hash-first" };
+        var second = ModelFactory.Set(100, source: BeatmapSource.Lazer,
+            beatmaps: [ModelFactory.Beatmap(2, "Second")]) with { AudioFilePath = "hash-second" };
+        var stableSecond = ModelFactory.Set(100, source: BeatmapSource.Stable,
+            beatmaps: [ModelFactory.Beatmap(2, "Second")]) with { AudioFilePath = "second.mp3" };
+        var stableFirst = ModelFactory.Set(100, source: BeatmapSource.Stable,
+            beatmaps: [ModelFactory.Beatmap(1, "First")]) with { AudioFilePath = "first.mp3" };
+        var manager = new BeatmapManager(
+            [new FakeLoader(OsuInstallationKind.Lazer, [first, second]),
+             new FakeLoader(OsuInstallationKind.Stable, [stableSecond, stableFirst])], new DuplicateDetector());
+
+        var results = await manager.LoadAsync(
+            [new OsuInstallation(OsuInstallationKind.Lazer, "lazer"), new OsuInstallation(OsuInstallationKind.Stable, "stable")]);
+
+        results.Should().HaveCount(2);
+        results.Should().OnlyContain(track => track.Source == BeatmapSource.Both);
+        results.Select(track => track.Beatmaps.Single().OnlineId).Should().BeEquivalentTo(new long?[] { 1, 2 });
+    }
+
     private sealed class FakeLoader(OsuInstallationKind kind, IReadOnlyList<UnifiedBeatmapSet> sets) : IBeatmapLoader
     {
         public OsuInstallationKind Kind { get; } = kind;

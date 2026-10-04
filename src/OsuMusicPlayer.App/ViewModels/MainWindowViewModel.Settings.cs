@@ -40,6 +40,7 @@ public sealed partial class MainWindowViewModel
         nameof(IsRichPresenceEnabled), nameof(OsuApiClientId), nameof(OsuApiClientSecret),
         nameof(ExcludeMinLengthSeconds), nameof(ExcludeMaxLengthSeconds), nameof(ExcludeQueryText), nameof(HideDuplicateSongs),
         nameof(SelectedInterfaceName), nameof(SelectedThemeName), nameof(AccentColorText), nameof(UseBeatmapBackground), nameof(UseBeatmapAccentColor), nameof(SelectedPreviewSkinName), nameof(PreferSkinComboColours),
+        nameof(IsStudioQueueVisible), nameof(IsPlaylistPanelVisible), nameof(IsBrowsePanelVisible), nameof(IsEqualizerPanelVisible), nameof(IsSourcesPanelVisible), nameof(IsSettingsPanelVisible),
     ];
 
     private readonly object saveSync = new();
@@ -304,6 +305,15 @@ public sealed partial class MainWindowViewModel
                 PreviewSkin = string.Equals(requestedPreviewSkinName, PreviewSkin.DefaultName, StringComparison.OrdinalIgnoreCase) ? string.Empty : requestedPreviewSkinName,
                 PreferSkinComboColours = PreferSkinComboColours,
             },
+            Panels = new PanelVisibilitySettings
+            {
+                Queue = IsStudioQueueVisible,
+                Playlists = IsPlaylistPanelVisible,
+                Browse = IsBrowsePanelVisible,
+                Equalizer = IsEqualizerPanelVisible,
+                Sources = IsSourcesPanelVisible,
+                Settings = IsSettingsPanelVisible,
+            },
             Exclusions = new LibraryExclusionSettings
             {
                 MinimumLengthSeconds = Math.Max(0, ExcludeMinLengthSeconds),
@@ -361,6 +371,12 @@ public sealed partial class MainWindowViewModel
             OsuApiClientSecret = settings.OsuApiClientSecret ?? string.Empty;
             applyRestoredExclusions(settings);
             applyRestoredAppearance(settings);
+            IsStudioQueueVisible = settings.Panels.Queue;
+            IsPlaylistPanelVisible = settings.Panels.Playlists;
+            IsBrowsePanelVisible = settings.Panels.Browse;
+            IsEqualizerPanelVisible = settings.Panels.Equalizer;
+            IsSourcesPanelVisible = settings.Panels.Sources;
+            IsSettingsPanelVisible = settings.Panels.Settings;
             applyRestoredPreviewSkin(settings);
 
             var gains = Equalizer.Normalize(settings.EqualizerGains);

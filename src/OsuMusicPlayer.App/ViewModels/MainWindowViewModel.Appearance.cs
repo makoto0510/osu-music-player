@@ -100,6 +100,8 @@ public sealed partial class MainWindowViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStudioInterface))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInClassicPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInStudioPane))]
     [NotifyPropertyChangedFor(nameof(IsClassicSettingsVisible))]
     [NotifyPropertyChangedFor(nameof(ArtistColumnWidth))]
     [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]

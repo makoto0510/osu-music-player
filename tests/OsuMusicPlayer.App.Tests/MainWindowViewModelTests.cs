@@ -14,6 +14,30 @@ namespace OsuMusicPlayer.App.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Fact]
+    public void RemotePlaylists_CopyOrderedAvailableTracksAndEvaluateSmartQueriesAcrossLibrary()
+    {
+        using var viewModel = createViewModel(out _);
+        var first = createSet("First", "Artist", "Mapper", "", 150, 100);
+        var second = createSet("Second", "Artist", "Mapper", "", 180, 120);
+        viewModel.ReplaceTracksForTesting([first, second]);
+        var playlist = new PlaylistViewModel(Guid.NewGuid(), "Ordered", [second.Id, Guid.NewGuid(), first.Id]);
+        viewModel.Playlists.Add(playlist);
+        viewModel.SmartPlaylists.Add(new SmartPlaylistSetting(Guid.NewGuid(), "Fast", "bpm:>160"));
+        viewModel.SearchText = "First";
+
+        var snapshot = viewModel.PlaylistSnapshot;
+
+        snapshot.Should().HaveCount(2);
+        snapshot[0].Name.Should().Be("Ordered");
+        snapshot[0].TrackIds.Should().Equal(second.Id, first.Id);
+        snapshot[0].IsSmart.Should().BeFalse();
+        snapshot[1].IsSmart.Should().BeTrue();
+        snapshot[1].TrackIds.Should().Equal([second.Id], "remote smart playlists are independent of desktop search");
+        playlist.TrackIds.Clear();
+        snapshot[0].TrackIds.Should().Equal([second.Id, first.Id], "HTTP readers receive a detached snapshot");
+    }
+
+    [Fact]
     public async Task Initialize_LoadsCollectionsWhileBeatmapsAreStillLoading()
     {
         using var viewModel = createViewModel(out _, out var environment);
@@ -1068,6 +1092,44 @@ public sealed class MainWindowViewModelTests
         environment.Storyboard.Loads.Should().Be(1);
     }
 
+    [Fact]
+    public void Storyboard_FollowsVideoTogglesAndPopupMovesWithoutDrawingTwice()
+    {
+        using var viewModel = createViewModel(out _);
+        using var session = new StoryboardSession([], new Dictionary<string, SkiaSharp.SKImage?>(), widescreen: true);
+        viewModel.StoryboardSession = session;
+        viewModel.CurrentMedia = new BeatmapMedia("video.mp4", TimeSpan.Zero, null);
+        var changes = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+
+        viewModel.ShowStoryboardInPane.Should().BeTrue("the overlay remains active over video");
+        viewModel.ShowStoryboardInPaneWithoutVideo.Should().BeFalse();
+        viewModel.SelectedInterfaceName = "Studio";
+        viewModel.ShowVideoInStudioPane.Should().BeFalse("Studio's theater surface is inactive outside theater");
+        viewModel.IsTheaterMode = true;
+        viewModel.ShowVideoInStudioPane.Should().BeTrue();
+        changes.Should().Contain(nameof(MainWindowViewModel.ShowVideoInStudioPane));
+        viewModel.ShowVideoInClassicPane.Should().BeFalse();
+        viewModel.SelectedInterfaceName = "Classic";
+        viewModel.ShowVideoInStudioPane.Should().BeFalse();
+        viewModel.ShowVideoInClassicPane.Should().BeTrue();
+        viewModel.IsVideoEnabled = false;
+        viewModel.ShowStoryboardInPaneWithoutVideo.Should().BeTrue();
+        changes.Should().Contain(nameof(MainWindowViewModel.ShowStoryboardInPaneWithoutVideo));
+
+        changes.Clear();
+        viewModel.IsVisualsPoppedOut = true;
+        viewModel.ShowStoryboardInPaneWithoutVideo.Should().BeFalse();
+        viewModel.ShowStoryboardInPopupWithoutVideo.Should().BeTrue();
+        changes.Should().Contain(nameof(MainWindowViewModel.ShowStoryboardInPopupWithoutVideo));
+        viewModel.IsVideoEnabled = true;
+        viewModel.ShowVideoInPopup.Should().BeTrue();
+        viewModel.ShowStoryboardInPopupWithoutVideo.Should().BeFalse();
+        viewModel.IsStoryboardEnabled = false;
+        viewModel.IsStoryboardVisible.Should().BeFalse();
+        viewModel.StoryboardSession = null;
+    }
+
     private static string beatmapText(int circles)
     {
         var lines = new List<string>
@@ -1283,6 +1345,40 @@ public sealed class MainWindowViewModelTests
         viewModel.SearchTagCommand.Execute("#anime");
         viewModel.SearchText.Should().Be("tag:\"anime\"");
         viewModel.Tracks.Should().ContainSingle().Which.Title.Should().Be("Song B");
+    }
+
+    [Fact]
+    public async Task PanelVisibility_RestoresAndPersistsAllPanelStates()
+    {
+        using var viewModel = createViewModel(out _, out var environment);
+        environment.Locator.Detected = [new OsuInstallation(OsuInstallationKind.Lazer, Path.GetTempPath())];
+        environment.Settings.Current = new AppSettings
+        {
+            Panels = new PanelVisibilitySettings
+            {
+                Queue = true,
+                Playlists = true,
+                Browse = true,
+                Equalizer = true,
+                Sources = false,
+                Settings = false,
+            },
+        };
+
+        await viewModel.InitializeAsync();
+
+        viewModel.IsStudioQueueVisible.Should().BeTrue();
+        viewModel.IsPlaylistPanelVisible.Should().BeTrue();
+        viewModel.IsBrowsePanelVisible.Should().BeTrue();
+        viewModel.IsEqualizerPanelVisible.Should().BeTrue();
+        viewModel.IsSourcesPanelVisible.Should().BeFalse();
+        viewModel.IsSettingsPanelVisible.Should().BeFalse();
+
+        viewModel.CloseStudioToolsCommand.Execute(null);
+        viewModel.IsStudioQueueVisible = false;
+        await viewModel.PendingSave;
+
+        environment.Settings.Current.Panels.Should().BeEquivalentTo(new PanelVisibilitySettings());
     }
 
     [Fact]

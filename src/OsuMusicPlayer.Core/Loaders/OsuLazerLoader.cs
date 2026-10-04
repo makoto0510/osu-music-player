@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Security.Cryptography;
+using System.Text;
 using OsuMusicPlayer.Core.Models;
 using Realms.Exceptions;
 
@@ -59,27 +61,36 @@ public sealed class OsuLazerLoader : IBeatmapLoader
             try
             {
                 var files = new LazerHashFileResolver(filesPath, set.FileHashes);
-                var audioPath = files.Resolve(set.AudioFileName);
-                if (audioPath is null)
+                // Group resolved files, not names: aliases may refer to the same hash.
+                var groups = set.Beatmaps
+                    .Select(beatmap => (Beatmap: beatmap, AudioPath: files.Resolve(beatmap.AudioFileName ?? set.AudioFileName)))
+                    .Where(item => item.AudioPath is not null)
+                    .GroupBy(item => item.AudioPath, StringComparer.Ordinal);
+                foreach (var group in groups)
                 {
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (group.Key is null)
+                    {
+                        continue;
+                    }
+                    var primary = group.First().Beatmap;
+                    var legacyAudioPath = files.Resolve(set.AudioFileName);
+                    results.Add(new UnifiedBeatmapSet
+                    {
+                        Id = group.Key == legacyAudioPath ? set.Id : createTrackId(set.Id, Path.GetFileName(group.Key)),
+                        OnlineId = positiveOrNull(set.OnlineId),
+                        Title = primary.Title ?? set.Title,
+                        TitleUnicode = primary.TitleUnicode ?? set.TitleUnicode,
+                        Artist = primary.Artist ?? set.Artist,
+                        ArtistUnicode = primary.ArtistUnicode ?? set.ArtistUnicode,
+                        Creator = primary.Creator ?? set.Creator,
+                        AudioFilePath = group.Key,
+                        BackgroundFilePath = group.Select(item => files.Resolve(item.Beatmap.BackgroundFileName ?? set.BackgroundFileName)).FirstOrDefault(path => path is not null),
+                        Source = BeatmapSource.Lazer,
+                        Files = files,
+                        Beatmaps = group.Select(item => mapBeatmap(item.Beatmap, filesPath)).ToArray(),
+                    });
                 }
-
-                results.Add(new UnifiedBeatmapSet
-                {
-                    Id = set.Id,
-                    OnlineId = positiveOrNull(set.OnlineId),
-                    Title = set.Title,
-                    TitleUnicode = set.TitleUnicode,
-                    Artist = set.Artist,
-                    ArtistUnicode = set.ArtistUnicode,
-                    Creator = set.Creator,
-                    AudioFilePath = audioPath,
-                    BackgroundFilePath = files.Resolve(set.BackgroundFileName),
-                    Source = BeatmapSource.Lazer,
-                    Files = files,
-                    Beatmaps = set.Beatmaps.Select(beatmap => mapBeatmap(beatmap, filesPath)).ToArray(),
-                });
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
@@ -130,4 +141,7 @@ public sealed class OsuLazerLoader : IBeatmapLoader
     };
 
     private static long? positiveOrNull(int value) => value > 0 ? value : null;
+
+    private static Guid createTrackId(Guid setId, string audioHash) =>
+        new(SHA256.HashData(Encoding.UTF8.GetBytes($"lazer-track:{setId}:{audioHash}"))[..16]);
 }

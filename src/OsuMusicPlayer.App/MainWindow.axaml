@@ -358,8 +358,12 @@
             <Grid>
               <PathIcon Data="{StaticResource IconMusicNote}" Classes="faint" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" />
               <Image Source="{Binding DetailTrack.LargeBackgroundImage^}" Stretch="UniformToFill" />
-              <controls:StoryboardView x:Name="StoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPane}" />
-              <vlc:VideoView x:Name="VideoView" Height="{Binding VideoSurfaceHeight}" IsVisible="{Binding ShowVideoInPane}" VerticalAlignment="Stretch" />
+              <controls:StoryboardView x:Name="StoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPaneWithoutVideo}" />
+              <vlc:VideoView x:Name="VideoView" Height="{Binding VideoSurfaceHeight}" IsVisible="{Binding ShowVideoInClassicPane}" VerticalAlignment="Stretch">
+                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                  <controls:StoryboardView x:Name="VideoStoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPane}" />
+                </Grid>
+              </vlc:VideoView>
               <Border IsVisible="{Binding IsVisualsPoppedOut}" Background="#88000000" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="8" Padding="12,6">
                 <TextBlock Text="Visuals are shown in their own window" FontSize="12" Foreground="White" />
               </Border>
@@ -544,12 +548,12 @@
     </Grid>
 
     <!-- ===== Player bar ===== -->
-    <Border Grid.Row="2" Padding="16,10,16,18" Margin="0,10,0,0" BorderThickness="0,1,0,0" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}">
-      <Grid RowDefinitions="Auto,40" ColumnDefinitions="300,*,300" ColumnSpacing="16">
+    <Border Grid.Row="2" Padding="16,12" Margin="0,8,0,0" BorderThickness="0,1,0,0" Background="{DynamicResource ThemeSurfaceBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}">
+      <Grid RowDefinitions="48,28,Auto" ColumnDefinitions="322,*,322" ColumnSpacing="16" RowSpacing="4">
 
         <!-- Current track -->
-        <Grid Grid.Row="0" Grid.Column="0" ColumnDefinitions="56,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
-          <Border Classes="thumb" Width="56" Height="56" CornerRadius="10">
+        <Grid Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" ColumnDefinitions="48,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+          <Border Classes="thumb" Width="48" Height="48" CornerRadius="8">
             <Grid>
               <PathIcon Data="{StaticResource IconMusicNote}" Classes="faint" HorizontalAlignment="Center" VerticalAlignment="Center" />
               <Image Source="{Binding CurrentTrack.BackgroundImage^}" Stretch="UniformToFill" />
@@ -564,7 +568,7 @@
             </StackPanel>
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-            <Button Classes="icon heart" Classes.on="{Binding IsDetailFavourite}" Command="{Binding ToggleFavouriteCommand}" ToolTip.Tip="Favourite (Ctrl+D)">
+            <Button Classes="icon heart" Classes.on="{Binding IsDetailFavourite}" Command="{Binding ToggleFavouriteCommand}" ToolTip.Tip="Favourite (Ctrl+D)" AutomationProperties.Name="Favourite">
               <Panel>
                 <PathIcon Data="{StaticResource IconHeartOutline}" IsVisible="{Binding !IsDetailFavourite}" Width="18" Height="18" />
                 <PathIcon Data="{StaticResource IconHeart}" IsVisible="{Binding IsDetailFavourite}" Width="18" Height="18" />
@@ -575,32 +579,32 @@
 
         <!-- Transport -->
         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-          <ToggleButton Classes="icon" IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" ToolTip.Tip="Shuffle (Ctrl+S)"><PathIcon Data="{StaticResource IconShuffle}" /></ToggleButton>
-          <Button Classes="icon large" Command="{Binding PreviousCommand}" ToolTip.Tip="Previous (Ctrl+←)"><PathIcon Data="{StaticResource IconSkipPrevious}" /></Button>
+          <ToggleButton Classes="icon" IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" ToolTip.Tip="Shuffle (Ctrl+S)" AutomationProperties.Name="Shuffle"><PathIcon Data="{StaticResource IconShuffle}" /></ToggleButton>
+          <Button Classes="icon large" Command="{Binding PreviousCommand}" ToolTip.Tip="Previous (Ctrl+←)" AutomationProperties.Name="Previous track"><PathIcon Data="{StaticResource IconSkipPrevious}" /></Button>
           <Button Classes="play" Command="{Binding TogglePlayCommand}" ToolTip.Tip="Play / pause (Space)" AutomationProperties.Name="Play / pause" AutomationProperties.AutomationId="PlayPauseButton">
             <Panel>
               <PathIcon Data="{StaticResource IconPlay}" IsVisible="{Binding !IsPlaying}" Margin="2,0,0,0" />
               <PathIcon Data="{StaticResource IconPause}" IsVisible="{Binding IsPlaying}" />
             </Panel>
           </Button>
-          <Button Classes="icon large" Command="{Binding NextCommand}" ToolTip.Tip="Next (Ctrl+→)"><PathIcon Data="{StaticResource IconSkipNext}" /></Button>
-          <ToggleButton Classes="icon" IsChecked="{Binding IsRepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatText}">
+          <Button Classes="icon large" Command="{Binding NextCommand}" ToolTip.Tip="Next (Ctrl+→)" AutomationProperties.Name="Next track"><PathIcon Data="{StaticResource IconSkipNext}" /></Button>
+          <ToggleButton Classes="icon" IsChecked="{Binding IsRepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatText}" AutomationProperties.Name="{Binding RepeatText}">
             <Panel>
               <PathIcon Data="{StaticResource IconRepeat}" IsVisible="{Binding !IsRepeatOne}" />
               <PathIcon Data="{StaticResource IconRepeatOnce}" IsVisible="{Binding IsRepeatOne}" />
             </Panel>
           </ToggleButton>
         </StackPanel>
-        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="44,*,44" ColumnSpacing="8" Margin="0,2,0,0">
-          <TextBlock Grid.Column="0" Text="{Binding CurrentTimeText}" Classes="hint" FontSize="11.5" VerticalAlignment="Center" HorizontalAlignment="Right" />
-          <Slider Grid.Column="1" Classes="slim" Minimum="0" Maximum="1" Value="{Binding Progress, Mode=TwoWay}" />
-          <TextBlock Grid.Column="2" Text="{Binding TotalTimeText}" Classes="hint" FontSize="11.5" VerticalAlignment="Center" />
+        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="44,*,44" ColumnSpacing="8" MaxWidth="720" HorizontalAlignment="Stretch">
+          <TextBlock Grid.Column="0" Text="{Binding CurrentTimeText}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" HorizontalAlignment="Right" />
+          <Slider Grid.Column="1" Classes="slim" Margin="0" Minimum="0" Maximum="1" Value="{Binding Progress, Mode=TwoWay}" AutomationProperties.Name="Playback position" />
+          <TextBlock Grid.Column="2" Text="{Binding TotalTimeText}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" />
         </Grid>
 
         <!-- Volume / panes -->
-        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="2">
           <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaybackModSelector}" Margin="0,0,6,0" VerticalAlignment="Center" />
-          <Button Classes="icon" ToolTip.Tip="Volume mixer">
+          <Button Classes="icon" ToolTip.Tip="Volume mixer" AutomationProperties.Name="Volume mixer">
             <Panel><PathIcon Data="{StaticResource IconVolume}" IsVisible="{Binding !IsMuted}" /><PathIcon Data="{StaticResource IconVolumeOff}" IsVisible="{Binding IsMuted}" /></Panel>
             <Button.Flyout>
               <Flyout Placement="TopEdgeAlignedRight">
@@ -616,13 +620,13 @@
               </Flyout>
             </Button.Flyout>
           </Button>
-          <Slider Classes="slim" Width="110" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" Margin="0,4" ToolTip.Tip="Master volume (Ctrl+↑ / Ctrl+↓)" AutomationProperties.Name="Master volume" />
-          <Button Classes="icon" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="Video / storyboard in its own window (Ctrl+P)" Margin="6,0,0,0"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
-          <ToggleButton Classes="icon" IsChecked="{Binding IsNowPlayingPaneVisible, Mode=TwoWay}" ToolTip.Tip="Now playing / queue pane (Ctrl+Q)"><PathIcon Data="{StaticResource IconPlaylist}" /></ToggleButton>
+          <Slider Classes="slim" Width="96" Minimum="0" Maximum="1" Value="{Binding MasterVolume, Mode=TwoWay}" Margin="0" ToolTip.Tip="Master volume (Ctrl+↑ / Ctrl+↓)" AutomationProperties.Name="Master volume" />
+          <Button Classes="icon" Command="{Binding #Root.ToggleVisualsWindowCommand}" ToolTip.Tip="Video / storyboard in its own window (Ctrl+P)" Margin="6,0,0,0" AutomationProperties.Name="Open visuals window"><PathIcon Data="{StaticResource IconPictureInPicture}" /></Button>
+          <ToggleButton Classes="icon" IsChecked="{Binding IsNowPlayingPaneVisible, Mode=TwoWay}" ToolTip.Tip="Now playing / queue pane (Ctrl+Q)" AutomationProperties.Name="Now playing / queue"><PathIcon Data="{StaticResource IconPlaylist}" /></ToggleButton>
         </StackPanel>
 
         <!-- Errors -->
-        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding HasError}" Background="#3B1D27" CornerRadius="8" Padding="10,4" Margin="0,4,0,0" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" IsVisible="{Binding HasError}" Background="#3B1D27" CornerRadius="8" Padding="10,4" VerticalAlignment="Center" HorizontalAlignment="Left">
           <TextBlock Text="{Binding ErrorMessage}" Foreground="#FFB6C8" FontSize="11.5" TextTrimming="CharacterEllipsis" MaxWidth="700" ToolTip.Tip="{Binding ErrorMessage}" />
         </Border>
       </Grid>

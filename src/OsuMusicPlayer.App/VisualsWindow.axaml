@@ -12,8 +12,12 @@
     <Grid Grid.Row="0" Background="Black">
       <TextBlock Text="♪" FontSize="64" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#40FFFFFF" />
       <Image Source="{Binding CurrentTrack.LargeBackgroundImage^}" Stretch="Uniform" />
-      <controls:StoryboardView x:Name="StoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding IsStoryboardVisible}" />
-      <vlc:VideoView x:Name="VideoView" Height="{Binding PopupVideoSurfaceHeight}" IsVisible="{Binding ShowVideoInPopup}" VerticalAlignment="Stretch" />
+      <controls:StoryboardView x:Name="StoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding ShowStoryboardInPopupWithoutVideo}" />
+      <vlc:VideoView x:Name="VideoView" Height="{Binding PopupVideoSurfaceHeight}" IsVisible="{Binding ShowVideoInPopup}" VerticalAlignment="Stretch">
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+          <controls:StoryboardView x:Name="VideoStoryboardView" Session="{Binding StoryboardSession}" IsVisible="{Binding IsStoryboardVisible}" />
+        </Grid>
+      </vlc:VideoView>
     </Grid>
     <Border Grid.Row="1" x:Name="Toolbar" Background="#CC101218" Padding="12,6">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">

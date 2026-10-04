@@ -10,6 +10,19 @@ public sealed class DuplicateDetector : IDuplicateDetector
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
+        if (left.AudioFilePath is { } leftAudio && right.AudioFilePath is { } rightAudio &&
+            !string.Equals(leftAudio, rightAudio, StringComparison.Ordinal))
+        {
+            // An online set can contain several songs. Different files from the same
+            // installation must survive; cross-installation matches need a shared map.
+            if (left.Source == right.Source || !left.Beatmaps.Any(first => right.Beatmaps.Any(second =>
+                    first.OnlineId is > 0 && first.OnlineId == second.OnlineId ||
+                    first.AllMd5Hashes.Intersect(second.AllMd5Hashes, StringComparer.OrdinalIgnoreCase).Any())))
+            {
+                return false;
+            }
+        }
+
         if (left.OnlineId is > 0 && right.OnlineId is > 0)
         {
             return left.OnlineId == right.OnlineId;

@@ -28,6 +28,7 @@ public sealed partial class VisualsWindow : Window
         this.videoSurface = videoSurface;
         DataContext = viewModel;
         StoryboardView.Clock = () => audioEngine.CurrentTime;
+        VideoStoryboardView.Clock = () => audioEngine.CurrentTime;
 
         VideoView.AttachedToVisualTree += (_, _) =>
         {

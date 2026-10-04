@@ -121,6 +121,41 @@ public sealed class OsuLazerLoaderTests
         beatmaps[1].Ruleset.Should().Be(OsuRuleset.Mania);
     }
 
+    [Fact]
+    public async Task LoadAsync_PreservesEveryAudioAndOnlyItsDifficulties()
+    {
+        using var directory = new TestDirectory();
+        directory.CreateFile("client.realm");
+        directory.CreateDirectory("files");
+        var firstAudio = Path.GetFullPath(directory.CreateFile($"files/1/1a/{hash}"));
+        var secondAudio = Path.GetFullPath(directory.CreateFile($"files/2/2b/{beatmap_hash}"));
+        var set = createSet("second.mp3", new Dictionary<string, string>
+        {
+            ["first.mp3"] = hash, ["alias.mp3"] = hash, ["second.mp3"] = beatmap_hash,
+        });
+        var map = set.Beatmaps[0];
+        set = set with { Beatmaps =
+        [
+            map with { AudioFileName = "first.mp3", DifficultyName = "First", Title = "First song" },
+            map with { AudioFileName = "alias.mp3", DifficultyName = "Alias" },
+            map with { AudioFileName = "second.mp3", DifficultyName = "Second" },
+            map with { AudioFileName = "missing.mp3", DifficultyName = "Missing" },
+            map with { AudioFileName = "", DifficultyName = "Empty" },
+        ] };
+        var loader = new OsuLazerLoader(new FakeLazerReader([set]));
+
+        var results = await loader.LoadAsync(directory.Path);
+
+        results.Should().HaveCount(2);
+        var first = results.Single(track => track.AudioFilePath == firstAudio);
+        first.Title.Should().Be("First song");
+        first.Beatmaps.Select(difficulty => difficulty.DifficultyName).Should().Equal("First", "Alias");
+        results.Single(track => track.AudioFilePath == secondAudio).Beatmaps.Should().ContainSingle()
+            .Which.DifficultyName.Should().Be("Second");
+        results.Select(track => track.Id).Should().OnlyHaveUniqueItems();
+        (await loader.LoadAsync(directory.Path)).Select(track => track.Id).Should().Equal(results.Select(track => track.Id));
+    }
+
     private static LazerBeatmapSetData createSet(string audioFile, IReadOnlyDictionary<string, string> files) => new(
         Guid.NewGuid(),
         123,

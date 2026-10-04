@@ -23,6 +23,10 @@
   </ItemGroup>
   <Import Project="BassNatives.targets" />
   <ItemGroup>
+    <AvaloniaResource Include="Assets\Fonts\**\*.otf;Assets\Fonts\**\*.ttf" />
+    <Content Include="Assets\Fonts\**\OFL.txt;Assets\Fonts\README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="Customization\**\*" Link="Custom\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

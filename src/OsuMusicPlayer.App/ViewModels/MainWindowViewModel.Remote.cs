@@ -1,4 +1,6 @@
 using OsuMusicPlayer.Audio;
+using OsuMusicPlayer.Core.Search;
+using OsuMusicPlayer.Server;
 
 namespace OsuMusicPlayer.App.ViewModels;
 
@@ -6,6 +8,16 @@ namespace OsuMusicPlayer.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     internal IReadOnlyList<TrackItemViewModel> LibrarySnapshot => allTracks.ToArray();
+
+    internal IReadOnlyList<ServerPlaylist> PlaylistSnapshot => Playlists.Select(playlist =>
+        new ServerPlaylist(playlist.Id, playlist.Name, playlist.TrackIds.Where(tracksById.ContainsKey).ToArray()))
+        .Concat(SmartPlaylists.Select(playlist =>
+        {
+            var query = TrackSearchQuery.Parse(playlist.Query);
+            return new ServerPlaylist(playlist.Id, playlist.Name,
+                allTracks.Where(track => query.Matches(track.Model, track.Genre, track.Language))
+                    .Select(track => track.Model.Id).ToArray(), IsSmart: true);
+        })).ToArray();
 
     internal TrackItemViewModel? FindTrack(Guid id) => tracksById.GetValueOrDefault(id);
 

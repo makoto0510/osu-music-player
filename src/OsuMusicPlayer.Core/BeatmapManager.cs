@@ -23,22 +23,21 @@ public sealed class BeatmapManager(
         // Libraries hold thousands of sets, so candidates are bucketed by online id and by
         // metadata key instead of comparing every pair.
         var merged = new List<UnifiedBeatmapSet>();
-        var byOnlineId = new Dictionary<long, int>();
-        var byMetadataKey = new Dictionary<string, int>(StringComparer.Ordinal);
+        var byOnlineId = new Dictionary<long, List<int>>();
+        var byMetadataKey = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         foreach (var candidate in loaded)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var metadataKey = duplicateDetector.CreateMetadataKey(candidate);
             var index = -1;
-            if (candidate.OnlineId is > 0 && byOnlineId.TryGetValue(candidate.OnlineId.Value, out var onlineIndex))
+            if (candidate.OnlineId is > 0 && byOnlineId.TryGetValue(candidate.OnlineId.Value, out var onlineIndices))
             {
-                index = onlineIndex;
+                index = findMatch(onlineIndices, merged, candidate);
             }
-            else if (metadataKey is not null &&
-                byMetadataKey.TryGetValue(metadataKey, out var metadataIndex) &&
-                duplicateDetector.AreDuplicates(merged[metadataIndex], candidate))
+            if (index < 0 && metadataKey is not null &&
+                byMetadataKey.TryGetValue(metadataKey, out var metadataIndices))
             {
-                index = metadataIndex;
+                index = findMatch(metadataIndices, merged, candidate);
             }
 
             if (index < 0)
@@ -54,16 +53,29 @@ public sealed class BeatmapManager(
             var result = merged[index];
             if (result.OnlineId is > 0)
             {
-                byOnlineId.TryAdd(result.OnlineId.Value, index);
+                if (!byOnlineId.TryGetValue(result.OnlineId.Value, out var indices))
+                    byOnlineId[result.OnlineId.Value] = indices = [];
+                if (!indices.Contains(index)) indices.Add(index);
             }
 
             if (metadataKey is not null)
             {
-                byMetadataKey.TryAdd(metadataKey, index);
+                if (!byMetadataKey.TryGetValue(metadataKey, out var indices))
+                    byMetadataKey[metadataKey] = indices = [];
+                if (!indices.Contains(index)) indices.Add(index);
             }
         }
 
         return merged;
+    }
+
+    private int findMatch(IEnumerable<int> indices, IReadOnlyList<UnifiedBeatmapSet> sets, UnifiedBeatmapSet candidate)
+    {
+        foreach (var index in indices)
+        {
+            if (duplicateDetector.AreDuplicates(sets[index], candidate)) return index;
+        }
+        return -1;
     }
 
     private async Task<IReadOnlyList<UnifiedBeatmapSet>> loadInstallationAsync(

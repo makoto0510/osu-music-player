@@ -62,6 +62,17 @@ public sealed class AppearanceSettings
     public bool PreferSkinComboColours { get; init; }
 }
 
+/// <summary>Visibility of the player's dockable panels.</summary>
+public sealed class PanelVisibilitySettings
+{
+    public bool Queue { get; init; }
+    public bool Playlists { get; init; }
+    public bool Browse { get; init; }
+    public bool Equalizer { get; init; }
+    public bool Sources { get; init; }
+    public bool Settings { get; init; }
+}
+
 public sealed class AppSettings
 {
     public IReadOnlyList<ManualInstallationSetting> ManualInstallations { get; init; } = [];
@@ -116,4 +127,6 @@ public sealed class AppSettings
     public string OsuApiClientSecret { get; init; } = string.Empty;
 
     public AppearanceSettings Appearance { get; init; } = new();
+
+    public PanelVisibilitySettings Panels { get; init; } = new();
 }

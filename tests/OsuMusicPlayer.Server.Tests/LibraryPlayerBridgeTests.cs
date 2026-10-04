@@ -24,6 +24,7 @@ public sealed class LibraryPlayerBridgeTests
         var bridge = new LibraryPlayerBridge([set, silent]);
 
         bridge.TrackCount.Should().Be(1, "sets without audio cannot be streamed");
+        (await ((IPlayerBridge)bridge).GetPlaylistsAsync(CancellationToken.None)).Should().BeEmpty("headless hosts have no saved desktop playlists");
         var tracks = await bridge.GetTracksAsync(CancellationToken.None);
         tracks.Should().ContainSingle().Which.Should().BeEquivalentTo(new { Title = "閃光", TitleRomanised = "Senkou", Bpm = 208d, HasBackground = true, Source = "lazer" });
 

@@ -37,6 +37,7 @@ public sealed class ApplicationThemeApplier : IThemeApplier
 
         var ui = theme.Ui.Validate();
         resources["CustomFontFamily"] = new FontFamily(ui.FontFamily);
+        resources["ContentControlThemeFontFamily"] = resources["CustomFontFamily"];
         resources["CustomTitleFontSize"] = ui.TitleFontSize;
         resources["CustomTrackTitleFontSize"] = ui.TrackTitleFontSize;
         resources["CustomTrackMetaFontSize"] = ui.TrackMetaFontSize;

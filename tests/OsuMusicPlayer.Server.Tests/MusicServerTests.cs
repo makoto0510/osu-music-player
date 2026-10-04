@@ -10,6 +10,40 @@ namespace OsuMusicPlayer.Server.Tests;
 public sealed class MusicServerTests
 {
     [Fact]
+    public async Task LibraryViews_CombinePlaylistOrderFavouritesSearchAndPagination()
+    {
+        var bridge = new FakeBridge("missing.mp3");
+        bridge.Playlists.Add(new ServerPlaylist(Guid.NewGuid(), "Ordered mix", [bridge.Tracks[1].Id, Guid.NewGuid(), bridge.Tracks[0].Id, bridge.Tracks[1].Id]));
+        bridge.Playlists.Add(new ServerPlaylist(Guid.NewGuid(), "Empty", []));
+        await using var server = new MusicServer();
+        await server.StartAsync(new MusicServerOptions { Port = 0, AllowRemoteConnections = false }, bridge);
+        using var client = new HttpClient { BaseAddress = new Uri(server.Urls[0]) };
+
+        var playlists = await client.GetFromJsonAsync<ServerPlaylist[]>("/api/playlists");
+        playlists.Should().HaveCount(2);
+        playlists![0].Name.Should().Be("Ordered mix");
+        var playlistId = bridge.Playlists[0].Id;
+        var first = await client.GetFromJsonAsync<JsonElement>($"/api/tracks?playlist={playlistId}&limit=1");
+        first.GetProperty("total").GetInt32().Should().Be(2, "missing and duplicate identifiers do not produce rows");
+        first.GetProperty("items")[0].GetProperty("title").GetString().Should().Be("Idol");
+        var second = await client.GetFromJsonAsync<JsonElement>($"/api/tracks?playlist={playlistId}&offset=1&limit=1");
+        second.GetProperty("items")[0].GetProperty("title").GetString().Should().Be("Exit");
+
+        var favourites = await client.GetFromJsonAsync<JsonElement>("/api/tracks?favourites=true");
+        favourites.GetProperty("total").GetInt32().Should().Be(1);
+        favourites.GetProperty("items")[0].GetProperty("isFavourite").GetBoolean().Should().BeTrue();
+        var filtered = await client.GetFromJsonAsync<JsonElement>($"/api/tracks?playlist={playlistId}&favourites=true&q=camellia");
+        filtered.GetProperty("total").GetInt32().Should().Be(0);
+        var empty = await client.GetFromJsonAsync<JsonElement>($"/api/tracks?playlist={bridge.Playlists[1].Id}");
+        empty.GetProperty("total").GetInt32().Should().Be(0);
+        (await client.GetAsync($"/api/tracks?playlist={Guid.NewGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var all = await client.GetFromJsonAsync<JsonElement>("/api/tracks");
+        all.GetProperty("total").GetInt32().Should().Be(2, "existing unfiltered API remains compatible");
+        var page = await client.GetStringAsync("/");
+        page.Should().Contain("id=\"view\"").And.Contain("Favourites").And.Contain("/api/playlists");
+    }
+
+    [Fact]
     public async Task Server_ServesLibraryStateStreamingAndControls()
     {
         var audioPath = Path.Combine(Path.GetTempPath(), $"osu-server-test-{Guid.NewGuid():N}.mp3");
@@ -149,11 +183,13 @@ public sealed class MusicServerTests
         }
 
         public List<ServerTrack> Tracks { get; }
+        public List<ServerPlaylist> Playlists { get; } = [];
         public List<Guid> Played { get; } = [];
         public List<Guid> Favourited { get; } = [];
         public double Volume { get; private set; } = 1;
 
         public Task<IReadOnlyList<ServerTrack>> GetTracksAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ServerTrack>>(Tracks);
+        public Task<IReadOnlyList<ServerPlaylist>> GetPlaylistsAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ServerPlaylist>>(Playlists);
         public Task<ServerTrack?> GetTrackAsync(Guid id, CancellationToken cancellationToken) => Task.FromResult(Tracks.FirstOrDefault(track => track.Id == id));
         public Task<PlayerState> GetStateAsync(CancellationToken cancellationToken) => Task.FromResult(new PlayerState(null, false, 0, 0, Volume, "None", false, "Off", []));
         public Task<bool> PlayAsync(Guid id, CancellationToken cancellationToken) { var ok = Tracks.Any(track => track.Id == id); if (ok) { Played.Add(id); } return Task.FromResult(ok); }

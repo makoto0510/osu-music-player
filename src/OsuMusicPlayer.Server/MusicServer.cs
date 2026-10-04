@@ -127,10 +127,30 @@ public sealed class MusicServer : IAsyncDisposable
             return overlayAsset(overlayDirectory, path);
         });
 
-        app.MapGet("/api/tracks", async (string? q, int? offset, int? limit, CancellationToken cancellationToken) =>
+        app.MapGet("/api/playlists", async (CancellationToken cancellationToken) =>
+            Results.Ok(await bridge.GetPlaylistsAsync(cancellationToken).ConfigureAwait(false)));
+
+        app.MapGet("/api/tracks", async (string? q, int? offset, int? limit, bool? favourites, Guid? playlist, CancellationToken cancellationToken) =>
         {
             var tracks = await bridge.GetTracksAsync(cancellationToken).ConfigureAwait(false);
             IEnumerable<ServerTrack> query = tracks;
+            if (playlist is { } playlistId)
+            {
+                var selected = (await bridge.GetPlaylistsAsync(cancellationToken).ConfigureAwait(false))
+                    .FirstOrDefault(item => item.Id == playlistId);
+                if (selected is null)
+                {
+                    return Results.NotFound();
+                }
+
+                var byId = tracks.ToDictionary(track => track.Id);
+                query = selected.TrackIds.Distinct().Where(byId.ContainsKey).Select(id => byId[id]);
+            }
+
+            if (favourites == true)
+            {
+                query = query.Where(track => track.IsFavourite);
+            }
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var terms = q.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

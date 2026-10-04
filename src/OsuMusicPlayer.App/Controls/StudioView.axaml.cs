@@ -42,6 +42,7 @@ public sealed partial class StudioView : UserControl
 
     internal VideoView VideoSurface => StudioVideo;
     internal StoryboardView StoryboardSurface => StudioStoryboard;
+    internal StoryboardView VideoStoryboardSurface => StudioVideoStoryboard;
 
     internal void FocusSearch()
     {

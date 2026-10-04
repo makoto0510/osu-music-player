@@ -55,6 +55,10 @@
   <Application.Styles>
     <FluentTheme />
 
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="{DynamicResource CustomFontFamily}" />
+    </Style>
+
     <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
     </Style>

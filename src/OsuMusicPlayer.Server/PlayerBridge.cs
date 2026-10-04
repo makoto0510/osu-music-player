@@ -37,6 +37,9 @@ public sealed record PlayerState(
     string Repeat,
     IReadOnlyList<ServerTrack> Queue);
 
+/// <summary>Ordered library track identifiers; local paths are never exposed.</summary>
+public sealed record ServerPlaylist(Guid Id, string Name, IReadOnlyList<Guid> TrackIds, bool IsSmart = false);
+
 /// <summary>
 /// What the server needs from the player. Implementations marshal to the UI thread; the
 /// server never touches view models directly.
@@ -44,6 +47,9 @@ public sealed record PlayerState(
 public interface IPlayerBridge
 {
     Task<IReadOnlyList<ServerTrack>> GetTracksAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ServerPlaylist>> GetPlaylistsAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ServerPlaylist>>([]);
 
     Task<ServerTrack?> GetTrackAsync(Guid id, CancellationToken cancellationToken);
 

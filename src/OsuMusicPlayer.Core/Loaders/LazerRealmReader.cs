@@ -16,6 +16,13 @@ internal sealed record LazerBeatmapData(
     public string RulesetShortName { get; init; } = "osu";
     public int RulesetOnlineId { get; init; }
     public string? Md5Hash { get; init; }
+    public string? AudioFileName { get; init; }
+    public string? BackgroundFileName { get; init; }
+    public string? Title { get; init; }
+    public string? TitleUnicode { get; init; }
+    public string? Artist { get; init; }
+    public string? ArtistUnicode { get; init; }
+    public string? Creator { get; init; }
 
     /// <summary>SHA-256 of the .osu file; the file lives in the hash store under this name.</summary>
     public string? Hash { get; init; }
@@ -192,6 +199,13 @@ internal sealed class LazerRealmReader : ILazerRealmReader, ILazerCollectionRead
                             getNumeric(difficulty, "DrainRate"),
                             getNumeric(difficulty, "OverallDifficulty"))
                         {
+                            AudioFileName = get(metadata, "AudioFile", string.Empty),
+                            BackgroundFileName = get(metadata, "BackgroundFile", string.Empty),
+                            Title = title,
+                            TitleUnicode = titleUnicode,
+                            Artist = artist,
+                            ArtistUnicode = artistUnicode,
+                            Creator = creator,
                             RulesetShortName = ruleset is null ? "osu" : get(ruleset, "ShortName", "osu"),
                             RulesetOnlineId = ruleset is null ? 0 : get(ruleset, "OnlineID", 0),
                             Md5Hash = get<string?>(beatmap, "MD5Hash", null),

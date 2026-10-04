@@ -86,8 +86,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(VideoSurfaceHeight))]
     [NotifyPropertyChangedFor(nameof(PopupVideoSurfaceHeight))]
     [NotifyPropertyChangedFor(nameof(ShowVideoInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInClassicPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInStudioPane))]
     [NotifyPropertyChangedFor(nameof(ShowVideoInPopup))]
     [NotifyPropertyChangedFor(nameof(HasVisuals))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPaneWithoutVideo))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPopupWithoutVideo))]
     private BeatmapMedia currentMedia = BeatmapMedia.None;
 
     [ObservableProperty]
@@ -95,8 +99,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(VideoSurfaceHeight))]
     [NotifyPropertyChangedFor(nameof(PopupVideoSurfaceHeight))]
     [NotifyPropertyChangedFor(nameof(ShowVideoInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInClassicPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInStudioPane))]
     [NotifyPropertyChangedFor(nameof(ShowVideoInPopup))]
     [NotifyPropertyChangedFor(nameof(HasVisuals))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPaneWithoutVideo))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPopupWithoutVideo))]
     private bool isVideoEnabled = true;
 
     [ObservableProperty]
@@ -119,17 +127,22 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(ListColumnWidth))]
     [NotifyPropertyChangedFor(nameof(DetailsColumnWidth))]
     [NotifyPropertyChangedFor(nameof(IsDetailsPaneVisible))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInStudioPane))]
     private bool isTheaterMode;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
     [NotifyPropertyChangedFor(nameof(HasVisuals))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPaneWithoutVideo))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPopupWithoutVideo))]
     [NotifyPropertyChangedFor(nameof(ShowStoryboardInPane))]
     private bool isStoryboardEnabled = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStoryboardVisible))]
     [NotifyPropertyChangedFor(nameof(HasVisuals))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPaneWithoutVideo))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPopupWithoutVideo))]
     [NotifyPropertyChangedFor(nameof(ShowStoryboardInPane))]
     private StoryboardSession? storyboardSession;
 
@@ -139,8 +152,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(VideoSurfaceHeight))]
     [NotifyPropertyChangedFor(nameof(PopupVideoSurfaceHeight))]
     [NotifyPropertyChangedFor(nameof(ShowVideoInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInClassicPane))]
+    [NotifyPropertyChangedFor(nameof(ShowVideoInStudioPane))]
     [NotifyPropertyChangedFor(nameof(ShowVideoInPopup))]
     [NotifyPropertyChangedFor(nameof(ShowStoryboardInPane))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPaneWithoutVideo))]
+    [NotifyPropertyChangedFor(nameof(ShowStoryboardInPopupWithoutVideo))]
     private bool isVisualsPoppedOut;
 
     [ObservableProperty]
@@ -262,12 +279,22 @@ public sealed partial class MainWindowViewModel : ObservableObject, IDisposable
     /// <summary>Hidden (not detached) while there is no video, so the empty native host never shows as a stray line.</summary>
     public bool ShowVideoInPane => IsVideoVisible && !IsVisualsPoppedOut;
 
+    // VideoView.Content uses a separate native overlay window. Explicit visibility
+    // prevents inactive interface/theater surfaces from retaining that window.
+    public bool ShowVideoInClassicPane => ShowVideoInPane && !IsStudioInterface;
+
+    public bool ShowVideoInStudioPane => ShowVideoInPane && IsStudioInterface && IsTheaterMode;
+
     public bool ShowVideoInPopup => IsVideoVisible && IsVisualsPoppedOut;
 
     /// <summary>The popup window's surface: stretched while the visuals are popped out, collapsed otherwise.</summary>
     public double PopupVideoSurfaceHeight => ShowVideoInPopup ? double.NaN : 0;
 
     public bool ShowStoryboardInPane => IsStoryboardVisible && !IsVisualsPoppedOut;
+
+    public bool ShowStoryboardInPaneWithoutVideo => ShowStoryboardInPane && !ShowVideoInPane;
+
+    public bool ShowStoryboardInPopupWithoutVideo => IsStoryboardVisible && IsVisualsPoppedOut && !ShowVideoInPopup;
 
     /// <summary>The visual box is a fixed strip above the details, or the whole pane in theater mode.</summary>
     public Avalonia.Controls.GridLength VisualRowHeight => IsTheaterMode ? new Avalonia.Controls.GridLength(1, Avalonia.Controls.GridUnitType.Star) : new Avalonia.Controls.GridLength(256);

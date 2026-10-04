@@ -13,6 +13,9 @@ public sealed class ViewModelPlayerBridge(MainWindowViewModel viewModel, IUiDisp
     public Task<IReadOnlyList<ServerTrack>> GetTracksAsync(CancellationToken cancellationToken) =>
         onUi(() => (IReadOnlyList<ServerTrack>)viewModel.LibrarySnapshot.Select(toServerTrack).ToArray());
 
+    public Task<IReadOnlyList<ServerPlaylist>> GetPlaylistsAsync(CancellationToken cancellationToken) =>
+        onUi(() => viewModel.PlaylistSnapshot);
+
     public Task<ServerTrack?> GetTrackAsync(Guid id, CancellationToken cancellationToken) =>
         onUi(() => viewModel.FindTrack(id) is { } track ? toServerTrack(track) : null);
 

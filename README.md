@@ -156,6 +156,8 @@ Switch between two layout styles under **Settings → Appearance → Interface /
 - **Studio Mode (Default):** Maximizes library browsing space with quick-access slide-out utility panels (Settings, Sources, Equalizer, Browse, Playlists).
 - **Classic Mode:** Traditional 3-pane layout featuring a left navigation sidebar, central track table, right Now Playing sidebar, and bottom playback bar.
 
+The open/closed state of Queue, Playlists, Browse, EQ, Sources, and Settings is restored on the next launch.
+
 #### Themes & Accent Colors
 - **Presets:** osu! Pink, Lazer Purple, Midnight Blue, Forest, OLED Black, and Daylight.
 - **Custom Accent:** Specify any `#RRGGBB` hex color code for personalized UI accents.
@@ -169,6 +171,7 @@ Toggle visual elements on the fly from the track details pane:
 
 - **Background Video:** Plays beatmap background videos in millisecond sync with BASS audio, seamlessly adapting to playback speed mods (DT/HT).
 - **Storyboard:** Decodes `.osb` and difficulty-specific `.osu` files to render complex storyboards using SkiaSharp.
+- **Combined visuals:** Storyboards can appear over video in Classic mode, Studio Theater mode, and the pop-out window. This uses LibVLCSharp's transparent overlay window; the video and storyboard retain separate drawing surfaces.
 - **Pop-out & Fullscreen (`Ctrl+P` / `F11`):** Detach video and storyboard playback into a separate window for multi-monitor setups or theater mode.
 - **Difficulty Preview (`Ctrl+Shift+P`):** Visualizes note placements and rhythmic patterns across all 4 modes in a lightweight autoplay overlay.
 
@@ -218,9 +221,10 @@ Enabling the internal server (default port: `5150`) exposes web-based controls a
 
 | Path | Description & Use Case |
 | :--- | :--- |
-| `http://<IP>:5150/` | **Web Remote UI:** Control playback, browse tracks, and stream audio directly to mobile devices via "Play here". |
+| `http://<IP>:5150/` | **Web Remote UI:** Control playback, browse all tracks, favourites, and playlists, and stream audio directly to mobile devices via "Play here". |
 | `http://localhost:5150/overlay` | **OBS Browser Source:** Transparent now-playing overlay designed for stream layouts (recommended size: 600 × 120). |
-| `/api/tracks` | Query track list with pagination and search filter support. |
+| `/api/tracks` | Query tracks with `q`, `offset`, and `limit`; filter favourites with `favourites=true` or a playlist with `playlist=GUID`. |
+| `/api/playlists` | List available playlists and their track IDs. |
 | `/api/tracks/{id}/audio` | Live HTTP audio stream (supports HTTP Range requests). |
 | `/api/tracks/{id}/background` | Fetch beatmap background image. |
 | `/api/state` | Current playback state (track, seek position, volume, queue). |
